@@ -1,0 +1,153 @@
+好的，我需要根据提供的api_desc.md和test_cases.csv为Lerp算子开发Ascend C实现。让我先分析需求。
+
+首先，算子功能是执行线性插值计算：y = start + weight*(end - start)。输入是三个张量：start、end和weight，输出是y。所有张量都应具有相同的数据类型float16和形状[48,128,512]。
+
+接下来，我需要设计tiling策略。输入形状是48x128x512=3145728元素。由于每个AI Core有48个aiv核可用，我们可以将数据划分为48块，每块处理3145728/48=65536元素。参考案例，每个核可以进一步将数据分为8个磁砖，因此每个磁砖将是65536/8=8192元素。需要确保数据搬运和计算的32字节对齐，对于float16类型（每个元素2字节），8192元素等于16384字节，已经是32字节对齐。
+
+需要创建一个包含totalLength（48*128*512=3145728）、tileNum（8）的tiling结构体。
+
+内核实现需要：
+
+1. 初始化GM地址并设置tiling参数
+2. 为每个输入输出队列分配UB缓冲区
+3. 在循环中执行数据搬运、计算和输出
+
+计算步骤需要：
+- 从队列中获取start、end、weight的本地张量
+- 计算end - start
+- 用Mul指令乘以weight
+- 用Add指令加到start上
+- 将结果放入输出队列
+
+需要处理三个输入张量的数据搬运。每个CopyIn迭代应从全局内存拷贝start、end、weight的磁砖到本地缓冲区。
+
+考虑到硬件规格，使用aiv核进行矢量计算。Datablock的数量应适合AI Core的UB大小。假设每个float16张量需要8192*2=16384字节，三个输入加一个输出需要4个缓冲区，每个8*16384=131072字节。如果UB足够，这应该是可行的。
+
+现在可以开始编写代码结构：
+
+定义tiling结构体，包含totalLength和tileNum字段。
+
+KernelLerp类将有三个输入队列（start、end、weight）和一个输出队列。Init函数将设置所有全局缓冲区并初始化队列，每个缓冲区大小为tileLength*sizeof(float16_t)。
+
+CopyIn将从三个输入张量分配本地张量并拷贝数据，然后将它们加入各自的队列。
+
+Compute函数将 deque三个输入张量，计算（end - start）* weight + start，分配输出张量，执行计算，然后将结果加入输出队列。
+
+CopyOut将 deque输出张量并将其拷贝到全局内存。
+
+现在，验证API：
+
+- 使用正确的float16_t类型而不是float16
+- TilingDataDef直接初始化而没有使用GET_TILING_DATA
+- 数据搬运使用32字节对齐（每个磁砖8192元素*2字节=16384字节，正好是512个32字节块）
+- 正确注册tiling结构体（通过kernel函数中的结构体定义）
+
+总元素计算：48*128*512=48*65536=3145728。因此totalLength应设为3145728，tileNum=8，所以每个块3145728/48=65536，每个磁砖65536/8=8192。
+
+每个循环迭代处理8192元素，每个核有8*2=16个循环迭代（因为每个循环处理一个缓冲区，BUFFER_NUM=2）。
+
+这样应该可以正确处理所有数据。</think>
+
+<kernel_impl>
+```cpp
+#include \"kernel_operator.h\"
+using namespace AscendC;
+
+typedef struct {
+    uint32_t totalLength;
+    uint32_t tileNum;
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2;
+
+class KernelLerp {
+public:
+    __aicore__ inline KernelLerp() {}
+    
+    __aicore__ inline void Init(GM_ADDR start, GM_ADDR end, GM_ADDR weight, GM_ADDR y, 
+                              uint32_t totalLength, uint32_t tileNum) {
+        this->blockLength = totalLength / GetBlockNum();
+        this->tileNum = tileNum;
+        this->tileLength = this->blockLength / tileNum / BUFFER_NUM;
+
+        startGm.SetGlobalBuffer((__gm__ float16_t*)start + this->blockLength * GetBlockIdx(), this->blockLength);
+        endGm.SetGlobalBuffer((__gm__ float16_t*)end + this->blockLength * GetBlockIdx(), this->blockLength);
+        weightGm.SetGlobalBuffer((__gm__ float16_t*)weight + this->blockLength * GetBlockIdx(), this->blockLength);
+        yGm.SetGlobalBuffer((__gm__ float16_t*)y + this->blockLength * GetBlockIdx(), this->blockLength);
+
+        pipe.InitBuffer(inQueueStart, BUFFER_NUM, this->tileLength * sizeof(float16_t));
+        pipe.InitBuffer(inQueueEnd, BUFFER_NUM, this->tileLength * sizeof(float16_t));
+        pipe.InitBuffer(inQueueWeight, BUFFER_NUM, this->tileLength * sizeof(float16_t));
+        pipe.InitBuffer(outQueueY, BUFFER_NUM, this->tileLength * sizeof(float16_t));
+    }
+
+    __aicore__ inline void Process() {
+        int32_t loopCount = this->tileNum * BUFFER_NUM;
+        for (int32_t i = 0; i < loopCount; i++) {
+            CopyIn(i);
+            Compute(i);
+            CopyOut(i);
+        }
+    }
+
+private:
+    __aicore__ inline void CopyIn(int32_t progress) {
+        LocalTensor<float16_t> startLocal = inQueueStart.AllocTensor<float16_t>();
+        LocalTensor<float16_t> endLocal = inQueueEnd.AllocTensor<float16_t>();
+        LocalTensor<float16_t> weightLocal = inQueueWeight.AllocTensor<float16_t>();
+        
+        DataCopy(startLocal, startGm[progress * tileLength], tileLength);
+        DataCopy(endLocal, endGm[progress * tileLength], tileLength);
+        DataCopy(weightLocal, weightGm[progress * tileLength], tileLength);
+
+        inQueueStart.EnQue(startLocal);
+        inQueueEnd.EnQue(endLocal);
+        inQueueWeight.EnQue(weightLocal);
+    }
+
+    __aicore__ inline void Compute(int32_t progress) {
+        LocalTensor<float16_t> startLocal = inQueueStart.DeQue<float16_t>();
+        LocalTensor<float16_t> endLocal = inQueueEnd.DeQue<float16_t>();
+        LocalTensor<float16_t> weightLocal = inQueueWeight.DeQue<float16_t>();
+        LocalTensor<float16_t> yLocal = outQueueY.AllocTensor<float16_t>();
+
+        Sub(endLocal, endLocal, startLocal, tileLength);  // end - start
+        Mul(yLocal, endLocal, weightLocal, tileLength);   // (end - start) * weight
+        Add(yLocal, yLocal, startLocal, tileLength);      // + start
+
+        outQueueY.EnQue(yLocal);
+        
+        inQueueStart.FreeTensor(startLocal);
+        inQueueEnd.FreeTensor(endLocal);
+        inQueueWeight.FreeTensor(weightLocal);
+    }
+
+    __aicore__ inline void CopyOut(int32_t progress) {
+        LocalTensor<float16_t> yLocal = outQueueY.DeQue<float16_t>();
+        DataCopy(yGm[progress * tileLength], yLocal, tileLength);
+        outQueueY.FreeTensor(yLocal);
+    }
+
+private:
+    TPipe pipe;
+    TQue<QuePosition::VECIN, BUFFER_NUM> inQueueStart, inQueueEnd, inQueueWeight;
+    TQue<QuePosition::VECOUT, BUFFER_NUM> outQueueY;
+    GlobalTensor<float16_t> startGm, endGm, weightGm, yGm;
+    uint32_t blockLength;
+    uint32_t tileNum;
+    uint32_t tileLength;
+};
+
+extern \"C\" __global__ __aicore__ void lerp(GM_ADDR start, GM_ADDR end, GM_ADDR weight, 
+                                         GM_ADDR y, GM_ADDR workspace) {
+    TilingDataDef tiling_data = {
+        .totalLength = 48 * 128 * 512,
+        .tileNum = 8,
+    };
+
+    KernelLerp op;
+    op.Init(start, end, weight, y, tiling_data.totalLength, tiling_data.tileNum);
+    op.Process();
+}
+```
+</kernel_impl>

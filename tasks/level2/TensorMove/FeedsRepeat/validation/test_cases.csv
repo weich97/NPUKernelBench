@@ -1,0 +1,4 @@
+case_id;feeds_shape;feeds_repeat_times_shape;feeds_dtype;feeds_repeat_times_dtype;output_feeds_size
+0;[48, 128];[48];float16;int32;1024
+1;[96, 64];[96];float32;int64;512
+2;[48, 32];[48];bfloat16;int32;1536

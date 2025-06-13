@@ -1,0 +1,145 @@
+嗯，我需要为FastGELU算子编写Ascend C代码。首先，我需要仔细分析提供的api_desc.md和test_cases.csv文件。根据api_desc.md，算子需要实现快速高斯误差线性单元激活函数，计算公式是y = x/(1 + exp(-1.702|x|)) * exp(.851(x-|x|))。支持的数据类型是float32，输入输出都是ND格式。test_cases.csv显示需要处理的shape是[48,256]，数据类型是float32。
+
+接下来，我需要参考示例代码的结构来设计解决方案。根据示例，代码应包括TilingDataDef结构体、Kernel类以及核函数。我需要为float32数据类型实现GELU计算。
+
+首先设计TilingDataDef结构体。根据示例，需要包含totalLength和tileNum。考虑到输入shape是[48,256]，总元素数是48*256=12288。但需要根据硬件规格进行分块。示例中使用每个tile 2048个元素，但这里可能需要调整。不过根据测试用例，可能直接使用单个tile处理整个数据块。
+
+然后，Kernel类的结构需要包括Init、Process方法，以及CopyIn、Compute、CopyOut阶段。在CopyIn阶段，将全局内存数据拷贝到本地内存；Compute阶段执行GELU计算；CopyOut阶段将结果写回全局内存。
+
+在计算公式中，需要处理绝对值和指数运算。Ascend C提供了Vector指令，可以执行这些操作。步骤可能包括：
+1. 计算|x|，可以使用Abs指令。
+2. 计算-1.702*|x|，使用Muls指令进行标量乘法。
+3. 计算exp(-1.702|x|)，使用Exp指令。
+4. 1 + exp_result，使用Adds指令加1。
+5. 计算x/(1 + exp(-1.702|x|))，使用Div指令。
+6. 计算x-|x|，这相当于-2*min(x,0)，可以使用Sub指令。
+7. 0.851*(x-|x|)，使用Muls指令。
+8. 计算exp(0.851(x-|x|))，使用Exp指令。
+9. 将步骤5和步骤8的结果相乘，得到最终结果。
+
+需要注意中间结果的存储和队列管理。每个步骤可能需要使用不同的LocalTensor，并确保队列的正确分配和释放。
+
+数据搬运方面，根据示例，每个tile的数据需要32字节对齐。对于float32，每个元素占4字节，因此每次搬运的数据长度需要是8的倍数。示例中的tileLength是2048个元素，但根据测试用例的shape [48,256]，总元素数是12288。如果使用单个tile，tileLength应该是12288。但需要考虑UB的大小是否足够。假设UB可以容纳整个数据，那么可以设置tileNum为1，BUFFER_NUM为2，这样每个tile处理全部数据。
+
+在核函数中，需要实例化Kernel类并调用Init和Process。TilingDataDef的totalLength应设置为12288，tileNum设为1。但需要根据实际硬件规格调整分块策略，确保不会超出UB容量。
+
+另外，需要注意使用正确的数据类型，所有Tensor都应使用float（float32）。避免使用任何DTYPE_X之类的命名，直接使用float类型。
+
+现在，将这些步骤整合到代码中。TilingDataDef结构体包含totalLength和tileNum。Kernel类在Init中初始化全局内存和队列，每个队列分配BUFFER_NUM个缓冲区，每个缓冲区大小为tileLength*sizeof(float)。Process方法循环处理每个tile，这里由于tileNum=1，循环次数是1*BUFFER_NUM=2，但可能需要调整循环逻辑以避免冗余。
+
+在CopyIn阶段，为每个输入分配本地Tensor，并从全局内存拷贝数据。Compute阶段执行系列向量操作，步骤包括计算绝对值、乘法、指数、加法、除法和乘法。每个中间结果使用临时队列存储，确保流水线正确。最后，CopyOut阶段将结果写回全局内存。
+
+需要确保所有DataCopy调用都满足32字节对齐要求。对于float32，每个元素4字节，因此tileLength必须是8的倍数。例如，tileLength=12288是合法的，因为12288*4=49152字节，是32的倍数。
+
+最后，核函数使用GET_TILING_DATA获取tiling参数，并初始化算子实例。根据测试用例，tiling参数的totalLength是48*256=12288，tileNum=1。因此，在核函数中实例化TilingDataDef并设置相应值，然后调用Init和Process。
+
+需要验证所有步骤是否符合Ascend C语法，没有使用未定义的变量或类，数据类型正确，队列操作正确，以及所有中间结果正确释放。</think><kernel_impl>
+```cpp
+#include "kernel_operator.h"
+using namespace AscendC;
+
+typedef struct {
+    uint32_t totalLength;
+    uint32_t tileNum;
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2;
+
+class KernelFastGelu {
+public:
+    __aicore__ inline KernelFastGelu() {}
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, uint32_t tileNum)
+    {
+        this->blockLength = totalLength / GetBlockNum();
+        this->tileNum = tileNum;
+        this->tileLength = this->blockLength / tileNum / BUFFER_NUM;
+
+        xGm.SetGlobalBuffer((__gm__ float*)x + this->blockLength * GetBlockIdx(), this->blockLength);
+        yGm.SetGlobalBuffer((__gm__ float*)y + this->blockLength * GetBlockIdx(), this->blockLength);
+        pipe.InitBuffer(inQueueX, BUFFER_NUM, this->tileLength * sizeof(float));
+        pipe.InitBuffer(tmpQueue1, BUFFER_NUM, this->tileLength * sizeof(float));
+        pipe.InitBuffer(tmpQueue2, BUFFER_NUM, this->tileLength * sizeof(float));
+        pipe.InitBuffer(outQueueY, BUFFER_NUM, this->tileLength * sizeof(float));
+    }
+    __aicore__ inline void Process()
+    {
+        int32_t loopCount = this->tileNum * BUFFER_NUM;
+        for (int32_t i = 0; i < loopCount; i++) {
+            CopyIn(i);
+            Compute(i);
+            CopyOut(i);
+        }
+    }
+
+private:
+    __aicore__ inline void CopyIn(int32_t progress)
+    {
+        LocalTensor<float> xLocal = inQueueX.AllocTensor<float>();
+        DataCopy(xLocal, xGm[progress * tileLength], tileLength);
+        inQueueX.EnQue(xLocal);
+    }
+    
+    __aicore__ inline void Compute( int32_t progress)
+    {
+        // x -> input
+        LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+        // 1: 计算|x|
+        LocalTensor<float> absX = tmpQueue1.AllocTensor<float>();
+        Abs(absX, xLocal, tileLength);
+        // 2: 计算-1.702|x|
+        LocalTensor<float> mulsResult = tmpQueue2.AllocTensor<float>();
+        Muls(mulsResult, absX, (float)-1.702, tileLength);
+        // 3: 计算exp(-1.702|x|)
+        Exp(mulsResult, mulsResult, tileLength);
+        // 4: 1 + exp_result
+        Adds(mulsResult, mulsResult, (float)1.0, tileLength);
+        // 5: x/(1 + exp(-1.702|x|))
+        LocalTensor<float> divResult = tmpQueue1.AllocTensor<float>();
+        Div(divResult, xLocal, mulsResult, tileLength);
+        // 6: 计算x-|x|
+        Sub(mulsResult, xLocal, absX, tileLength);
+        // 7: 0.851*(x-|x|)
+        Muls(mulsResult, mulsResult, (float)0.851, tileLength);
+        // 8: 计算exp(0.851(x-|x|))
+        Exp(mulsResult, mulsResult, tileLength);
+        // 9: 最终结果相乘
+        LocalTensor<float> yLocal = outQueueY.AllocTensor<float>();
+        Mul(yLocal, divResult, mulsResult, tileLength);
+        
+        outQueueY.EnQue(yLocal);
+        tmpQueue1.FreeTensor(absX);
+        tmpQueue1.FreeTensor(divResult);
+        tmpQueue2.FreeTensor(xLocal);
+        tmpQueue2.FreeTensor(mulsResult);
+    }
+    
+    __aicore__ inline void CopyOut(int32_t progress)
+    {
+        LocalTensor<float> yLocal = outQueueY.DeQue<float>();
+        DataCopy(yGm[progress * tileLength], yLocal, tileLength);
+        outQueueY.FreeTensor(yLocal);
+    }
+
+private:
+    TPipe pipe;
+    TQue<QuePosition::VECIN, BUFFER_NUM> inQueueX;
+    TQue<QuePosition::VECIN, BUFFER_NUM> tmpQueue1;
+    TQue<QuePosition::VECIN, BUFFER_NUM> tmpQueue2;
+    TQue<QuePosition::VECOUT, BUFFER_NUM> outQueueY;
+    GlobalTensor<float> xGm;
+    GlobalTensor<float> yGm;
+    uint32_t blockLength;
+    uint32_t tileNum;
+    uint32_t tileLength;
+};
+
+extern "C" __global__ __aicore__ void fast_gelu(GM_ADDR x, GM_ADDR y, GM_ADDR workspace) {
+    TilingDataDef tiling_data;
+    tiling_data.totalLength = 48 * 256;
+    tiling_data.tileNum = 1;
+    KernelFastGelu op;
+    op.Init(x, y, tiling_data.totalLength, tiling_data.tileNum);
+    op.Process();
+}
+```
+</kernel_impl>

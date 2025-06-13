@@ -1,0 +1,113 @@
+
+Okay, I need to implement the Sqrt operator in Ascend C based on the provided documents. Let's start by analyzing the requirements.
+
+First, the operator's function is to compute the square root of each element in the input tensor. The input and output data types are float16. The test case specifies a shape of [48, 128, 512], which is a 3D tensor. The total element count is 48*128*512 = 3,145,728 elements. But since each AI Core processes a block, I need to split the data across multiple cores.
+
+The reference example uses a TilingDataDef structure with totalLength and tileNum. For the Sqrt operator, I should follow a similar approach. The totalLength would be the total number of elements per block. The blockLength is totalLength divided by the number of blocks (GetBlockNum()). The example uses 48 AIV cores, so I should calculate how many tiles each core processes.
+
+The data type is float16_t, so each element is 2 bytes. The DataCopy must ensure 32-byte alignment. So the tileLength should be a multiple of 16 elements (since 16*2=32 bytes). For the test case shape [48,128,512], let's calculate the total elements: 48*128*512 = 3,145,728. If using 48 blocks (since AIV has 48 cores), blockLength is 3,145,728 /48 = 65,536 elements per block. Then tileNum could be 4, so tileLength is 65,536/(4*2) = 8,192 elements (since BUFFER_NUM is 2). 8,192 elements *2bytes=16,384 bytes=16KB, which is 32-byte aligned.
+
+In the kernel, each core processes its block. The Init function sets up the GM addresses for each block. The Process function loops through tiles, copying in data, computing sqrt, and copying out. The CopyIn uses DataCopy to move data from GM to UB. The Compute step applies the Sqrt function on the local tensor. The BUFFER_NUM is 2 for double buffering.
+
+The TilingDataDef needs to set totalLength to 3,145,728 and tileNum to 4. Then in the kernel, the KernelSqrt class will calculate blockLength and tileLength based on these values.
+
+Queues are set up with BUFFER_NUM=2. Each CopyIn/Compute/CopyOut cycle processes one tile. Since BUFFER_NUM is 2, the loop runs tileNum*2 times to fully utilize the double buffer.
+
+In the Compute function, after dequeuing the input tensor, allocate the output tensor, apply Sqrt, and enqueue it. The Sqrt function in AscendC is applied to the entire tensor, so the length parameter is tileLength.
+
+Finally, the kernel function initializes the TilingDataDef with the calculated values and calls Init and Process on the KernelSqrt instance.
+
+Need to ensure all variable names don't contain DTYPE_X/Y, use correct data types (float16_t), and follow the structure from the example. Also, check that all memory allocations are 32-byte aligned.
+</think>
+
+<kernel_impl>
+```cpp
+#include "kernel_operator.h"
+
+using namespace AscendC;
+
+typedef struct {
+    uint32_t totalLength;
+    uint32_t tileNum;
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2; // Tensor number for each queue
+
+class KernelSqrt {
+public:
+    __aicore__ inline KernelSqrt() {}
+    
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, uint32_t tileNum)
+    {
+        this->blockLength = totalLength / GetBlockNum();
+        this->tileNum = tileNum;
+        this->tileLength = this->blockLength / tileNum / BUFFER_NUM;
+
+        // Set global buffer with block offset
+        xGm.SetGlobalBuffer((__gm__ float16_t*)x + this->blockLength * GetBlockIdx(), this->blockLength);
+        yGm.SetGlobalBuffer((__gm__ float16_t*)y + this->blockLength * GetBlockIdx(), this->blockLength);
+        
+        // Initialize pipe buffers (32B aligned: tileLength*2bytes needs alignment)
+        pipe.InitBuffer(inQueueX, BUFFER_NUM, this->tileLength * sizeof(float16_t));
+        pipe.InitBuffer(outQueueY, BUFFER_NUM, this->tileLength * sizeof(float16_t));
+    }
+    
+    __aicore__ inline void Process()
+    {
+        int32_t loopCount = this->tileNum * BUFFER_NUM;
+        for (int32_t i = 0; i < loopCount; i++) {
+            CopyIn(i);
+            Compute(i);
+            CopyOut(i);
+        }
+    }
+
+private:
+    __aicore__ inline void CopyIn(int32_t progress)
+    {
+        LocalTensor<float16_t> xLocal = inQueueX.AllocTensor<float16_t>();
+        DataCopy(xLocal, xGm[progress * tileLength], tileLength);
+        inQueueX.EnQue(xLocal);
+    }
+    
+    __aicore__ inline void Compute(int32_t progress)
+    {
+        LocalTensor<float16_t> xLocal = inQueueX.DeQue<float16_t>();
+        LocalTensor<float16_t> yLocal = outQueueY.AllocTensor<float16_t>();
+        Sqrt(yLocal, xLocal, tileLength);
+        outQueueY.EnQue(yLocal);
+        inQueueX.FreeTensor(xLocal);
+    }
+    
+    __aicore__ inline void CopyOut(int32_t progress)
+    {
+        LocalTensor<float16_t> yLocal = outQueueY.DeQue<float16_t>();
+        DataCopy(yGm[progress * tileLength], yLocal, tileLength);
+        outQueueY.FreeTensor(yLocal);
+    }
+
+private:
+    TPipe pipe;
+    TQue<QuePosition::VECIN, BUFFER_NUM> inQueueX;
+    TQue<QuePosition::VECOUT, BUFFER_NUM> outQueueY;
+    GlobalTensor<float16_t> xGm;
+    GlobalTensor<float16_t> yGm;
+    uint32_t blockLength;
+    uint32_t tileNum;
+    uint32_t tileLength;
+};
+
+extern "C" __global__ __aicore__ void sqrt(GM_ADDR x, GM_ADDR y, GM_ADDR workspace)
+{
+    // Calculate tiling parameters based on test case [48,128,512]
+    TilingDataDef tiling_data = {
+        .totalLength = 48 * 128 * 512,  // Total elements: 3,145,728
+        .tileNum = 4                     // Split each block into 4 tiles with double buffer
+    };
+    
+    KernelSqrt op;
+    op.Init(x, y, tiling_data.totalLength, tiling_data.tileNum);
+    op.Process();
+}
+```
+</kernel_impl>

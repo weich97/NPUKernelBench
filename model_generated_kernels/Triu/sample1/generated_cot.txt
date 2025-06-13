@@ -1,0 +1,358 @@
+嗯，好的，我需要根据用户提供的任务描述来生成一个符合要求的Ascend C算子代码。首先，我得仔细阅读用户提供的两个文件：api_desc.md和test_cases.csv，理解算子的功能和测试用例的需求。
+
+首先看api_desc.md。算子的名字是aclnnTriu，功能是提取输入张量的上三角部分，下三角部分置零。支持的数据类型是float32，输入张量必须是至少2维的ND格式，在最后两个维度上操作。计算公式是y = triu(x, diagonal)，其中diagonal参数控制对角线的位置。测试用例中的输入shape是[48, 64]，diagonal为0，数据类型是float32。根据测试用例，我需要处理二维矩阵的情况，但根据约束，算子需要支持更高维度的张量，不过在最后两个维度进行操作。不过用户提到代码实现只需要满足当前test_cases.csv中的输入信息，所以可能可以简化处理，假设输入是二维的。
+
+接下来看test_cases.csv，case_id 0的shape是[48, 64]，dtype是float32，diagonal是0。这意味着在实现时，需要处理矩阵的上三角部分，主对角线及以上置为原值，其余置零。但用户提供的测试用例中的diagonal是0，可能需要考虑diagonal参数的传递，但根据任务要求，当前测试用例中的diagonal为0，可能不需要处理其他情况，但api_desc.md中diagonal是算子的参数，不过在用户提供的代码模板中，kernel函数参数只有x, y, workspace，没有diagonal参数。这可能意味着diagonal参数是通过tiling数据传递的。不过用户提供的参考案例中的tiling结构体包含totalLength和tileNum，可能需要扩展tiling结构来包含diagonal参数。
+
+不过用户提供的代码模板中，kernel函数的参数是x, y, workspace，而参考案例中的add_custom有四个参数，包括workspace和tiling参数。但用户的模板中，workspace参数存在，但如何获取tiling数据呢？参考案例中的算子使用了一个自定义的TilingDataDef结构体，并在kernel函数中初始化了该结构体。但在用户提供的参考案例中，tiling_data是直接在kernel函数内部初始化的，而实际应用中可能通过workspace传递。不过用户特别指出不要使用GET_TILING_DATA，而是参考示例的TilingDataDef写法来获取tiling。这可能意味着需要从workspace中获取tiling数据。但用户的代码模板中，kernel函数的参数包括GM_ADDR workspace，可能需要从workspace中读取tiling参数。不过参考案例中的add_custom将tiling_data作为参数传递给了Init函数，但用户的任务描述中可能要求tiling参数通过workspace传递。
+
+不过用户提供的参考案例中的代码在kernel函数内部直接初始化了tiling_data结构体，这可能与实际应用中的情况不同。用户可能希望我们根据test_cases.csv中的信息硬编码tiling参数，因为任务说明中提到“代码实现能满足当前test_cases.csv要求的输入信息即可”，所以可能不需要动态处理，而是根据测试用例的shape和数据类型来设置tiling参数。
+
+现在，我需要设计Triu算子的Ascend C实现。主要步骤包括：
+
+1. **Tiling结构设计**：需要定义包含总数据长度、分块数量、对角线参数等的结构体。根据测试用例，shape是[48, 64]，数据类型是float32，diagonal=0。所以tiling结构体可能需要包括totalLength（48*64=3072），tileNum，以及diagonal参数。
+
+2. **数据搬运和计算**：由于是上三角操作，需要遍历每个元素，根据其位置判断是否置零。对于矩阵中的元素(i,j)，如果j >= i + diagonal，则保留原值，否则置零。当diagonal=0时，即主对角线，j >=i的元素保留。
+
+3. **流水线设计**：使用Ascend C的流水线模式，将数据从Global Memory搬运到Local Memory（UB），进行计算，然后搬回Global Memory。需要考虑使用多缓冲区来隐藏数据搬运延迟。
+
+4. **队列管理**：使用TQue队列管理输入输出的Tensor，可能只需要一个输入队列和一个输出队列，因为是原地操作还是需要两个输入？根据算子功能，输入是x，输出是y，所以可能只需要拷贝输入到本地，计算后再写回输出。
+
+5. **数据对齐**：确保DataCopy的长度和地址32字节对齐。例如，每个tile的长度需要是32字节的整数倍。float32每个元素占4字节，所以每个tile的元素数量需要是8的倍数（因为8*4=32字节）。
+
+现在，具体步骤：
+
+**Tiling结构体定义**：
+需要包含totalLength（总元素数），tileNum（分块数），diagonal参数。根据测试用例，diagonal=0，但可能需要从tiling数据中获取。不过根据用户提供的测试用例，可能直接硬编码这些值。
+
+在参考案例中，TilingDataDef结构体在kernel函数内部初始化。例如：
+TilingDataDef tiling_data = { .totalLength = 49152, .tileNum = 1 };
+
+但用户的测试用例中shape是[48,64]，总元素数是48*64=3072。所以totalLength应该是3072。tileNum需要根据硬件规格来分块。参考案例中使用了tileNum=1，但可能需要根据AI Core的数量和每个核的处理能力来分块。例如，每个AI Core处理部分数据，然后在每个核内部进行分块处理。
+
+但用户提到host侧调用kernel侧时使用了全部的aic或aiv核，其中aic有24个核，aiv有48个核。所以需要将数据分配到多个核处理。例如，总数据长度是3072，如果使用48个核（aiv），每个核处理3072/48=64个元素。但需要确认GetBlockNum()和GetBlockIdx()的使用。
+
+在Init函数中，blockLength = totalLength / GetBlockNum(); 每个核处理blockLength个元素。然后将blockLength分成tileNum个tile，每个tile的长度是tileLength = blockLength / tileNum / BUFFER_NUM。这里BUFFER_NUM可能是指每个队列的缓冲区数量，比如双缓冲。
+
+但针对Triu算子，每个元素需要独立处理，因此可能需要将每个tile的数据拷贝到UB，然后逐个元素处理。对于float32类型，每个元素占4字节，所以DataCopy的长度必须满足32字节对齐，即每次搬运的元素数量必须是8的倍数（因为8*4=32字节）。
+
+例如，假设tileNum=8，每个tile的长度是8个元素，那么每个循环处理8个元素。但需要根据实际的数据量和硬件资源进行调整。
+
+对于测试用例中的shape [48,64]，总元素数是3072。假设使用48个核（aiv），每个核处理3072/48=64个元素。每个核的blockLength是64。然后将这64个元素分成多个tile。假设每个tile处理8个元素，那么tileNum=64/8=8。每个循环处理一个tile，使用双缓冲（BUFFER_NUM=2），则loopCount = tileNum * BUFFER_NUM = 8*2=16次循环。这样可以实现流水线并行。
+
+在CopyIn阶段，每次拷贝tileLength个元素到UB，然后Compute阶段处理这些元素，设置下三角部分为0，最后CopyOut搬回GM。
+
+**计算逻辑**：
+对于每个元素在位置i（在一维数组中），需要转换为二维矩阵的行列索引。假设矩阵是m行n列，那么一维索引i对应的行列是j = i % n，k = i / n。然后判断j >= k + diagonal（diagonal=0时，j >=k）。如果满足条件，则保留原值，否则置零。
+
+但需要注意，对于高维张量，算子只在最后两个维度进行操作。但根据测试用例，输入是二维的，所以可以直接处理最后两个维度作为矩阵。
+
+在Compute函数中，遍历本地Tensor的每个元素，进行判断并赋值。
+
+**代码结构**：
+参考案例的结构，需要定义Kernel类，包含Init、Process、CopyIn、Compute、CopyOut函数。在Init中初始化Global Tensor，并设置blockLength、tileNum、tileLength。Process循环处理每个tile，CopyIn拷贝数据到UB，Compute进行计算，CopyOut搬回GM。
+
+**数据类型**：
+测试用例使用float32，所以所有Tensor使用float类型，而不是float16_t或其他类型。
+
+**Tiling参数设置**：
+根据测试用例，totalLength=48*64=3072，diagonal=0。在TilingDataDef结构体中包含这些参数。在kernel函数中，从workspace或参数中获取这些值，但根据参考案例，可能直接在kernel函数内部初始化tiling_data结构体。例如：
+TilingDataDef tiling_data = {
+    .totalLength = 3072,
+    .diagonal = 0,
+    .tileNum = 8 // 假设分8个块
+};
+
+但需要确定tileNum的值。例如，每个核处理64个元素，分成8个tile，每个tile 8个元素。这样tileNum=8。但需要确保tileLength满足32字节对齐。每个元素是4字节，8个元素是32字节，满足对齐要求。
+
+**代码实现步骤**：
+
+1. **定义TilingDataDef结构体**：
+   包含totalLength、diagonal、tileNum。根据测试用例，diagonal=0，totalLength=3072，tileNum需要计算。
+
+2. **Kernel类实现**：
+   - Init函数：设置Global Tensor的缓冲区，初始化blockLength、tileNum、tileLength。根据BUFFER_NUM（比如2）分配队列缓冲区。
+   - CopyIn：拷贝数据到本地Tensor。
+   - Compute：遍历本地Tensor的每个元素，判断是否置零。
+   - CopyOut：将结果拷贝回Global Memory。
+
+3. **矩阵索引转换**：
+   在Compute函数中，将一维索引转换为二维的行和列。例如，矩阵的列数是n=64，行数是m=48。对于一维索引progress * tileLength + i，对应的行列是：
+   row = (progress * tileLength + i) / n;
+   col = (progress * tileLength + i) % n;
+   但需要注意，每个核处理的是整个张量的某一部分。例如，在Init函数中，xGm被设置为每个核处理blockLength个元素，即每个核处理的是整个输入的一部分。因此，在转换索引时，需要考虑整个张量的形状，而不仅仅是每个核处理的部分。或者，可能每个核处理的是最后两个维度中的某一部分。这可能需要更复杂的处理，但根据测试用例，输入是二维的，所以每个核处理的是整个矩阵，但根据GetBlockIdx()进行分块。例如，如果总共有48个核（aiv），则每个核处理矩阵的某一部分。但测试用例中的shape是[48,64]，如果BlockNum是48，则每个核处理的blockLength是64个元素（因为48核*64=3072）。此时，每个核处理的是矩阵的64个元素，可能对应于矩阵的行。例如，每个核处理一行（48行，每行64列），所以blockLength=64。此时，xGm.SetGlobalBuffer设置的是该核负责的全局内存偏移：this->blockLength * AscendC::GetBlockIdx()。所以，每个核处理的是第GetBlockIdx()行的数据。
+
+   因此，在计算时，行索引是GetBlockIdx()，列索引是i（在本地Tensor中的偏移）。因此，对于每个元素在本地Tensor中的索引i，对应的全局列索引是i，行索引是GetBlockIdx()。因此，判断条件是col（i） >= row（GetBlockIdx()） + diagonal。当diagonal=0时，如果i >= GetBlockIdx()，则保留，否则置零。
+
+   这样，每个核处理自己负责的行，列索引是本地的i。因此，在Compute函数中，对于每个元素xLocal[i]，如果i >= GetBlockIdx() + diagonal，则保留，否则置零。这样，上三角部分被保留，下三角置零。
+
+   这可能是一个关键点。因为每个核处理的是矩阵中的一行（假设BlockNum等于行数），那么每个核的Global Memory偏移是行索引乘以列数。例如，矩阵是48行64列，每个核处理一行，所以blockLength=64。在Init函数中，xGm.SetGlobalBuffer设置为该核负责的行的起始地址：this->blockLength * AscendC::GetBlockIdx()。因此，行索引就是AscendC::GetBlockIdx()，列索引是本地的i。因此，在Compute函数中，判断条件是i >= row_idx + diagonal。这样，每个核处理自己行的上三角部分。
+
+   这样，代码可以简化为：对于每个元素在本地Tensor中的索引i，如果i >= (GetBlockIdx() + diagonal)，则保留，否则置零。因为矩阵的行索引是GetBlockIdx()，列索引是i。这样，当diagonal=0时，列索引>=行索引的元素被保留，即上三角部分。
+
+   因此，在Compute函数中，可以这样处理：
+   for (int i = 0; i < tileLength; ++i) {
+       if (i >= (AscendC::GetBlockIdx() + diagonal)) {
+           zLocal.SetValue(i, xLocal.GetValue(i));
+       } else {
+           zLocal.SetValue(i, 0.0f);
+       }
+   }
+
+   这里diagonal是从tiling_data中获取的参数。
+
+**代码结构示例**：
+
+```cpp
+#include "kernel_operator.h"
+
+using namespace AscendC;
+
+// Tiling结构体定义
+typedef struct {
+    uint32_t totalLength;
+    int32_t diagonal;
+    uint32_t tileNum;
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2;
+
+class KernelTriu {
+public:
+    __aicore__ inline KernelTriu() {}
+    
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, int32_t diagonal, uint32_t tileNum) {
+        this->blockLength = totalLength / AscendC::GetBlockNum();
+        this->diagonal = diagonal;
+        this->tileNum = tileNum;
+        this->tileLength = this->blockLength / tileNum / BUFFER_NUM;
+
+        // 设置Global Tensor的缓冲区
+        xGm.SetGlobalBuffer((__gm__ float*)x + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        yGm.SetGlobalBuffer((__gm__ float*)y + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        
+        // 初始化队列缓冲区
+        pipe.InitBuffer(inQueueX, BUFFER_NUM, this->tileLength * sizeof(float));
+        pipe.InitBuffer(outQueueY, BUFFER_NUM, this->tileLength * sizeof(float));
+    }
+    
+    __aicore__ inline void Process() {
+        int32_t loopCount = this->tileNum * BUFFER_NUM;
+        for (int32_t i = 0; i < loopCount; i++) {
+            CopyIn(i);
+            Compute(i);
+            CopyOut(i);
+        }
+    }
+
+private:
+    __aicore__ inline void CopyIn(int32_t progress) {
+        LocalTensor<float> xLocal = inQueueX.AllocTensor<float>();
+        DataCopy(xLocal, xGm[progress * this->tileLength], this->tileLength);
+        inQueueX.EnQue(xLocal);
+    }
+    
+    __aicore__ inline void Compute(int32_t progress) {
+        LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+        LocalTensor<float> yLocal = outQueueY.AllocTensor<float>();
+        
+        // 计算上三角
+        for (int i = 0; i < this->tileLength; ++i) {
+            if (progress * this->tileLength + i >= static_cast<uint32_t>(this->diagonal)) {
+                yLocal.SetValue(i, xLocal.GetValue(i));
+            } else {
+                yLocal.SetValue(i, 0.0f);
+            }
+        }
+        outQueueY.EnQue(yLocal);
+        inQueueX.FreeTensor(xLocal);
+    }
+    
+    __aicore__ inline void CopyOut(int32_t progress) {
+        LocalTensor<float> yLocal = outQueueY.DeQue<float>();
+        DataCopy(yGm[progress * this->tileLength], yLocal, this->tileLength);
+        outQueueY.FreeTensor(yLocal);
+    }
+
+private:
+    TPipe pipe;
+    TQue<QuePosition::VECIN, BUFFER_NUM> inQueueX;
+    TQue<QuePosition::VECOUT, BUFFER_NUM> outQueueY;
+    GlobalTensor<float> xGm;
+    GlobalTensor<float> yGm;
+    uint32_t blockLength;
+    int32_t diagonal;
+    uint32_t tileNum;
+    uint32_t tileLength;
+};
+
+extern "C" __global__ __aicore__ void triu(GM_ADDR x, GM_ADDR y, GM_ADDR workspace) {
+    // 初始化tiling数据
+    TilingDataDef tiling_data = {
+        .totalLength = 48 * 64,  // 根据测试用例
+        .diagonal = 0,
+        .tileNum = 8  // 假设每个核分成8个tile，每个tile 8个元素（64 / 8 / 2=4? 需要调整）
+    };
+    
+    // 获取块数，假设使用48个核（aiv）
+    uint32_t block_dim = 48;
+    uint32_t block_idx = AscendC::GetBlockIdx();
+    
+    KernelTriu op;
+    op.Init(x, y, tiling_data.totalLength, tiling_data.diagonal, tiling_data.tileNum);
+    op.Process();
+}
+```
+
+但需要调整tileNum和tileLength，确保tileLength满足32字节对齐。例如，每个tileLength必须是8的倍数（因为float32每个元素4字节，8元素*4=32字节）。在测试用例中，每个核的blockLength是64个元素（因为48核*64=3072）。如果tileNum=8，则每个tile的元素数是64/(8*2)=4，这不满足32字节对齐。因此，需要调整tileNum。例如，tileNum=4，则tileLength=64/(4*2)=8，这样每个tile是8元素，32字节对齐。
+
+因此，tiling_data.tileNum应设置为4，这样tileLength=8。这样，在Compute函数中每个tile处理8个元素，满足对齐要求。
+
+因此，tiling_data的设置应为：
+totalLength=48*64=3072
+diagonal=0
+tileNum=4（每个核的blockLength=64，分成4个tile，每个tile在双缓冲下需要分为BUFFER_NUM=2，所以每个tile的实际元素是64/(4*2)=8）
+
+这样，代码中的tileLength=8，满足32字节对齐（8元素*4字节=32字节）。
+
+在Compute函数中，判断条件应为列索引（i + progress * tileLength）>= 行索引（block_idx） + diagonal。因为每个核处理的是行索引等于block_idx的行，列索引是i + progress * tileLength。例如，当progress=0时，处理前8个列索引0-7，progress=1时处理8-15，等等。因此，对于每个元素，其全局列索引是progress * tileLength + i。而行索引是block_idx。因此，条件是(progress * tileLength + i) >= (block_idx + diagonal)。
+
+因此，在Compute函数的循环中：
+for (int i = 0; i < tileLength; ++i) {
+    int global_col = progress * tileLength + i;
+    if (global_col >= (AscendC::GetBlockIdx() + diagonal)) {
+        yLocal.SetValue(i, xLocal.GetValue(i));
+    } else {
+        yLocal.SetValue(i, 0.0f);
+    }
+}
+
+这样，正确判断该元素是否在上三角区域。
+
+综上，最终的代码需要包括：
+
+- TilingDataDef结构体包含totalLength、diagonal、tileNum。
+- Kernel类处理每个tile的数据搬运和计算。
+- 正确设置Global Tensor的缓冲区，根据block_idx分块。
+- 使用双缓冲（BUFFER_NUM=2）来重叠数据搬运和计算。
+- 确保DataCopy的长度32字节对齐。
+- 在kernel函数中初始化tiling_data并调用Init和Process。
+
+现在，根据测试用例的数据，tiling_data的参数应设置为：
+totalLength = 48 * 64 = 3072
+diagonal = 0
+tileNum = 4（每个核的blockLength=64，分成4个tile，每个tile在双缓冲下分为2个部分，所以每个tile的元素是64/(4*2)=8，满足32字节对齐）
+
+因此，在kernel函数中：
+TilingDataDef tiling_data = {
+    .totalLength = 3072,
+    .diagonal = 0,
+    .tileNum = 4,
+};
+
+然后，在Init函数中：
+this->blockLength = totalLength / GetBlockNum(); // 3072 / 48 =64
+this->tileNum = 4;
+this->tileLength = 64 /4 /2=8.
+
+这样，每个tile处理8个元素，满足对齐。
+
+因此，完整的代码如下。</think><kernel_impl>
+```cpp
+#include "kernel_operator.h"
+
+using namespace AscendC;
+
+typedef struct {
+    uint32_t totalLength;
+    int32_t diagonal;
+    uint32_t tileNum;
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2;
+
+class KernelTriu {
+public:
+    __aicore__ inline KernelTriu() {}
+    
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, int32_t diagonal, uint32_t tileNum)
+    {
+        this->blockLength = totalLength / AscendC::GetBlockNum();
+        this->diagonal = diagonal;
+        this->tileNum = tileNum;
+        this->tileLength = this->blockLength / tileNum / BUFFER_NUM;
+
+        xGm.SetGlobalBuffer((__gm__ float*)x + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        yGm.SetGlobalBuffer((__gm__ float*)y + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        
+        pipe.InitBuffer(inQueueX, BUFFER_NUM, this->tileLength * sizeof(float));
+        pipe.InitBuffer(outQueueY, BUFFER_NUM, this->tileLength * sizeof(float));
+    }
+    
+    __aicore__ inline void Process()
+    {
+        for (int32_t i = 0; i < this->tileNum * BUFFER_NUM; i++) {
+            CopyIn(i);
+            Compute(i);
+            CopyOut(i);
+        }
+    }
+
+private:
+    __aicore__ inline void CopyIn(int32_t progress)
+    {
+        LocalTensor<float> xLocal = inQueueX.AllocTensor<float>();
+        DataCopy(xLocal, xGm[progress * this->tileLength], this->tileLength);
+        inQueueX.EnQue(xLocal);
+    }
+    
+    __aicore__ inline void Compute(int32_t progress)
+    {
+        LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+        LocalTensor<float> yLocal = outQueueY.AllocTensor<float>();
+        
+        for (int i = 0; i < this->tileLength; ++i) {
+            int32_t globalCol = progress * this->tileLength + i;
+            if (globalCol >= static_cast<int32_t>(AscendC::GetBlockIdx() + this->diagonal)) {
+                yLocal.SetValue(i, xLocal.GetValue(i));
+            } else {
+                yLocal.SetValue(i, 0.0f);
+            }
+        }
+        outQueueY.EnQue(yLocal);
+        inQueueX.FreeTensor(xLocal);
+    }
+    
+    __aicore__ inline void CopyOut(int32_t progress)
+    {
+        LocalTensor<float> yLocal = outQueueY.DeQue<float>();
+        DataCopy(yGm[progress * this->tileLength], yLocal, this->tileLength);
+        outQueueY.FreeTensor(yLocal);
+    }
+
+private:
+    TPipe pipe;
+    TQue<QuePosition::VECIN, BUFFER_NUM> inQueueX;
+    TQue<QuePosition::VECOUT, BUFFER_NUM> outQueueY;
+    GlobalTensor<float> xGm;
+    GlobalTensor<float> yGm;
+    uint32_t blockLength;
+    int32_t diagonal;
+    uint32_t tileNum;
+    uint32_t tileLength;
+};
+
+extern "C" __global__ __aicore__ void triu(GM_ADDR x, GM_ADDR y, GM_ADDR workspace)
+{
+    TilingDataDef tiling_data = {
+        .totalLength = 48 * 64,
+        .diagonal = 0,
+        .tileNum = 4
+    };
+    
+    KernelTriu op;
+    op.Init(x, y, tiling_data.totalLength, tiling_data.diagonal, tiling_data.tileNum);
+    op.Process();
+}
+```
+</kernel_impl>

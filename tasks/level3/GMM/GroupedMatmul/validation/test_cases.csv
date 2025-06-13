@@ -1,0 +1,5 @@
+case_id;x_shapes;gmm_shapes;bias_shapes;group_list_data;split_item;dtype;transpose_weight;transpose_x
+0;[[50, 5120], [65, 5120]];[[5120, 2560], [5120, 2560]];[[2560], [2560]];;0;float16;false;false
+1;[[50, 5120], [15, 5120]];[[5120, 2560], [5120, 2560]];[[2560], [2560]];[50, 65];2;float16;false;false
+2;[[84, 5120]];[[4, 5120, 2560]];[[4, 2560]];[50, 65, 69, 84];3;float16;true;false
+3;[[84, 5120]];[[4, 5120, 2560]];[[4, 2560]];[50, 65, 69, 84];3;float16;false;false

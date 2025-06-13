@@ -1,0 +1,4 @@
+case_id;start;end;step;dtype
+0;1;4096;1;int32
+1;-1024;1;1;int32
+2;10000;10;-5;int32

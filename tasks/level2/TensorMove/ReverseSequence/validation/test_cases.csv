@@ -1,0 +1,4 @@
+case_id;input_shape;dtype;seq_dim;batch_dim
+0;[48, 1024, 1024];float32;1;0
+1;[48, 256, 512];float16;1;0
+2;[1, 512, 1024];float32;1;0

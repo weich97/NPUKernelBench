@@ -1,0 +1,8 @@
+case_id;shape;dtype;k;dim;largest;sorted
+0;[8, 2048];float16;2;1;true;true
+1;[8, 16, 32];float16;3;2;true;true
+2;[64, 128];float16;4;0;true;true
+3;[1, 32, 64, 64];float16;1;3;true;true
+4;[8, 1024];float16;4;1;true;true
+5;[32, 512, 128];float16;3;2;true;true
+6;[256, 512];float16;4;0;true;true

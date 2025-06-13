@@ -1,0 +1,13 @@
+pyyaml==6.0.2
+psutil==6.1.1
+pandas==2.3
+openai==1.67.0
+tqdm==4.67.1
+torch==2.5.1
+torch-npu==2.5.1rc1
+tiktoken==0.8.0
+sglang==0.4.5
+scipy==1.15.1
+protobuf==4.23.3
+pybind11==2.13.6
+numpy==1.26.4

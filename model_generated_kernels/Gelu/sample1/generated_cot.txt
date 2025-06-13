@@ -1,0 +1,566 @@
+好的，我需要根据提供的任务描述为GELU算子编写Ascend C实现。让我们一步步分析需求。
+
+首先，算子的功能是计算GELU激活函数，公式为GELU(x) ≈ x / (1 + exp(-√(8/π)(x + 0.044715 x³)))。输入数据类型是float32，测试用例的shape是[8, 1024]。需要针对这个shape设计分块策略。
+
+参考案例中的加法算子实现，结构通常包括TilingDataDef结构体、Kernel类，以及核函数入口。让我先确定关键步骤：
+
+1. **TilingDataDef结构体**：
+需要定义总数据长度和分块参数。参考案例，应该包含totalLength和tileNum。测试用例的shape是8x1024=8192元素。假设使用与参考案例类似的分块策略，但需要为float32调整。
+
+2. **Kernel类设计**：
+需要初始化Global Memory缓冲区，设置流水线队列，管理数据搬运和计算。由于GELU是逐元素操作，可以使用矢量计算单元。
+
+3. **计算步骤**：
+需要在Kernel的Compute函数中实现GELU公式。步骤包括：
+- 计算x³：使用Mul指令进行元素级乘法（x平方，然后乘以x）
+- 乘以系数0.044715：使用Muls指令
+- 将结果与x相加：使用Add指令
+- 计算缩放因子√(8/π) ≈ 1.5957691216, 将和相乘：使用Muls指令
+- 取相反数：使用Muls指令乘以-1.0
+- 计算指数exp：使用Exp指令
+- 加1.0：使用Adds指令
+- 计算1/(1+exp(...))：使用Div指令或使用Reciprocal后乘以0.5（需要验证公式近似）
+- 最后将结果与x相乘：使用Mul指令
+
+需要确保所有中间步骤使用32字节对齐的数据块，并通过队列管理输入输出。
+
+4. **分块策略**：
+测试用例的shape是[8,10824]，数据类型是float32（每个元素4字节）。总数据大小是8*1024=8192元素，32768字节。
+
+参考案例中使用每个AI Core 49152元素（对应48*1024）。但在这里，总数据是8192元素。假设使用1个AI Core处理全部数据（因为8*1024可能小于典型分块大小），tiling_data.totalLength应设为8192。tileNum可以设为1，将整个数据作为单个块处理。
+
+5. **硬件规格**：
+需要注意AI Core的数量。参考案例提到aic有24核，aiv有48核。但测试用例的数据量较小（8192元素），可能只需要1个核处理。因此，blockLength将是totalLength（8192）除以block_num（1），即每个核处理8192元素。
+
+6. **数据搬运**：
+每个循环迭代从Global Memory搬运tileLength元素到UB。如果tileNum=1且BUFFER_NUM=2，则tileLength为blockLength/(tileNum*BUFFER_NUM) = 8192/(1*2) = 4096元素，即16384字节，满足32字节对齐。
+
+7. **指令选择**：
+- 使用Mul进行元素级乘法（x²和x³）
+- 使用Muls进行标量乘法（0.044715和√(8/π)）
+- 使用Adds加1.0
+- 使用Exp计算指数
+- 使用Reciprocal计算倒数
+- 使用Mul与x相乘
+
+现在，逐步构建代码结构。
+
+**TilingDataDef结构体**：
+与参考案例类似，包含totalLength和tileNum。根据测试用例，totalLength应为8*1024=8192，tileNum设为1。
+
+**Kernel类成员**：
+- 队列：输入队列VECIN，输出队列VECOUT，每个队列BUFFER_NUM=2
+- GlobalTensor：xGm、zGm
+- 参数：blockLength、tileNum、tileLength
+
+**Init函数**：
+- 设置xGm和zGm的全局缓冲区，每个核处理blockLength元素（8192/1=8192）
+- 初始化队列缓冲区，每个缓冲区大小为tileLength * sizeof(float)（4096*4=16384字节，32字节对齐）
+
+**CopyIn**：
+从Global Memory搬运tileLength元素到LocalTensor xLocal，入队。
+
+**Compute**：
+执行GELU计算步骤：
+1. 从队列分配xLocal
+2. 计算x³：两次乘法（x * x得到x²，再乘以x得到x³）
+3. 乘以0.044715：Muls(xLocal3, xLocal, 0.044715)
+4. 加x：Add(xLocal, xLocal, xLocal3)
+5. 乘以√(8/π) ≈ 1.5957691216：Muls(xLocal, xLocal, approx_sqrt_8_pi)
+6. 取相反数：Muls(xLocal, xLocal, -1.0)
+7. 计算指数：Exp(tempTensor)
+8. 加1.0：Adds(tempTensor, tempTensor, 1.0)
+9. 计算倒数：Reciprocal(tempTensor)
+10. 与x相乘：Mul(zLocal, xLocal, tempTensor)
+
+需要注意中间步骤的临时张量分配和队列管理。由于步骤依赖，可能需要使用临时UB缓冲区。
+
+**CopyOut**：
+将结果从zLocal搬运回Global Memory。
+
+**核函数**：
+初始化TilingDataDef，调用KernelGelu的Init和Process。
+
+现在，将这些步骤转化为代码。
+
+在Compute函数中，需要：
+- 从inQueueX取出xLocal
+- 计算x³：需要两次乘法。首先计算x²（Mul xLocal, xLocal, xLocal），然后乘以xLocal得到x³。但需要注意队列中的张量管理。
+更准确的步骤：
+1. 计算x²：Mul(xSquared, xLocal, xLocal)
+2. 乘以0.044715：Muls(xCubedTerm, xSquared, 0.044715)
+3. 加x：Add(temp, xLocal, xCubedTerm)
+4. 乘以√(8/π)：Muls(scaled, temp, approx_sqrt_8_pi)
+5. 取相反数：Muls(negative, scaled, -1.0)
+6. 计算指数：Exp(expResult, negative)
+7. 加1.0：Adds(plusOne, expResult, 1.0)
+8. 计算倒数：Reciprocal(inverse, plusOne)
+9. 乘以x：Mul(zLocal, xLocal, inverse)
+
+需要为每个中间步骤分配LocalTensor并管理队列。由于步骤顺序，可能需要使用临时队列或直接在UB中操作。
+
+但为了简化，可以在UB中直接操作，避免频繁队列入队/出队。例如：
+
+在Compute函数中：
+```cpp
+__aicore__ inline void Compute(int32_t progress)
+{
+    // 从输入队列取出xLocal
+    LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+    
+    // 分配输出张量
+    LocalTensor<float> zLocal = outQueueZ.AllocTensor<float>();
+    
+    // 分配临时张量用于中间计算
+    LocalTensor<float> xSquared = xLocal[0];  // 假设xLocal有足够空间
+    LocalTensor<float> xCubedTerm = xLocal[tileLength];  // 使用xLocal的第二部分作为临时空间
+    LocalTensor<float> temp = xLocal[tileLength * 2];
+    LocalTensor<float> scaled = xLocal[tileLength * 3];
+    LocalTensor<float> negative = xLocal[tileLength * 4];
+    LocalTensor<float> expResult = xLocal[tileLength * 5];
+    LocalTensor<float> plusOne = xLocal[tileLength * 6];
+    LocalTensor<float> inverse = xLocal[tileLength * 7];
+
+    // 确保临时张量在UB缓冲区内
+    // 计算x²
+    Mul(xSquared, xLocal, xLocal, tileLength);
+    
+    // 乘以0.044715得到0.044715 * x³
+    Muls(xCubedTerm, xSquared, 0.044715f);
+    Mul(xCubedTerm, xCubedTerm, xLocal, tileLength);  // xCubedTerm = x² * 0.044715 * x = 0.044715 x³
+    
+    // temp = x + 0.044715 x³
+    Add(temp, xLocal, xCubedTerm, tileLength);
+    
+    // 乘以√(8/π) ≈ 1.5957691216
+    Muls(scaled, temp, approx_sqrt_8_pi, tileLength);
+    
+    // 取相反数
+    Muls(negative, scaled, -1.0f, tileLength);
+    
+    // 计算指数exp(-negative)
+    Exp(expResult, negative, tileLength);
+    
+    // 加1.0
+    Adds(plusOne, expResult, 1.0f, tileLength);
+    
+    // 计算倒数1.0/(1+exp(...))
+    Reciprocal(inverse, plusOne, tileLength);
+    
+    // 乘以x得到最终结果
+    Mul(zLocal, xLocal, inverse, tileLength);
+    
+    // 将结果加入输出队列
+    outQueueZ.EnQue<float>(zLocal);
+    
+    // 释放输入张量
+    inQueueX.FreeTensor(xLocal);
+}
+```
+
+这里假设UB缓冲区足够大，可以容纳xLocal及其所有临时部分。每个临时张量偏移tileLength元素。由于每个tileLength是4096元素，8个部分需要4096*8=32768元素，即131072字节。但UB缓冲区初始化为tileLength * sizeof(float) = 4096*4=16384字节，这不够。因此这种方法不可行。
+
+替代方案：使用额外的队列或重新使用已分配的张量。但根据参考案例，可能在计算步骤中使用临时张量而不队列管理。
+
+或者，由于步骤顺序，可以在不队列管理的情况下重用张量。例如：
+
+1. xLocal是输入。
+2. 计算x²并存储在temp1。
+3. 计算0.044715*x³并存储在temp2。
+4. 将temp1与xLocal相加，存储在temp3。
+5. 依此类推。
+
+但需要确保每个指令都有足够的UB空间。另一种方法是使用单个临时张量逐步计算。
+
+更好的方法可能是使用专门的临时缓冲区。但由于Init中队列已初始化固定大小的缓冲区，可能需要调整。
+
+参考案例的加法算子使用两个输入队列和一个输出队列，每个缓冲区大小为tileLength * sizeof(dtype)。对于GELU，可能只需要一个输入队列和一个输出队量。
+
+修改Kernel类：
+- 使用TQue<VECIN, BUFFER_NUM> inQueueX;
+- TQue<VECOUT, BUFFER_NUM> outQueueZ;
+
+在Init中：
+pipe.InitBuffer(inQueueX, BUFFER_NUM, tileLength * sizeof(float));
+pipe.InitBuffer(outQueueZ, BUFFER_NUM, tileLength * sizeof(float));
+
+这样，每个LocalTensor在CopyIn时分配为tileLength元素（4096元素，16384字节，32字节对齐）。
+
+在Compute中，DeQue的xLocal有tileLength元素。中间步骤需要临时空间，但由于指令可以原地操作，可能可以重用部分内存。
+
+重新设计计算步骤：
+1. 计算x²：Mul(xSquared, xLocal, xLocal)需要tileLength元素的输出。但xLocal只有tileLength元素。因此需要分配新的LocalTensor用于xSquared。
+但队列已初始化固定缓冲区数量，可能需要使用outQueueZ分配的临时张量。
+
+或者，由于outQueueZ的LocalTensor在计算完成后才EnQue，可以在计算步骤中重用它们作为临时空间。
+
+更好的方法：
+在Compute中：
+- 从inQueueX DeQue xLocal（tileLength元素）
+- 分配zLocal从outQueueZ
+- 使用zLocal作为临时空间进行中间计算
+
+步骤如下：
+1. 计算x²：Mul(zLocal, xLocal, xLocal) → zLocal现在保存x²
+2. 计算0.044715 * x²：Muls(zLocal, zLocal, 0.044715)
+3. 乘以x得到0.044715 x³：Mul(zLocal, zLocal, xLocal) → zLocal现在保存0.044715 x³
+4. 加x：Add(zLocal, xLocal, zLocal) → zLocal = x + 0.044715 x³
+5. 乘以√(8/π)：Muls(zLocal, zLocal, approx_sqrt_8_pi)
+6. 取相反数：Muls(zLocal, zLocal, -1.0)
+7. 计算指数：Exp(zLocal, zLocal)
+8. 加1.0：Adds(zLocal, zLocal, 1.0)
+9. 计算倒数：Reciprocal(zLocal, zLocal)
+10. 乘以x：Mul(zLocal, xLocal, zLocal) → 1.0/(1+exp(...)) * x
+
+这样，直接重用zLocal作为临时空间，避免额外内存分配。这可行且符合内存限制。
+
+修改后的Compute函数：
+```cpp
+__aicore__ inline void Compute(int32_t progress)
+{
+    // 从输入队列取出xLocal
+    LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+    
+    // 分配输出张量（也用作临时空间）
+    LocalTensor<float> zLocal = outQueueZ.AllocTensor<float>();
+    
+    // 计算步骤重用zLocal作为临时空间
+    // 1. x² = x * x
+    Mul(zLocal, xLocal, xLocal, tileLength);
+    
+    // 2. 0.044715 * x²
+    Muls(zLocal, zLocal, 0.044715f, tileLength);
+    
+    // 3. 0.044715 * x³ = 0.044715 * x² * x
+    Mul(zLocal, zLocal, xLocal, tileLength);
+    
+    // 4. x + 0.044715 x³
+    Add(zLocal, xLocal, zLocal, tileLength);
+    
+    // 5. 乘以√(8/pi) ≈ 1.5957691216
+    Muls(zLocal, zLocal, approx_sqrt_8_pi, tileLength);
+    
+    // 6. 取相反数
+    Muls(zLocal, zLocal, -1.0f, tileLength);
+    
+    // 7. exp(-...)
+    Exp(zLocal, zLocal, tileLength);
+    
+    // 8. 加1.0
+    Adds(zLocal, zLocal, 1.0f, tileLength);
+    
+    // 9. 计算倒数
+    Reciprocal(zLocal, zLocal, tileLength);
+    
+    // 10. 乘以x得到最终结果
+    Mul(zLocal, xLocal, zLocal, tileLength);
+    
+    // 将结果加入输出队列
+    outQueueZ.EnQue<float>(zLocal);
+    
+    // 释放输入张量
+    inQueueX.FreeTensor(xLocal);
+}
+```
+
+这样，zLocal用作所有中间步骤的临时空间，无需额外内存分配，符合UB缓冲区限制。
+
+**完整代码**：
+
+结合所有元素，代码如下：
+
+```cpp
+#include "kernel_operator.h"
+
+using namespace AscendC;
+
+// Tiling数据结构
+typedef struct {
+    uint32_t totalLength;
+    uint32_t tileNum;
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2; // 每个队列的Tensor数量
+constexpr float approx_sqrt_8_pi = 1.5957691216f; // √(8/π)的近似值
+
+class KernelGelu {
+public:
+    __aicore__ inline KernelGelu() {}
+    
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, uint32_t tileNum)
+    {
+        // 计算每个核处理的数据长度（假设单核处理全部数据）
+        this->blockLength = totalLength;
+        this->tileNum = tileNum;
+        this->tileLength = blockLength / tileNum / BUFFER_NUM;
+
+        // 设置GlobalTensor：整个输入由单个核处理
+        xGm.SetGlobalBuffer((__gm__ float*)x, blockLength);
+        zGm.SetGlobalBuffer((__gm__ float*)y, blockLength);
+        
+        // 初始化流水线队列，每个缓冲区大小=tileLength * sizeof(float)
+        pipe.InitBuffer(inQueueX, BUFFER_NUM, tileLength * sizeof(float));
+        pipe.InitBuffer(outQueueZ, BUFFER_NUM, tileLength * sizeof(float));
+    }
+    
+    __aicore__ inline void Process()
+    {
+        int32_t loopCount = this->tileNum * BUFFER_NUM;
+        for (int32_t i = 0; i < loopCount; i++) {
+            CopyIn(i);
+            Compute(i);
+            CopyOut(i);
+        }
+    }
+
+private:
+    __aicore__ inline void CopyIn(int32_t progress)
+    {
+        // 从Global Memory搬运数据到UB
+        LocalTensor<float> xLocal = inQueueX.AllocTensor<float>();
+        DataCopy(xLocal, xGm[progress * tileLength], tileLength);
+        inQueueX.EnQue(xLocal);
+    }
+    
+    __aicore__ inline void Compute(int32_t progress)
+    {
+        // 从输入队列取出xLocal
+        LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+        
+        // 分配输出张量（重用作为临时空间）
+        LocalTensor<float> zLocal = outQueueZ.AllocTensor<float>();
+        
+        // GELU计算步骤
+        // 1. x² = x * x
+        Mul(zLocal, xLocal, xLocal, tileLength);
+        
+        // 2. 0.044715 * x²
+        Muls(zLocal, zLocal, 0.044715f, tileLength);
+        
+        // 3. 0.044715 * x³ = 0.044715 * x² * x
+        Mul(zLocal, zLocal, xLocal, tileLength);
+        
+        // 4. x + 0.044715 x³
+        Add(zLocal, xLocal, zLocal, tileLength);
+        
+        // 5. 乘以√(8/pi)
+        Muls(zLocal, zLocal, approx_sqrt_8_pi, tileLength);
+        
+        // 6. 取相反数
+        Muls(zLocal, zLocal, -1.0f, tileLength);
+        
+        // 7. 计算指数
+        Exp(zLocal, zLocal, tileLength);
+        
+        // 8. 加1.0
+        Adds(zLocal, zLocal, 1.0f, tileLength);
+        
+        // 9. 计算倒数
+        Reciprocal(zLocal, zLocal, tileLength);
+        
+        // 10. 乘以x得到最终结果
+        Mul(zLocal, xLocal, zLocal, tileLength);
+        
+        // 将结果加入输出队列
+        outQueueZ.EnQue<float>(zLocal);
+        
+        // 释放输入张量
+        inQueueX.FreeTensor(xLocal);
+    }
+    
+    __aicore__ inline void CopyOut(int32_t progress)
+    {
+        // 从输出队列取出结果并写回Global Memory
+        LocalTensor<float> zLocal = outQueueZ.DeQue<float>();
+        DataCopy(zGm[progress * tileLength], zLocal, tileLength);
+        outQueueZ.FreeTensor(zLocal);
+    }
+
+private:
+    TPipe pipe;
+    TQue<QuePosition::VECIN, BUFFER_NUM> inQueueX;
+    TQue<QuePosition::VECOUT, BUFFER_NUM> outQueueZ;
+    GlobalTensor<float> xGm;
+    GlobalTensor<float> zGm;
+    uint32_t blockLength;
+    uint32_t tileNum;
+    uint32_t tileLength;
+};
+
+// 核函数入口
+extern "C" __global__ __aicore__ void gelu(GM_ADDR x, GM_ADDR y, GM_ADDR workspace)
+{
+    // 初始化Tiling参数
+    TilingDataDef tiling_data = {
+        .totalLength = 8192,  // 8*1024
+        .tileNum = 1,         // 单个分块
+    };
+    
+    // 实例化并初始化Kernel
+    KernelGelu op;
+    op.Init(x, y, tiling_data.totalLength, tiling_data.tileNum);
+    
+    // 执行处理流程
+    op.Process();
+}
+```
+
+**验证要点**：
+
+1. **数据类型**：
+使用float（float32），与测试用例一致。避免使用DTYPE_X等命名。
+
+2. **内存管理**：
+- Init中xGm和zGm设置为整个输入（blockLength=8192元素），单个核处理全部数据。
+- 队列初始化缓冲区大小=4096元素（8192/(1*2)），32字节对齐（4096*4=16384字节）。
+
+3. **计算步骤**：
+- 使用Mul、Muls、Add、Exp、Adds、Reciprocal、Mul指令实现公式。
+- zLocal重用作为临时空间，避免额外内存分配。
+
+4. **数据搬运**：
+- DataCopy使用32字节对齐（16384字节）。
+- CopyIn/CopyOut正确处理Global Memory地址偏移。
+
+5. **Tiling参数**：
+- totalLength=8192（8*1024），tileNum=1，BUFFER_NUM=2导致tileLength=4096元素。
+
+此实现应正确计算GELU函数，符合所有要求。</think>
+
+<kernel_impl>
+```cpp
+#include "kernel_operator.h"
+
+using namespace AscendC;
+
+// Tiling数据结构
+typedef struct {
+    uint32_t totalLength;
+    uint32_t tileNum;
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2; // 每个队列的Tensor数量
+constexpr float approx_sqrt_8_pi = 1.5957691216f; // √(8/π)的近似值
+
+class KernelGelu {
+public:
+    __aicore__ inline KernelGelu() {}
+    
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, uint32_t tileNum)
+    {
+        // 计算每个核处理的数据长度（假设单核处理全部数据）
+        this->blockLength = totalLength;
+        this->tileNum = tileNum;
+        this->tileLength = blockLength / tileNum / BUFFER_NUM;
+
+        // 设置GlobalTensor：整个输入由单个核处理
+        xGm.SetGlobalBuffer((__gm__ float*)x, blockLength);
+        zGm.SetGlobalBuffer((__gm__ float*)y, blockLength);
+        
+        // 初始化流水线队列，每个缓冲区大小=tileLength * sizeof(float)
+        pipe.InitBuffer(inQueueX, BUFFER_NUM, tileLength * sizeof(float));
+        pipe.InitBuffer(outQueueZ, BUFFER_NUM, tileLength * sizeof(float));
+    }
+    
+    __aicore__ inline void Process()
+    {
+        int32_t loopCount = this->tileNum * BUFFER_NUM;
+        for (int32_t i = 0; i < loopCount; i++) {
+            CopyIn(i);
+            Compute(i);
+            CopyOut(i);
+        }
+    }
+
+private:
+    __aicore__ inline void CopyIn(int32_t progress)
+    {
+        // 从Global Memory搬运数据到UB
+        LocalTensor<float> xLocal = inQueueX.AllocTensor<float>();
+        DataCopy(xLocal, xGm[progress * tileLength], tileLength);
+        inQueueX.EnQue(xLocal);
+    }
+    
+    __aicore__ inline void Compute(int32_t progress)
+    {
+        // 从输入队列取出xLocal
+        LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+        
+        // 分配输出张量（重用作为临时空间）
+        LocalTensor<float> zLocal = outQueueZ.AllocTensor<float>();
+        
+        // GELU计算步骤
+        // 1. x² = x * x
+        Mul(zLocal, xLocal, xLocal, tileLength);
+        
+        // 2. 0.044715 * x²
+        Muls(zLocal, zLocal, 0.044715f, tileLength);
+        
+        // 3. 0.044715 * x³ = 0.044715 * x² * x
+        Mul(zLocal, zLocal, xLocal, tileLength);
+        
+        // 4. x + 0.044715 x³
+        Add(zLocal, xLocal, zLocal, tileLength);
+        
+        // 5. 乘以√(8/pi)
+        Muls(zLocal, zLocal, approx_sqrt_8_pi, tileLength);
+        
+        // 6. 取相反数
+        Muls(zLocal, zLocal, -1.0f, tileLength);
+        
+        // 7. 计算指数
+        Exp(zLocal, zLocal, tileLength);
+        
+        // 8. 加1.0
+        Adds(zLocal, zLocal, 1.0f, tileLength);
+        
+        // 9. 计算倒数
+        Reciprocal(zLocal, zLocal, tileLength);
+        
+        // 10. 乘以x得到最终结果
+        Mul(zLocal, xLocal, zLocal, tileLength);
+        
+        // 将结果加入输出队列
+        outQueueZ.EnQue<float>(zLocal);
+        
+        // 释放输入张量
+        inQueueX.FreeTensor(xLocal);
+    }
+    
+    __aicore__ inline void CopyOut(int32_t progress)
+    {
+        // 从输出队列取出结果并写回Global Memory
+        LocalTensor<float> zLocal = outQueueZ.DeQue<float>();
+        DataCopy(zGm[progress * tileLength], zLocal, tileLength);
+        outQueueZ.FreeTensor(zLocal);
+    }
+
+private:
+    TPipe pipe;
+    TQue<QuePosition::VECIN, BUFFER_NUM> inQueueX;
+    TQue<QuePosition::VECOUT, BUFFER_NUM> outQueueZ;
+    GlobalTensor<float> xGm;
+    GlobalTensor<float> zGm;
+    uint32_t blockLength;
+    uint32_t tileNum;
+    uint32_t tileLength;
+};
+
+// 核函数入口
+extern "C" __global__ __aicore__ void gelu(GM_ADDR x, GM_ADDR y, GM_ADDR workspace)
+{
+    // 初始化Tiling参数
+    TilingDataDef tiling_data = {
+        .totalLength = 8192,  // 8*1024
+        .tileNum = 1,         // 单个分块
+    };
+    
+    // 实例化并初始化Kernel
+    KernelGelu op;
+    op.Init(x, y, tiling_data.totalLength, tiling_data.tileNum);
+    
+    // 执行处理流程
+    op.Process();
+}
+```
+</kernel_impl>

@@ -1,0 +1,570 @@
+嗯，好的，我需要根据用户提供的两个文件来实现Ascend C的Triu算子。首先，我得仔细看看任务需求和输入文件的内容，确保理解正确。
+
+首先看api_desc.md。算子的功能是提取输入张量的上三角部分，diagonal参数决定对角线的位置。输出张量中，对角线以上的元素保留，以下的设为0。支持的数据类型是float32，输入是2D张量，最后两个维度进行操作。测试用例中的shape是[48,64]，dtype是float32，diagonal=0。所以当前只需要处理2D的情况，diagonal为0的情况，也就是主对角线。
+
+接下来是test_cases.csv里的数据，case_id 0对应的shape是48x64，数据类型float32。这意味着在编写代码时需要处理这个特定的形状，可能分块策略需要根据这个形状来设计。
+
+现在需要考虑如何在Ascend C中实现这个算子。参考案例中的AddCustom算子，结构大致是类似的，但Triu的逻辑不同。Triu需要根据对角线位置将矩阵的下三角部分置零。对于每个元素，如果其行索引大于列索引（diagonal=0时），则置零，否则保留原值。但需要注意diagonal参数的调整，比如diagonal为k时，条件变为i - j >= k的话，元素置零。但根据用户提供的测试用例，diagonal=0，所以当前只需要处理主对角线的情况，即i < j的元素保留，否则置零。
+
+接下来考虑数据搬运和计算的流水线设计。Ascend C通常使用Global Memory到Local Memory的数据搬运，然后在Vector单元进行计算。对于Triu操作，可能需要将数据加载到UB中，然后进行条件判断，将下三角部分置零。
+
+但直接使用条件判断可能效率不高，特别是对于float32数据。可能需要寻找向量化的方式。例如，对于每一行，根据对角线的位置，确定从哪个列开始需要置零。比如，在48x64的矩阵中，diagonal=0时，每行i的前i个元素需要置零，剩下的保留。或者等一下，diagonal=0时，上三角包括主对角线及其以上的元素。所以元素(i,j)在j >= i时保留，否则置零。这样，每行i从0开始，前i个元素（j < i）置零，剩下的保留。因此，对于每行i，处理的起始位置是j >= i。
+
+但如何在Ascend C中高效实现这一点呢？可能需要分块处理，每个核处理部分数据。假设使用多个核并行处理，每个核处理整个矩阵的一部分。例如，如果矩阵是48行64列，假设有多个核，每个核处理一定数量的行。例如，如果blockNum是核的数量，每个核处理48/blockNum行。但需要根据实际的硬件规格来确定分块策略。
+
+不过根据参考案例中的代码，Init函数里用GetBlockNum()获取块数，然后每个块处理blockLength的数据。这可能适用于一维的数据分布，但Triu需要处理二维数据。不过根据测试用例的输入是2D，可能需要将二维数据展平为一维处理，或者在核函数中处理多维逻辑。
+
+但用户提供的测试用例shape是[48,64]，即二维张量。算子需要处理最后两个维度，但根据约束，输入必须是至少2维，但在代码中可能需要将最后两个维度视为矩阵。因此，对于高维张量，Triu操作是在最后两个维度上进行。但当前的测试用例是2D，所以直接处理矩阵。
+
+现在，考虑tiling策略。参考案例中的TilingDataDef包含totalLength和tileNum。在Host侧，可能需要计算每个核处理的数据量，以及分块的数量。但用户要求不要使用GET_TILING_DATA，而是直接定义tiling结构。根据测试用例的shape [48,64]，总元素数是48*64=3072。每个核处理的部分数据需要根据blockNum来分。例如，如果blockNum是N，那么每个核处理3072/N个元素。但需要考虑如何将二维数据映射到一维。
+
+然而，在Ascend C中，GlobalTensor的SetGlobalBuffer可能是一维的，因此需要将二维索引转换为一维偏移。例如，每个核处理的行数为blockLength，这可能是一维的长度，但实际是二维的。或者可能需要将整个矩阵展平为一维数组处理。
+
+或者，可能需要每个核处理完整的行或列。例如，每个核处理一定数量的行，每行64个元素。例如，如果blockNum是48个核，每个核处理一行。但实际的硬件可能有不同的核数，比如参考案例中提到的aic有24个核，aiv有48个核。因此，tiling策略需要根据这些硬件参数来设计。
+
+但用户提供的测试用例中，shape是48x64，可能每个核处理一部分行。例如，假设使用48个核，每个核处理一行。这样，每个核处理64个元素。但需要考虑数据对齐和搬运的问题。DataCopy需要32字节对齐，即对于float32，每个块是8个元素（因为32字节 /4字节=8）。因此，搬运的数据长度必须是8的倍数。64是8的倍数，所以没问题。
+
+但Triu的处理需要根据每行的行索引i，将前i个元素置零。例如，行i（从0开始），j从0到i-1的元素置零，j>=i的保留。因此，对于每行i，需要处理的数据是64个元素，其中前i个置零，剩下的保留。但如何在Vector指令中高效实现？
+
+可能的思路是，对于每行i，将前i个元素置零，其余保留。这可以通过生成一个mask，或者使用Gather或Scatter指令，但可能更简单的是直接在LocalTensor上操作。例如，将整个行拷贝到UB，然后对于每个元素，根据其位置是否在下三角部分来置零。
+
+但问题在于，如何确定每个元素的位置。因为数据在UB中是连续存储的，行i的起始索引是i*64。例如，在Global Memory中，行i的起始地址是xGm[i*64]。在处理时，每个核可能负责处理特定的行。例如，核0处理行0，核1处理行1，依此类推。这样，每个核处理的数据量是64个元素，即一整行。
+
+这种情况下，tiling参数可能需要设置每个核处理的行数。例如，totalLength是48行，每个核处理1行，tileNum可以是1。这样，每个核处理自己的行，循环次数是1。
+
+但需要验证这种分块是否符合硬件规格。例如，每个核处理的数据量是否足够大，以隐藏数据搬运的延迟。对于64个元素（256字节），可能足够，但需要考虑双缓冲等技术。
+
+现在，具体到代码结构。参考案例中的KernelAdd类结构，Triu的核函数可能需要类似的结构，但计算部分不同。步骤如下：
+
+1. 初始化Global Tensor，将输入x和输出y的全局内存地址设置为每个核对应的行。
+2. 在CopyIn阶段，将全局内存中的行数据拷贝到UB。
+3. 在Compute阶段，处理该行数据，将下三角部分置零。
+4. 在CopyOut阶段，将处理后的数据拷贝回全局内存。
+
+关键点在于Compute函数中的置零逻辑。例如，对于行i，需要将前i个元素置零。例如，行索引为i（从0开始），则位置j（从0开始）在j < i时置零。因此，对于该行的数据，前i个元素置零，剩下的保留。
+
+但如何在Ascend C中实现这一点？可能需要遍历每个元素，并根据其位置设置值为0。不过，直接遍历可能效率不高。或者，可以使用矢量指令，例如，创建一个掩码，或者使用Duplicate指令将前i个元素置零。
+
+例如，对于行i的数据，可以使用Duplicate指令将前i个元素置零。Duplicate可以填充一个连续的块。例如，Duplicate(yLocal, 0.0f, i); 这样，前i个元素被置零，剩下的保持不变。但需要注意，DataCopy搬运的数据是整个行，然后Compute阶段处理。
+
+但问题在于，i的值因核而异，每个核处理不同的行i。例如，核0处理行0，i=0，所以所有元素置零？不对，diagonal=0时，行0的上三角部分是从j>=0开始，即整个行都保留。所以行0不需要置零任何元素。行1的j>=1的元素保留，所以前1个元素置零。行i的前i个元素置零。
+
+等一下，当diagonal=0时，上三角部分包括主对角线。所以元素(i,j)在j >=i时保留，否则置零。例如，行i有64个元素，j的范围是0到63。对于行i，j <i的元素置零，j>=i的保留。因此，行i需要置零的元素数量是min(i, 64)个。例如，行0，i=0，置零0个元素；行1，置零1个元素；行2，置零2个元素；...行63的话，可能超过列数，但测试用例的列数是64，所以行i的最大置零数量是i，但当i超过64时，可能全部置零。但测试用例的shape是48x64，所以i的范围是0到47。对于i>=64的行，可能不需要处理，但测试用例中没有这种情况。
+
+因此，对于测试用例中的每行i（0<=i<48），需要置零前i个元素。例如，行i=5，置零前5个元素，保留后面的59个。
+
+在Ascend C中，如何高效地将前i个元素置零？可以使用Duplicate指令，该指令可以将一个LocalTensor的连续元素填充为某个值。例如，Duplicate(yLocal, 0.0f, i); 这将把yLocal的前i个元素置零。但需要确保i是32字节对齐的？或者Ascend C的Duplicate指令是否要求长度对齐？
+
+根据Ascend C的编程指南，DataCopy要求长度和地址对齐到32字节。而Duplicate指令的参数可能也需要对齐。例如，如果i不是8的倍数（因为每个float32是4字节，32字节对应8个元素），那么Duplicate可能无法正确执行。因此，需要将i调整为最近的8的倍数。例如，i=5时，调整为8，这样前8个元素被置零，但实际上只需要置零5个。这会导致多余的置零，但根据问题描述，测试用例中diagonal=0，shape是48x64，所以i的范围是0到47。当i=47时，调整为48（因为47/8=5.875，向上取整为6，6*8=48）。这样，前48个元素被置零，但该行实际只有64个元素，所以j的范围是0-63。i=47时，j需要>=47的元素保留，即前47个元素置零。但调整为48的话，会多置零一个元素（第47个元素是j=47，应该保留）。这会导致错误。
+
+这说明直接使用Duplicate指令可能不可行，因为i可能不是8的倍数，导致无法正确对齐。因此，需要另一种方法。
+
+或者，可以在Compute函数中，将整个行数据拷贝到UB，然后逐个元素判断是否置零。例如，使用for循环遍历每个元素，如果其索引j < i，则置零。但这样效率可能不高，特别是对于float32数据类型，但测试用例的shape较小，可能可以接受。
+
+但Ascend C的Vector指令是否支持条件操作？或者是否需要使用mask来实现？
+
+另一种方法是使用Gather指令，只保留上三角部分的元素，下三角部分用零填充。例如，创建一个mask，标记哪些元素需要保留，哪些需要置零。然后使用Gather或Select指令。不过这可能比较复杂。
+
+或者，可以使用两个步骤：首先将整个行置零，然后将上三角部分设置为原始值。但这需要先拷贝输入数据到UB，然后置零整个行，再将上三角部分的数据从输入拷贝到输出。这可能更高效，因为置零整个行可以用一个Duplicate调用，然后拷贝上三角部分。
+
+例如：
+
+1. 将整个行置零：Duplicate(yLocal, 0.0f, 64);
+2. 将上三角部分（j >=i）从xLocal拷贝到yLocal：DataCopy或使用Gather或Slice指令。
+
+但如何确定上三角部分的起始位置和长度。上三角部分的起始位置是i，长度是64 -i。例如，行i=5，起始位置5，长度59。因此，可以使用DataCopy的局部拷贝，从xLocal[i]到yLocal[i]，长度为64 -i。但需要确保起始地址和长度对齐到32字节。例如，起始位置i必须满足i*4字节对齐到32字节，即i必须是8的倍数。而长度(64 -i)也必须是8的倍数。
+
+这可能无法满足所有情况。例如，i=5时，起始位置是5*4=20字节，不对齐32字节。此时，DataCopy可能无法正确执行，导致错误。
+
+这表明，直接使用DataCopy进行部分拷贝可能不可行，因为起始地址和长度可能不对齐。因此，需要找到一种方法，使得起始地址和长度都对齐到32字节。
+
+或者，可以将上三角部分分为对齐的块处理。例如，起始位置i向上取整到最近的8的倍数，长度向下取整到最近的8的倍数。但这会导致部分数据未被处理，需要额外的处理步骤，可能复杂。
+
+或者，可能需要在Host侧进行tiling设计，确保每个核处理的数据块在UB中的起始地址和长度都对齐。例如，将每行分成多个tile，每个tile处理对齐的数据块。但这样会增加循环次数和复杂度。
+
+回到测试用例的shape [48,64]，diagonal=0。对于每行i，需要置零前i个元素。对于i的范围0<=i<48，且列数是64。此时，i的最大值是47。对于i=47，需要置零前47个元素，保留后面的17个。但47和17都不是8的倍数，导致无法对齐。这说明直接使用Ascend C的DataCopy或Duplicate指令可能无法处理非对齐的情况，需要其他方法。
+
+可能的解决方案是，在Compute函数中，使用for循环逐个元素处理，但这样效率可能不高。或者，使用Vector指令的mask功能，设置mask来选择需要置零的元素。
+
+例如，对于每个元素，如果其索引j <i，则置零。这可以通过为每个元素生成一个mask，然后使用And或Mul指令将这些元素置零。例如：
+
+1. 将xLocal的数据拷贝到yLocal。
+2. 生成一个mask，其中前i个元素为0，其余为1。
+3. 将yLocal与mask相乘，或者使用Select指令根据mask选择0或原始值。
+
+但生成这样的mask可能比较复杂，特别是对于不同的i值。或者，可以使用Gather指令，收集上三角部分的元素，下三角部分用零填充。
+
+或者，使用以下步骤：
+
+对于每行i：
+
+- 将整个行从xGm拷贝到xLocal。
+- 将xLocal的数据拷贝到yLocal。
+- 使用Duplicate指令将yLocal的前i个元素置零。
+- 将yLocal拷贝回yGm。
+
+但问题在于，当i不是8的倍数时，Duplicate的长度参数必须是8的倍数，否则会导致错误。例如，i=5，需要置零5个元素，但Duplicate要求长度对齐到8个元素（32字节）。此时，可能需要将长度调整为8，这样前8个元素被置零，但实际只需要置零5个。这会导致错误的结果。
+
+这表明，直接使用Duplicate指令不可行。因此，必须找到另一种方法处理非对齐的情况。
+
+可能的解决方法是，不使用矢量指令，而是使用标量操作逐个元素处理。例如，在Compute函数中，使用for循环遍历每个元素，并根据条件置零。但这样会降低性能，因为Vector单元的优势在于并行处理多个元素。不过，对于测试用例的小数据量，可能可以接受。
+
+例如，在Compute函数中：
+
+for (int32_t j = 0; j < 64; j++) {
+    if (j < i) {
+        yLocal.SetValue(j, 0.0f);
+    } else {
+        yLocal.SetValue(j, xLocal.GetValue(j));
+    }
+}
+
+但这样逐个元素处理会非常低效，因为每个SetValue操作都是标量操作，无法利用Vector的并行性。因此，这可能不是好的解决方案。
+
+另一种思路是，使用mask。例如，创建一个mask数组，其中前i个元素为0，其余为0xffffffff（对于float32的bit表示）。然后使用And指令将yLocal与mask相乘。但如何动态生成mask？
+
+或者，使用Ascend C的SetVectorMask函数设置mask模式，然后使用AscendC::And或AscendC::Mul指令应用mask。例如，设置mask为前i个元素为0，其余为1，然后执行Mul(yLocal, yLocal, mask)。但具体如何实现需要参考Ascend C的文档。
+
+假设可以动态设置mask，那么步骤如下：
+
+1. 将xLocal拷贝到yLocal。
+2. 设置mask，前i个元素为0，其余为1。
+3. 调用AscendC::And或AscendC::Mul指令，将yLocal与某个全1的张量相乘，或者直接使用mask置零。
+
+但具体实现可能需要更详细的Ascend C API知识。例如，Ascend C的Vector指令是否支持基于mask的置零操作。
+
+或者，使用Select指令，根据mask选择0或原始值。例如：
+
+AscendC::Select(yLocal, zeroLocal, xLocal, mask, ...);
+
+其中，zeroLocal是全零的张量，mask指定哪些位置选择zeroLocal，哪些选择xLocal。这可能需要构造mask和zeroLocal。
+
+这可能比较复杂，但可能可行。例如：
+
+对于每行i：
+
+- 将xLocal拷贝到yLocal。
+- 创建一个mask，其中前i个元素为True（选择zeroLocal），其余为False（选择xLocal）。
+- 使用Select指令，根据mask将zeroLocal和xLocal的值选到yLocal。
+
+但如何动态生成这样的mask？可能需要使用Ascend C的SetVectorMask函数，设置连续的mask模式。例如，设置前i个元素为1（选择zeroLocal），其余为0（选择xLocal）。然后调用Select指令。
+
+假设i=5，mask为11111000...（前5个为1，其余为0）。但SetVectorMask可能需要设置连续的mask长度。例如，对于每个tile，设置mask的连续长度为i，然后执行Select操作。
+
+这可能需要将数据分成多个tile，每个tile处理对齐的数据块，并设置对应的mask。这可能比较复杂，特别是当i不是对齐的倍数时。
+
+考虑到测试用例的shape是48x64，且diagonal=0，可能每个核处理一行，共48个核。每个核处理64个元素。对于每个核，i是固定的（即行索引），因此可以预先计算每个核的i值，并在Init函数中设置。
+
+例如，在Init函数中，根据blockIdx确定当前核处理的行i。例如，blockIdx从0到47，对应行0到46？或者需要根据GetBlockIdx()来分配行。例如，每个核处理一行，因此blockNum应该设置为48。但实际的硬件可能有不同的核数，比如参考案例中提到的aic有24个核，aiv有48个核。因此，可能需要调整tiling策略，使得每个核处理多行。
+
+但根据测试用例的shape，48行，可能每个核处理一行，需要48个核。因此，在tiling_data中，totalLength是48*64=3072，每个核处理64个元素。因此，在Init函数中，blockLength = totalLength / GetBlockNum()，假设GetBlockNum()返回48，则blockLength=64。每个核处理64个元素，即一行。
+
+此时，在CopyIn中，每个核拷贝自己的行数据。例如，xGm.SetGlobalBuffer((__gm__ float*)x + blockLength * GetBlockIdx(), blockLength); 因此，核0处理x的前64个元素（行0），核1处理接下来的64个元素（行1），依此类推。
+
+在Compute函数中，需要根据当前核的行索引i（即GetBlockIdx()），将前i个元素置零。例如，i=GetBlockIdx()，然后置零前i个元素。
+
+但问题在于如何高效地置零前i个元素。如果i不是8的倍数，Duplicate无法直接使用。此时，可能需要将数据分成多个部分：
+
+1. 置零前i个元素中对齐的部分。
+2. 处理剩余的非对齐部分。
+
+例如，i=5：
+
+- 使用Duplicate置零前5个元素中的第一个8个元素（i调整为8），但实际上只需要置零5个。这会导致多置零3个元素，这是错误的。
+
+这表明，直接使用矢量指令可能无法正确处理非对齐的情况。因此，可能需要采用混合方法：对于对齐的部分使用矢量指令，剩余的使用标量处理。
+
+或者，调整tiling策略，使得每个核处理的数据块在UB中的起始地址和长度都对齐。例如，将每行分成多个tile，每个tile处理对齐的数据块。例如，将行分成两个部分：前i个元素和剩下的元素。前i个元素可能需要分成对齐的块和非对齐的块。
+
+这可能变得非常复杂。考虑到测试用例的shape是固定的，且diagonal=0，或许可以硬编码处理逻辑。例如，对于每行i，计算需要置零的元素数目为i，并使用for循环逐个置零。虽然效率不高，但可以正确工作。
+
+因此，在Compute函数中，可以这样处理：
+
+AscendC::LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+AscendC::LocalTensor<float> yLocal = outQueueZ.AllocTensor<float>();
+AscendC::DataCopy(yLocal, xLocal, blockLength); // 拷贝输入到输出
+
+// 计算当前核的行索引i
+uint32_t i = GetBlockIdx();
+
+// 置零前i个元素
+for (uint32_t j=0; j < i; j++) {
+    yLocal.SetValue(j, 0.0f);
+}
+
+outQueueZ.EnQue(yLocal);
+inQueueX.FreeTensor(xLocal);
+
+但这样逐个元素置零会非常低效，因为每个SetValue是标量操作。对于float32数据，每个循环迭代只处理一个元素，这会导致性能问题。例如，对于i=47，需要执行47次SetValue操作，这会消耗大量时间。
+
+这显然不是理想的方法。因此，必须找到一种向量化的方法来处理置零操作。
+
+另一种思路是使用mask。例如，创建一个mask，其中前i个元素为0，其余为1。然后使用AscendC::And指令将yLocal与一个全1的张量相乘，或者使用AscendC::Mul指令将yLocal与mask相乘。但如何生成这样的mask？
+
+假设可以预先生成一个mask张量，其中前i个元素为0，其余为1。例如：
+
+AscendC::LocalTensor<uint8_t> maskLocal = ...;
+// 填充maskLocal，前i个元素为0，其余为1
+
+然后使用AscendC::Mul(yLocal, yLocal, maskLocal, ...);
+
+但如何动态生成maskLocal？这可能需要使用到Ascend C的SetVectorMask函数，或者使用Gather等指令。
+
+或者，使用以下步骤：
+
+1. 将xLocal拷贝到yLocal。
+2. 创建一个全零的张量zeroLocal。
+3. 生成一个mask，前i个元素为1（选择zeroLocal），其余为0（选择yLocal）。
+4. 使用Select指令，根据mask将zeroLocal和yLocal的值选到yLocal。
+
+这可能可行。例如：
+
+AscendC::LocalTensor<float> zeroLocal;
+// 填充zeroLocal为全零
+AscendC::Duplicate(zeroLocal, 0.0f, blockLength);
+
+// 生成mask，前i个元素为1，其余为0
+AscendC::LocalTensor<uint16_t> maskLocal;
+AscendC::SetVectorMask(i); // 设置前i个元素为1
+AscendC::Muls(maskLocal, maskLocal, 1, blockLength); // 生成mask
+
+// 使用Select指令
+AscendC::Select(yLocal, zeroLocal, yLocal, maskLocal, ...);
+
+但具体如何实现需要参考Ascend C的API。例如，Select指令的参数可能需要源操作数和mask的组合。
+
+这可能需要更多的代码，并且需要确保mask的正确性。此外，SetVectorMask的用法可能需要设置连续的mask长度。
+
+假设SetVectorMask可以设置连续的mask长度为i，那么可能可以这样操作：
+
+uint32_t i = GetBlockIdx();
+AscendC::SetVectorMask(i); // 设置前i个元素为1，其余为0
+AscendC::LocalTensor<float> zeroLocal;
+AscendC::Duplicate(zeroLocal, 0.0f, blockLength);
+AscendC::LocalTensor<float> yLocal = ...;
+// 使用And指令将yLocal与zeroLocal按mask相与？
+// 或者使用Select指令根据mask选择zeroLocal或yLocal。
+
+但具体的指令可能需要查阅Ascend C的文档。例如，AscendC::Select的函数原型可能为：
+
+template <typename T, typename U>
+__aicore__ inline void Select(const LocalTensor<T>& dstLocal, const LocalTensor<T>& src0Local, const LocalTensor<T>& src1Local, const LocalTensor<U>& maskLocal, ...);
+
+其中，maskLocal中的每个bit决定选择src0Local还是src1Local的对应元素。例如，mask位为1时选择src0Local，否则选择src1Local。
+
+因此，步骤如下：
+
+1. 将xLocal拷贝到yLocal。
+2. 创建zeroLocal并填充为0。
+3. 生成maskLocal，前i个元素为1，其余为0。
+4. 调用Select(yLocal, zeroLocal, yLocal, maskLocal, ...);
+
+这样，maskLocal中为1的位置选择zeroLocal（即置零），为0的位置选择yLocal（保留原始值）。这样，前i个元素被置零，其余保留。
+
+生成maskLocal的关键在于如何设置前i个元素为1。这可能需要使用SetVectorMask函数设置连续的mask长度为i，然后调用某种指令生成mask。
+
+例如：
+
+uint32_t i = GetBlockIdx();
+AscendC::SetVectorMask(i); // 设置连续的mask长度为i
+AscendC::LocalTensor<uint16_t> maskLocal = outQueueZ.AllocTensor<uint16_t>();
+AscendC::Muls(maskLocal, maskLocal, 1, blockLength); // 生成mask，前i个元素为1，其余为0
+
+但Muls的参数可能需要更仔细的处理。或者使用SetVectorMask结合特定的指令生成mask。
+
+假设SetVectorMask(i)会设置连续的i个元素为1，那么调用AscendC::SetVectorMask(i)后，后续的Vector指令会使用这个mask。例如，使用AscendC::Ones指令生成一个全1的张量，但只应用mask部分。
+
+这可能比较复杂，需要更多的代码。不过，这可能是在Ascend C中实现该逻辑的可行方法。
+
+综上，Triu算子的核函数大致结构如下：
+
+- 使用每个核处理一行数据。
+- 在CopyIn阶段，将全局内存中的行数据拷贝到UB。
+- 在Compute阶段，生成mask，将前i个元素置零。
+- 在CopyOut阶段，将处理后的数据拷贝回全局内存。
+
+现在，根据这些分析，开始编写代码。
+
+首先，定义TilingDataDef结构，包含totalLength和tileNum。根据测试用例，totalLength是48*64=3072，tileNum可以是1，因为每个核处理一行，循环一次。
+
+在KernelTriu类的Init函数中，设置每个核处理的blockLength为totalLength / GetBlockNum()，即3072/48=64。每个核处理64个元素（一行）。
+
+在Process函数中，循环次数为tileNum * BUFFER_NUM，即1*2=2次循环？但参考案例中的BUFFER_NUM是2，用于双缓冲。但Triu可能不需要双缓冲，因为每个核处理独立的数据，没有依赖。因此，可能将BUFFER_NUM设为1，简化代码。
+
+但在参考案例中，BUFFER_NUM是2，用于流水线并行。可能为了性能考虑，使用双缓冲。因此，可能需要保持BUFFER_NUM=2，即使对于简单的拷贝-计算-拷贝流程。
+
+不过，对于Triu算子，每个核处理独立的数据，因此双缓冲可能没有意义。因此，可以将BUFFER_NUM设为1。
+
+在CopyIn函数中，每个核拷贝blockLength（64）个元素到xLocal。然后，在Compute函数中处理这些数据。
+
+在Compute函数中，需要根据当前核的行索引i（即GetBlockIdx()），生成mask，将前i个元素置零。
+
+根据之前的分析，使用Select指令和maskLocal来实现。具体步骤如下：
+
+1. 从输入队列中取出xLocal。
+2. 分配yLocal并拷贝xLocal到yLocal。
+3. 生成maskLocal，前i个元素为1，其余为0。
+4. 使用Select指令，根据maskLocal将yLocal的前i个元素置零。
+5. 将yLocal加入输出队列。
+
+生成maskLocal的代码可能如下：
+
+uint32_t i = AscendC::GetBlockIdx();
+AscendC::SetVectorMask(i); // 设置连续的mask长度为i
+AscendC::LocalTensor<uint16_t> maskLocal = outQueueZ.AllocTensor<uint16_t>();
+AscendC::Muls(maskLocal, maskLocal, 1, blockLength); // 生成mask，前i个元素为1
+
+然后，创建一个全零的张量zeroLocal：
+
+AscendC::LocalTensor<float> zeroLocal = inQueueX.AllocTensor<float>();
+AscendC::Duplicate(zeroLocal, 0.0f, blockLength);
+
+然后，调用Select指令：
+
+AscendC::Select(yLocal, zeroLocal, yLocal, maskLocal, ...);
+
+但Select的参数可能需要更详细的处理，例如重复参数等。参考Ascend C的Select函数原型，可能需要指定repeatTimes、stride等参数。
+
+假设Select的调用方式为：
+
+AscendC::BinaryRepeatParams repeatParams;
+AscendC::Select(yLocal, zeroLocal, yLocal, maskLocal, false, repeatParams, ...);
+
+但具体的参数可能需要根据数据长度和mask的设置来确定。这可能需要更多的代码调整。
+
+或者，使用And指令，将yLocal与一个由mask控制的全零张量进行按位与操作。例如：
+
+AscendC::And(yLocal, yLocal, maskLocal, ...);
+
+但可能不适用。
+
+考虑到时间限制和复杂性，可能采用逐个元素置零的方法，尽管效率不高，但能正确工作。例如，在Compute函数中：
+
+AscendC::LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+AscendC::LocalTensor<float> yLocal = outQueueZ.AllocTensor<float>();
+AscendC::DataCopy(yLocal, xLocal, blockLength);
+
+uint32_t i = AscendC::GetBlockIdx();
+for (uint32_t j = 0; j < i; j++) {
+    yLocal.SetValue(j, 0.0f);
+}
+
+outQueueZ.EnQue(yLocal);
+inQueueX.FreeTensor(xLocal);
+
+但这样逐个元素置零效率很低。对于float32数据，每个循环迭代只处理一个元素，这会导致性能问题。例如，对于i=47，需要执行47次SetValue操作。
+
+这可能无法通过性能测试，但根据用户的要求，只需要满足当前test_cases.csv的输入信息即可，可能可以接受。
+
+因此，暂时采用这种方法。
+
+现在，编写完整的代码。
+
+根据参考案例的结构，核函数大致如下：
+
+#include "kernel_operator.h"
+
+using namespace AscendC;
+
+typedef struct {
+    uint32_t totalLength;
+    uint32_t tileNum;
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2; // tensor num for each queue
+
+class KernelTriu {
+public:
+    __aicore__ inline KernelTriu() {}
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, uint32_t tileNum)
+    {
+        this->blockLength = totalLength / AscendC::GetBlockNum();
+        this->tileNum = tileNum;
+        this->tileLength = this->blockLength / tileNum / BUFFER_NUM;
+
+        xGm.SetGlobalBuffer((__gm__ float *)x + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        yGm.SetGlobalBuffer((__gm__ float *)y + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        pipe.InitBuffer(inQueueX, BUFFER_NUM, this->tileLength * sizeof(float));
+        pipe.InitBuffer(outQueueZ, BUFFER_NUM, this->tileLength * sizeof(float));
+    }
+    __aicore__ inline void Process()
+    {
+        int32_t loopCount = this->tileNum * BUFFER_NUM;
+        for (int32_t i = 0; i < loopCount; i++) {
+            CopyIn(i);
+            Compute(i);
+            CopyOut(i);
+        }
+    }
+
+private:
+    __aicore__ inline void CopyIn(int32_t progress)
+    {
+        AscendC::LocalTensor<float> xLocal = inQueueX.AllocTensor<float>();
+        AscendC::DataCopy(xLocal, xGm[progress * this->tileLength], this->tileLength);
+        inQueueX.EnQue(xLocal);
+    }
+    __aicore__ inline void Compute(int32_t progress)
+    {
+        AscendC::LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+        AscendC::LocalTensor<float> yLocal = outQueueZ.AllocTensor<float>();
+        AscendC::DataCopy(yLocal, xLocal, this->tileLength);
+        uint32_t i = AscendC::GetBlockIdx(); // 当前核处理的行索引
+        for (uint32_t j = 0; j < i; j++) {
+            if (j < this->tileLength) { // 确保j在tileLength范围内
+                yLocal.SetValue(j, 0.0f);
+            }
+        }
+        outQueueZ.EnQue<float>(yLocal);
+        inQueueX.FreeTensor(xLocal);
+    }
+    __aicore__ inline void CopyOut(int32_t progress)
+    {
+        AscendC::LocalTensor<float> zLocal = outQueueZ.DeQue<float>();
+        AscendC::DataCopy(yGm[progress * this->tileLength], zLocal, this->tileLength);
+        outQueueZ.FreeTensor(zLocal);
+    }
+
+private:
+    AscendC::TPipe pipe;
+    AscendC::TQue<AscendC::QuePosition::VECIN, BUFFER_NUM> inQueueX;
+    AscendC::TQue<AscendC::QuePosition::VECOUT, BUFFER_NUM> outQueueZ;
+    AscendC::GlobalTensor<float> xGm;
+    AscendC::GlobalTensor<float> yGm;
+    uint32_t blockLength;
+    uint32_t tileNum;
+    uint32_t tileLength;
+};
+
+extern "C" __global__ __aicore__ void triu(GM_ADDR x, GM_ADDR y, GM_ADDR workspace)
+{
+    TilingDataDef tiling_data = {
+        .totalLength = 48 * 64, // 3072
+        .tileNum = 1,
+    };
+    KernelTriu op;
+    op.Init(x, y, tiling_data.totalLength, tiling_data.tileNum);
+    op.Process();
+}
+
+但这里存在一个问题：在Compute函数中，progress参数被使用，但loopCount是tileNum * BUFFER_NUM=1*2=2。因此，Process函数会循环两次，每次调用CopyIn、Compute、CopyOut。然而，每个核处理的blockLength是64个元素，而tileLength是blockLength / tileNum / BUFFER_NUM=64/1/2=32。因此，每个tile处理32个元素。因此，CopyIn和CopyOut会分两次搬运数据：progress=0时搬运前32个元素，progress=1时搬运后32个元素。对于行i的处理，需要将前i个元素置零，但i是核的索引，而每个核处理的行被分成两个tile（前32和后32元素）。因此，在Compute函数中，每个tile的处理需要知道整个行的i值，而不仅仅是当前tile的progress。
+
+例如，行i=5被分成两个tile：前32个元素（j=0-31）和后32个元素（j=32-63）。在第一个tile（progress=0）中，j的范围是0-31，需要置零j <5的元素。在第二个tile（progress=1）中，j的范围是32-63，这些j都 >=32，而i=5，所以j >=i（5），因此不需要置零。因此，在第二个tile中，不需要置零任何元素。
+
+因此，在Compute函数中，需要根据整个行的i值来决定置零哪些元素，而不仅仅是当前tile的progress。因此，原来的代码中，Compute函数中的循环j <i是正确的，但需要确保当前tile的数据范围中的j。
+
+例如，在第一个tile（progress=0，tileLength=32），j的范围是0-31。此时，i=5，所以j <5的元素需要置零。在第二个tile（progress=1，tileLength=32），j的范围是32-63。此时，j >=32 >=i=5，所以不需要置零。
+
+因此，代码中的Compute函数会正确置零前i个元素，无论数据被分成多少个tile。
+
+但问题在于，当BUFFER_NUM=2时，每个核会处理两个tile，每个tile 32个元素。因此，CopyIn会分两次搬运数据，Compute分两次处理，CopyOut分两次搬运。然而，对于整个行的处理，i是固定的（核的blockIdx），因此在每个tile的Compute中，i是正确的。
+
+因此，代码是正确的。
+
+但测试用例的diagonal=0，shape是48x64。对于行i=5，前5个元素（j=0-4）被置零，其余保留。当数据被分成两个tile（前32和后32元素）时，第一个tile（0-31）中的j<5的元素（0-4）被置零，第二个tile（32-63）中的j都>=32 >=5，所以不置零。因此，整个行的处理是正确的。
+
+因此，该代码可以正确工作，尽管使用了标量操作，但根据测试用例的要求，可以接受。
+
+现在，检查代码是否符合所有要求：
+
+- 命名空间using namespace AscendC;正确。
+- 没有使用DTYPE_X等命名。
+- 使用float而不是float16，符合api_desc.md中的支持数据类型。
+- TilingDataDef结构正确初始化，没有使用GET_TILING_DATA。
+- DataCopy的长度和地址对齐：tileLength=32，float是4字节，32元素=128字节，对齐到32字节。
+- workspace参数在核函数中未使用，但根据参考案例，可能需要传递，但用户提供的测试用例中workspace可能未被使用，因此代码中忽略。
+- 注册tiling结构：在核函数中直接定义了TilingDataDef并初始化。
+
+因此，代码符合要求。</think><kernel_impl>
+```cpp
+#include "kernel_operator.h"
+
+using namespace AscendC;
+
+typedef struct {
+    uint32_t totalLength;
+    uint32_t tileNum;
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2; // tensor num for each queue
+
+class KernelTriu {
+public:
+    __aicore__ inline KernelTriu() {}
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, uint32_t tileNum)
+    {
+        this->blockLength = totalLength / AscendC::GetBlockNum();
+        this->tileNum = tileNum;
+        this->tileLength = this->blockLength / tileNum / BUFFER_NUM;
+
+        xGm.SetGlobalBuffer((__gm__ float *)x + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        yGm.SetGlobalBuffer((__gm__ float *)y + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        pipe.InitBuffer(inQueueX, BUFFER_NUM, this->tileLength * sizeof(float));
+        pipe.InitBuffer(outQueueZ, BUFFER_NUM, this->tileLength * sizeof(float));
+    }
+    __aicore__ inline void Process()
+    {
+        int32_t loopCount = this->tileNum * BUFFER_NUM;
+        for (int32_t i = 0; i < loopCount; i++) {
+            CopyIn(i);
+            Compute(i);
+            CopyOut(i);
+        }
+    }
+
+private:
+    __aicore__ inline void CopyIn(int32_t progress)
+    {
+        AscendC::LocalTensor<float> xLocal = inQueueX.AllocTensor<float>();
+        AscendC::DataCopy(xLocal, xGm[progress * this->tileLength], this->tileLength);
+        inQueueX.EnQue(xLocal);
+    }
+    __aicore__ inline void Compute(int32_t progress)
+    {
+        AscendC::LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+        AscendC::LocalTensor<float> yLocal = outQueueZ.AllocTensor<float>();
+        AscendC::DataCopy(yLocal, xLocal, this->tileLength);
+        
+        uint32_t rowIdx = AscendC::GetBlockIdx(); // 当前核处理的行索引
+        uint32_t startIdx = progress * tileLength;
+        uint32_t endIdx = startIdx + tileLength;
+        
+        for (uint32_t j = startIdx; j < endIdx; ++j) {
+            if ((j % blockLength) < rowIdx) { // 计算列索引j_col = j % blockLength
+                yLocal.SetValue(j - startIdx, 0.0f);
+            }
+        }
+        
+        outQueueZ.EnQue<float>(yLocal);
+        inQueueX.FreeTensor(xLocal);
+    }
+    __aicore__ inline void CopyOut(int32_t progress)
+    {
+        AscendC::LocalTensor<float> zLocal = outQueueZ.DeQue<float>();
+        AscendC::DataCopy(yGm[progress * this->tileLength], zLocal, this->tileLength);
+        outQueueZ.FreeTensor(zLocal);
+    }
+
+private:
+    AscendC::TPipe pipe;
+    AscendC::TQue<AscendC::QuePosition::VECIN, BUFFER_NUM> inQueueX;
+    AscendC::TQue<AscendC::QuePosition::VECOUT, BUFFER_NUM> outQueueZ;
+    AscendC::GlobalTensor<float> xGm;
+    AscendC::GlobalTensor<float> yGm;
+    uint32_t blockLength;
+    uint32_t tileNum;
+    uint32_t tileLength;
+};
+
+extern "C" __global__ __aicore__ void triu(GM_ADDR x, GM_ADDR y, GM_ADDR workspace)
+{
+    TilingDataDef tiling_data = {
+        .totalLength = 48 * 64, // 3072 elements
+        .tileNum = 1,
+    };
+    KernelTriu op;
+    op.Init(x, y, tiling_data.totalLength, tiling_data.tileNum);
+    op.Process();
+}
+```
+</kernel_impl>

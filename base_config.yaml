@@ -1,0 +1,44 @@
+run_dir: "runs"
+src_dir: "src"
+log_dir: "log"
+build_dir: "build"
+encoding: "utf-8"
+n_sample: 100
+n_case: 1
+show_result_log_file: False
+static_shape_mode: True
+
+chat:
+  active: True
+  # 设置api相关
+  api_model: "vllm"
+  api_max_retries: 3
+  api_retry_delay: 5
+  # vllm模型路径
+  model_path: "path_to_model_path"
+  num_processes: 16
+  timeout: 2400
+  temperature: 0.7
+  max_tokens: 16384
+
+compile:
+  mode: "cann-ops"
+  common_dir: "libs/common_include"
+  timeout: 400
+  num_processes: 120
+
+eval:
+  verbose: True
+  gpu_devices: [0,1,2,3,4,5,6,7]
+  # 性能相关
+  num_perf_trials: 100
+  # 精度相关
+  num_correct_trials: 1
+  max_rel_error: 0.001
+  max_abs_error: 0.001
+  only_golden_eval: False
+  timeout_perf: 60
+  timeout_precision: 300
+
+
+

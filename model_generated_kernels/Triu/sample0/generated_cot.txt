@@ -1,0 +1,690 @@
+嗯，好的，我需要根据用户提供的任务描述来生成对应的Ascend C代码。首先，我需要仔细阅读用户提供的两个文件：api_desc.md和test_cases.csv，理解算子的功能和需求。
+
+首先看api_desc.md。算子的名字是aclnnTriu，功能是提取输入张量的上三角部分，下三角部分置零。支持的数据类型是float32。输入x是至少2维的ND张量，操作在最后两个维度上进行。计算公式是y = triu(x, diagonal)，其中diagonal参数决定了对角线的位置。测试用例中的输入shape是[48,64]，dtype是float32，diagonal为0。根据测试用例，我需要处理2D张量的情况，但根据约束，算子需要支持最后两个维度的上三角操作，即使输入是高维的。不过测试用例中的shape是2D，所以可能当前只需要处理2D的情况？
+
+接下来看test_cases.csv中的信息，case_id 0的shape是[48,64]，dtype float32，diagonal 0。这说明在实现时需要处理主对角线的情况，即diagonal=0时，主对角线及其以上的元素保留，以下的置零。
+
+现在需要设计tiling结构。参考示例中的TilingDataDef结构，通常需要包含总数据长度、分块数等信息。根据测试用例的shape [48,64]，总元素数是48*64=3072。但需要考虑分块到多个核上处理。根据参考案例中的注释，aic有24个核，aiv有48个核。在host侧调用时使用了全部的aic或aiv核。所以可能需要将数据分块到多个核上处理。
+
+不过用户提供的代码模板中，kernel函数的参数有workspace，但参考案例中的add_custom没有使用workspace。可能需要确认是否需要处理workspace，但根据任务描述，当前测试用例可能不需要复杂的tiling，所以可能暂时不考虑workspace的使用。
+
+接下来，设计kernel的结构。根据参考案例，通常包括初始化Global Memory的地址，设置分块参数，使用队列进行数据搬运和计算。对于Triu算子，每个处理块需要处理输入张量的某一部分，根据diagonal参数判断哪些元素需要置零。
+
+但diagonal参数在测试用例中是0，即主对角线。对于一个MxN的矩阵，上三角部分是指i <= j + diagonal的位置。当diagonal为0时，i <=j的元素保留，否则置零。所以在计算每个元素时，需要判断其行列索引是否满足i <= j + diagonal。
+
+然而，在Ascend C中，如何高效地实现这个条件判断呢？可能需要使用向量指令或者逐元素处理。但float32是32位，每个datablock是32字节，即8个float32元素。DataCopy需要保证32字节对齐，所以每次搬运的数据长度需要是8的整数倍。
+
+在初始化时，每个核处理的数据块是blockLength，根据GetBlockNum()获取核数，然后将总数据长度分到每个核。例如，测试用例中的总数据长度是48*64=3072，假设使用48个核（aiv有48个核），那么每个核处理3072/48=64个元素。但可能需要根据实际情况调整。
+
+不过参考案例中的tiling_data.totalLength是49152，tileNum是1。可能在该案例中，totalLength是每个核处理的数据量。例如，原数据是48x1024，总元素是48*1024=49152，所以每个核处理49152/GetBlockNum()个元素，而tileNum是分块次数。
+
+对于当前任务，测试用例的shape是48x64，总元素是3072。假设使用48个核，每个核处理3072/48=64个元素。所以tiling_data.totalLength应该是3072，tileNum可能需要根据每个核的处理能力来分块。例如，每个核将64个元素分成多个tile处理。
+
+在CopyIn阶段，将全局内存的数据拷贝到本地内存，然后在Compute阶段进行处理，将下三角部分置零，最后CopyOut到全局内存。
+
+具体到每个元素的处理，对于每个元素的位置i（在本地内存中的索引），需要转换为原始矩阵中的行列索引。例如，对于长度为N的本地数据，假设原始矩阵是MxK，那么i对应的行是i / K，列是i % K。然后判断行是否大于列 + diagonal。如果是，则置零，否则保留原值。
+
+但diagonal在测试用例中是0，所以行必须<=列。对于每个元素，如果行索引>列索引，则置零。
+
+在Ascend C中，可以使用Gather或Muls指令来实现这种条件操作。或者，逐元素处理。但由于float32是32位，可以使用向量化操作。
+
+例如，可以使用Duplicate生成一个掩码张量，然后用And指令将原数据与掩码结合。或者，使用Muls指令将需要置零的元素乘以0。
+
+具体步骤可能如下：
+
+1. 在CopyIn阶段，将全局内存的数据拷贝到本地张量xLocal。
+2. 在Compute阶段，生成一个掩码，其中上三角部分为1，下三角为0。
+3. 将原数据乘以掩码，得到结果张量yLocal。
+4. 将yLocal拷贝回全局内存。
+
+但如何生成掩码呢？对于每个元素的位置i，计算其行和列，然后判断是否满足条件。这可能需要逐元素操作，但效率可能不高。或者，可以预先计算每个tile的掩码模式，然后应用。
+
+或者，对于每个tile的数据，根据其在矩阵中的位置，计算需要置零的区域，并生成相应的掩码。
+
+例如，假设当前处理的tile在行方向上是从row_start到row_end，列方向从col_start到col_col_end。那么对于该tile中的每个元素(i,j)，如果i > j + diagonal，则置零。这可能需要为每个元素生成一个掩码。
+
+但这样逐元素处理可能效率不高。有没有更高效的方法？
+
+另一种方法是，对于每个行i，在列方向上，从max(0, i - diagonal)开始到列结束的部分需要保留，之前的置零。这可能可以用Gather指令或者Muls指令来处理。
+
+或者，可以使用Muls指令，将下三角部分的元素乘以0。例如，对于每个行i，列j，如果j < i + diagonal，则乘以0。
+
+但如何高效地为每个行生成这样的条件呢？
+
+可能需要为每个行计算一个起始列，然后将该行中起始列之前的所有元素置零。例如，对于行i，起始列是max(0, i - diagonal + 1)。然后，对于该行，起始列之前的部分置零，之后的保留。
+
+这可能需要逐行处理。例如，对于每一行i，确定需要置零的列数，然后将这些列的元素置零。
+
+在Ascend C中，可以使用Gather或Muls指令来实现。例如，对于每一行，可以分成两个部分：需要置零的部分和保留的部分。对于需要置零的部分，可以用Duplicate生成0，然后用Permute或其他指令替换。
+
+或者，使用Muls指令，将需要置零的部分乘以0。例如，创建一个掩码张量，其中需要置零的位置为0，其他为1，然后用Mul指令将原数据与掩码相乘。
+
+但生成这样的掩码可能需要较多的计算。对于float32数据类型，每个元素是32位，每个datablock包含8个元素（32字节）。因此，可以尝试按datablock为单位处理。
+
+具体到代码实现：
+
+在Compute函数中，获取xLocal后，需要根据diagonal参数计算每个元素的位置，然后决定是否置零。但diagonal参数在测试用例中是0，所以需要处理主对角线的情况。
+
+但diagonal参数是从哪里获取的呢？根据任务描述中的测试用例，diagonal是0，但用户提供的代码模板中kernel函数的参数没有diagonal。这可能意味着diagonal参数是通过tiling数据传递的，或者在host侧处理。但根据用户提供的代码模板，kernel函数的参数只有x, y, workspace。这可能意味着diagonal参数是通过tiling结构传递的，或者在当前任务中固定为0，如测试用例所示。
+
+但根据问题描述中的任务背景，代码实现需要满足test_cases.csv中的输入信息，即diagonal为0。因此，在当前的代码实现中，可以硬编码diagonal为0，或者从tiling数据中获取。
+
+然而，用户提供的代码模板中，tiling结构体TilingDataDef在参考案例中包含totalLength和tileNum。因此，可能需要扩展TilingDataDef以包含diagonal参数。但根据用户提供的代码模板，当前的tiling结构体可能没有包含diagonal。这可能是一个问题。
+
+但根据任务描述中的代码实现要点，第1点提到不要使用GET_TILING_DATA，而是参考示例的TilingDataDef写法来获取tiling。因此，可能需要在TilingDataDef中添加diagonal字段，或者假设diagonal是固定为0，如测试用例所示。
+
+在测试用例中，diagonal是0，因此当前实现可以忽略diagonal参数，或者假设diagonal为0。但根据算子的功能描述，diagonal是需要考虑的参数。这可能意味着在host侧传递diagonal的值到kernel侧，通过tiling数据结构。
+
+因此，正确的做法应该是在TilingDataDef中添加diagonal字段，然后在Init函数中初始化。但用户提供的代码模板中的tiling结构体目前只有totalLength和tileNum。这可能需要修改。
+
+但用户提供的参考案例中的TilingDataDef结构只有totalLength和tileNum，因此可能需要根据当前任务的需求调整。例如，在当前任务中，diagonal是0，因此可能不需要在tiling数据中传递，或者需要传递。
+
+然而，用户提供的代码模板中的kernel函数参数包括workspace，这可能用于传递tiling数据。在参考案例中，workspace参数被使用，但具体如何传递tiling数据可能需要进一步分析。
+
+根据参考案例的代码，kernel函数中直接初始化了tiling_data的结构，例如：
+
+TilingDataDef tiling_data = {
+    .totalLength = 49152,
+    .tileNum = 1,
+};
+
+这可能意味着tiling参数是硬编码的，但实际应用中应该从workspace中获取。然而，用户的问题描述中提到“不要使用GET_TILING_DATA来获取tiling，而是参考示例的TilingDataDef写法来获取tiling”，这可能意味着在示例中tiling参数是硬编码的，但实际情况下应该从workspace中读取。但根据用户的代码实现要点，第1点明确说不要使用GET_TILING_DATA，而是参考示例的写法，即直接在kernel中初始化tiling_data结构。这可能意味着在当前的任务中，tiling参数是硬编码的，但根据测试用例的数据来设置。
+
+测试用例中的shape是[48,64]，dtype是float32，diagonal=0。因此，totalLength应该是48*64=3072。假设使用48个核（aiv有48个核），则每个核处理3072/48=64个元素。tileNum可能需要根据每个核的处理能力来分块。例如，每个核将64个元素分成多个tile，每个tile处理一定数量的元素。
+
+在参考案例中，tileNum是1，可能表示每个核处理的数据是一次性处理的。但可能需要根据AI Core的向量处理单元的能力进行分块。例如，每个tile处理32个元素（即4个datablock，每个datablock 8个float32元素）。
+
+但需要根据硬件规格进行分块设计。例如，AI Core的UB大小有限，需要确保每个tile的数据量不超过UB的容量。假设UB可以容纳多个datablock，那么可以设置BUFFER_NUM为2，进行双缓冲。
+
+现在，设计KernelTriu类的结构。参考案例中的KernelAdd类，Init函数中设置GlobalTensor的地址，并初始化队列的缓冲区。Process函数循环处理每个tile，CopyIn、Compute、CopyOut。
+
+在CopyIn阶段，将全局内存的数据拷贝到本地张量。在Compute阶段，根据行列索引判断是否置零。在CopyOut阶段，将结果写回全局内存。
+
+具体到Compute阶段的逻辑：
+
+对于每个元素在xLocal中的索引progress * tileLength + i，对应的行是i / cols，列是i % cols。如果行 > 列 + diagonal（测试用例中diagonal=0），则置零。
+
+但如何高效地实现这个逻辑？可能需要遍历每个元素，判断条件，并置零。这可能效率较低，但float32类型可能不适合向量化操作。或者，可以使用Gather指令或Muls指令结合掩码。
+
+另一种方法是，对于每个行i，确定需要保留的起始列，然后将该行中起始列之前的所有元素置零。例如，对于行i，起始列是max(0, i - diagonal)。然后，该行中列j < 起始列的元素置零。
+
+这可以通过为每一行生成一个掩码，然后用Mul指令将原数据与掩码相乘。例如，掩码中需要置零的位置为0，其他为1。
+
+但生成这样的掩码可能需要逐行处理。例如，对于每一行i，创建一个掩码，其中前k个元素为0，其余为1，其中k = max(0, i - diagonal)。然后，将该行的数据与掩码相乘。
+
+在Ascend C中，可以使用Duplicate指令生成全1的张量，然后使用Gather或Slice指令修改需要置零的部分为0。
+
+或者，使用Muls指令将需要置零的部分乘以0。例如，对于每一行i，计算需要置零的列数，然后将这些列的元素置零。
+
+但具体实现可能需要逐元素处理，这可能效率不高。不过，对于测试用例中的小数据量，这可能可以接受。
+
+因此，在Compute函数中，可以遍历所有元素，判断其行列位置，若行>列则置零。
+
+但这样逐元素处理可能效率较低。有没有更好的方法？
+
+另一种思路是，使用向量化操作。例如，对于每个datablock（8个元素），根据其在矩阵中的位置，判断是否需要置零。例如，如果整个datablock都在下三角区域，则将其置零。否则，部分置零。
+
+这可能需要更复杂的逻辑，但可以提高效率。
+
+例如，对于一个datablock，假设它位于行i，列j到j+7（假设每个datablock 8个元素）。如果i > j + diagonal，则整个datablock置零。或者，部分置零。
+
+但diagonal=0时，行i的起始列是i。因此，列j < i的元素需要置零。对于一个datablock，如果j >=i，则保留；否则，根据j和i的关系决定是否置零。
+
+这可能比较复杂。因此，逐元素处理可能是更简单的方式，尽管效率可能不高。
+
+因此，在Compute函数中，获取xLocal后，遍历每个元素，计算其行列索引，若行>列则置零。
+
+但如何在Ascend C中实现？
+
+例如：
+
+AscendC::LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+AscendC::LocalTensor<float> yLocal = outQueueZ.AllocTensor<float>();
+
+for (int i = 0; i < tileLength; ++i) {
+    int row = i / cols;
+    int col = i % cols;
+    if (row > col) { // diagonal=0时的条件
+        yLocal.SetValue(i, 0.0f);
+    } else {
+        yLocal.SetValue(i, xLocal.GetValue(i));
+    }
+}
+
+但这样逐元素处理可能效率较低，因为Ascend C的向量指令更适合批量处理。因此，可能需要找到一种向量化的方法。
+
+或者，使用Add指令，将xLocal和一个掩码张量相加，掩码张量中需要置零的位置为0，其他为xLocal的值。或者，使用Mul指令，将xLocal乘以掩码张量。
+
+例如，创建一个掩码张量mask，其中mask[i] = (row <= col) ? 1.0f : 0.0f。然后，yLocal = xLocal * mask。
+
+这可以通过以下步骤实现：
+
+1. 使用Duplicate指令创建一个全1的mask张量。
+2. 根据行列索引，将下三角部分的mask置零。
+3. 使用Mul指令将xLocal和mask相乘，得到yLocal。
+
+但如何高效地生成mask张量？
+
+生成mask张量可能需要逐元素处理，这同样效率不高。或者，可以预先计算每个tile的mask模式。
+
+例如，在Init函数中，根据cols和diagonal参数，预先计算每个tile的mask模式。但diagonal在测试用例中是0，因此cols是64。每个tile的长度是tileLength，例如32个元素（4个datablock）。对于每个元素i在tile中的位置，计算其行列，若行>列则mask为0，否则为1。
+
+这可能需要在Init阶段预先生成mask，但这可能不适用于动态shape的情况。但根据任务描述，当前只需要处理测试用例中的shape，因此可以硬编码cols=64，diagonal=0。
+
+因此，在Init函数中，可以预先生成mask张量。例如：
+
+__aicore__ inline void Init(...) {
+    // 其他初始化代码
+    AscendC::LocalTensor<float> maskLocal;
+    pipe.InitBuffer(maskBuf, tileLength * sizeof(float));
+    maskLocal = maskBuf.Get<float>();
+    // 生成mask
+    for (int i = 0; i < tileLength; ++i) {
+        int row = i / 64;
+        int col = i % 64;
+        if (row > col) {
+            maskLocal.SetValue(i, 0.0f);
+        } else {
+            maskLocal.SetValue(i, 1.0f);
+        }
+    }
+    // 将maskLocal加入队列或保存为成员变量
+}
+
+然后在Compute函数中，使用Mul指令：
+
+AscendC::Mul(yLocal, xLocal, maskLocal, tileLength);
+
+但这样需要为每个tile预先生成mask，这可能增加初始化的复杂度。不过，由于测试用例中的shape固定，这可能可行。
+
+或者，在Compute函数中动态生成mask。例如，在Compute阶段，为每个tile生成mask张量。但这样会增加计算时间。
+
+另一种方法是，利用Ascend C的Gather指令，根据行列索引生成掩码。例如，创建一个基准张量，包含所有元素的行列信息，然后根据条件选择需要保留的元素。
+
+这可能比较复杂。
+
+回到逐元素处理的方法，虽然效率可能不高，但代码简单，且测试用例的数据量较小，可能可以接受。
+
+因此，在Compute函数中，遍历每个元素，判断行列索引，置零或保留。
+
+现在，整合这些思路到代码中。
+
+首先，定义TilingDataDef结构，包含totalLength、tileNum，以及diagonal（如果需要）。但根据测试用例，diagonal=0，可能不需要在tiling数据中传递。因此，暂时假设diagonal=0。
+
+然后，在KernelTriu类的Init函数中，设置xGm和yGm的地址，初始化队列的缓冲区。例如，每个队列有BUFFER_NUM=2个缓冲区，每个缓冲区大小为tileLength * sizeof(float)。
+
+在Process函数中，循环处理每个tile，CopyIn、Compute、CopyOut。
+
+CopyIn阶段，将xGm的数据拷贝到xLocal。
+
+Compute阶段，遍历xLocal中的每个元素，判断行列索引，若行>列则置零，否则复制值到yLocal。
+
+CopyOut阶段，将yLocal拷贝到yGm。
+
+现在，编写代码框架。
+
+根据参考案例，代码结构如下：
+
+#include \"kernel_operator.h\"
+
+using namespace AscendC;
+
+typedef struct {
+    uint32_t totalLength;
+    uint32_t tileNum;
+    int32_t diagonal; // 添加diagonal参数
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2;
+
+class KernelTriu {
+public:
+    __aicore__ inline KernelTriu() {}
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, uint32_t tileNum, int32_t diagonal) {
+        // 初始化代码
+    }
+    __aicore__ inline void Process() {
+        // 处理循环
+    }
+private:
+    __aicord__ void CopyIn(int32_t progress) {
+        // 拷贝输入数据
+    }
+    __aicore__ inline void Compute(int32_t progress) {
+        // 计算逻辑
+    }
+    __aicore__ inline void CopyOut(int32_t progress) {
+        // 拷贝输出数据
+    }
+    // 成员变量
+};
+
+extern \"C\" __global__ __aicore__ void triu(GM_ADDR x, GM_ADDR y, GM_ADDR workspace) {
+    // 初始化tiling数据并调用KernelTriu
+}
+
+根据测试用例，shape是[48,64]，totalLength=48*64=3072。假设使用48个核（aiv有48个核），则blockLength=3072/48=64。tileNum可以设为2，每个tile处理32个元素。tileLength=64/(2*2)=16？或者需要根据硬件的UB大小调整。
+
+但参考案例中的tileNum是1，可能每个核处理整个blockLength。但为了并行性，可能需要分块。例如，将64个元素分成2个tile，每个tile 32个元素，BUFFER_NUM=2，这样可以双缓冲。
+
+在Init函数中：
+
+this->blockLength = totalLength / GetBlockNum(); // 3072/48=64
+this->tileNum = tileNum; // 假设tileNum=2
+this->tileLength = blockLength / tileNum / BUFFER_NUM; // 64/(2*2)=16
+
+然后，设置GlobalTensor的地址：
+
+xGm.SetGlobalBuffer((__gm__ float*)x + blockLength * GetBlockIdx(), blockLength);
+yGm.SetGlobalBuffer((__gm__ float*)y + blockLength * GetBlockIdx(), blockLength);
+
+初始化队列缓冲区：
+
+pipe.InitBuffer(inQueueX, BUFFER_NUM, tileLength * sizeof(float));
+pipe.InitBuffer(outQueueZ, BUFFER_NUM, tileLength * sizeof(float));
+
+在Compute函数中，对于每个元素i在0..tileLength-1：
+
+int row = i / cols; // cols=64
+int col = i % cols;
+if (row > col + diagonal) { // diagonal=0
+    yLocal.SetValue(i, 0.0f);
+} else {
+    yLocal.SetValue(i, xLocal.GetValue(i));
+}
+
+但cols是64，如何传递到KernelTriu类中？因为每个核处理的是整个输入张量的最后两维，即MxN。在测试用例中，最后两维是48x64。但根据算子描述，操作是在最后两个维度上进行的，输入可以是高维张量。但根据测试用例，输入是2D，所以cols=64。因此，需要将cols作为tiling参数传递。
+
+因此，需要扩展TilingDataDef结构，添加cols和rows参数。例如：
+
+typedef struct {
+    uint32_t totalLength;
+    uint32_t tileNum;
+    int32_t diagonal;
+    uint32_t rows; // 最后两维的行数
+    uint32_t cols; // 列数
+} TilingDataDef;
+
+在测试用例中，rows=48，cols=64。因此，在kernel函数中，tiling_data需要初始化这些值。
+
+在Init函数中，根据rows和cols计算每个核处理的blockLength=rows * cols。然后，tileLength=blockLength/(tileNum * BUFFER_NUM)。
+
+在Compute函数中，对于每个元素i，row = (i / cols) ，col = i % cols。
+
+因此，修改后的代码结构如下：
+
+TilingDataDef结构包含rows和cols。
+
+在KernelTriu的Init函数中：
+
+this->rows = tiling_data.rows;
+this->cols = tiling_data.cols;
+this->blockLength = rows * cols; // 每个核处理的数据量
+this->tileNum = tileNum;
+this->tileLength = blockLength / tileNum / BUFFER_NUM;
+
+在Compute函数中：
+
+for (int i = 0; i < tileLength; ++i) {
+    int row = i / cols;
+    int col = i % cols;
+    if (row > col + diagonal) {
+        yLocal.SetValue(i, 0.0f);
+    } else {
+        yLocal.SetValue(i, xLocal.GetValue(i));
+    }
+}
+
+这样，代码就能正确判断每个元素的位置，并置零下三角部分。
+
+现在，整合所有部分到代码中。
+
+在kernel函数中，需要初始化tiling_data，包含totalLength=48*64=3072，tileNum=2，diagonal=0，rows=48，cols=64。然后调用Init和Process。
+
+但根据参考案例，tiling_data是在kernel函数内部直接初始化的。例如：
+
+TilingDataDef tiling_data = {
+    .totalLength = 3072,
+    .tileNum = 2,
+    .diagonal = 0,
+    .rows = 48,
+    .cols = 64,
+};
+
+KernelTriu op;
+op.Init(x, y, tiling_data.totalLength, tiling_data.tileNum, tiling_data.diagonal);
+op.Process();
+
+但Init函数的参数可能需要调整。原参考案例的Init函数参数包括x, y, z, totalLength, tileNum。但当前算子只有两个参数x和y，因此Init函数应为：
+
+__aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, uint32_t tileNum, int32_t diagonal, uint32_t rows, uint32_t cols)
+
+但这样参数较多。或者，在tiling_data中传递rows和cols，因此Init函数可以接受tiling_data的结构。
+
+但根据参考案例，Init函数的参数是分开的。因此，可能需要调整。
+
+或者，在KernelTriu类中，将rows和cols作为成员变量，并在Init函数中设置。
+
+因此，修改后的KernelTriu类：
+
+class KernelTriu {
+public:
+    __aicore__ inline KernelTriu() {}
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, uint32_t tileNum, int32_t diagonal, uint32_t rows, uint32_t cols) {
+        this->diagonal = diagonal;
+        this->rows = rows;
+        this->cols = cols;
+        this->blockLength = rows * cols;
+        this->tileNum = tileNum;
+        this->tileLength = blockLength / tileNum / BUFFER_NUM;
+
+        xGm.SetGlobalBuffer((__gm__ float*)x + blockLength * GetBlockIdx(), blockLength);
+        yGm.SetGlobalBuffer((__gm__ float*)y + blockLength * GetBlockIdx(), blockLength);
+        pipe.InitBuffer(inQueueX, BUFFER_NUM, this->tileLength * sizeof(float));
+        pipe.InitBuffer(outQueueZ, BUFFER_NUM, this->tileLength * sizeof(float));
+    }
+    // 其他函数...
+private:
+    int32_t diagonal;
+    uint32_t rows;
+    uint32_t cols;
+    // 其他成员...
+};
+
+然后在kernel函数中：
+
+TilingDataDef tiling_data = {
+    .totalLength = 3072,
+    .tileNum = 2,
+    .diagonal = 0,
+    .rows = 48,
+    .cols = 64,
+};
+
+KernelTriu op;
+op.Init(x, y, tiling_data.totalLength, tiling_data.tileNum, tiling_data.diagonal, tiling_data.rows, tiling_data.cols);
+op.Process();
+
+这样，Init函数可以获取rows和cols参数，并在Compute阶段使用。
+
+现在，编写完整的代码。
+
+需要确保数据搬运的对齐，DataCopy的长度是32字节对齐的。例如，每个tileLength必须是8的整数倍（因为每个float是4字节，32字节/4=8元素）。
+
+在测试用例中，tileLength= blockLength/(tileNum * BUFFER_NUM) = (48*64)/(2*2) = 3072/(4*2)= 3072/8=384？ 等等，blockLength是每个核处理的数据量，即totalLength / GetBlockNum()。总totalLength是48*64=3072，GetBlockNum()是48（aiv核数），所以blockLength=3072/48=64。tileNum=2，BUFFER_NUM=2，所以tileLength=64/(2*2)=16个元素。16个元素是16*4=64字节，满足32字节对齐（因为64是32的倍数）。因此，DataCopy的长度是16个元素，即64字节，符合要求。
+
+因此，在CopyIn和CopyOut中，DataCopy的长度是tileLength，即16个元素，地址对齐没问题。
+
+综上，完整的代码如下：
+
+<kernel_impl>
+```cpp
+#include \"kernel_operator.h\"
+
+using namespace AscendC;
+
+typedef struct {
+    uint32_t totalLength;
+    uint32_t tileNum;
+    int32_t diagonal;
+    uint32_t rows;
+    uint32_t cols;
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2; // tensor num for each queue
+
+class KernelTriu {
+public:
+    __aicore__ inline KernelTriu() {}
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, uint32_t tileNum, int32_t diagonal, uint32_t rows, uint32_t cols)
+    {
+        this->diagonal = diagonal;
+        this->rows = rows;
+        this->cols = cols;
+        this->blockLength = rows * cols;
+        this->tileNum = tileNum;
+        this->tileLength = this->blockLength / tileNum / BUFFER_NUM;
+
+        xGm.SetGlobalBuffer((__gm__ float*)x + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        yGm.SetGlobalBuffer((__gm__ float*)y + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        pipe.InitBuffer(inQueueX, BUFFER_NUM, this->tileLength * sizeof(float));
+        pipe.InitBuffer(outQueueZ, BUFFER_NUM, this->tileLength * sizeof(float));
+    }
+    __aicore__ inline void Process()
+    {
+        int32_t loopCount = this->tileNum * BUFFER_NUM;
+        for (int32_t i = 0; i < loopCount; i++) {
+            CopyIn(i);
+            Compute(i);
+            CopyOut(i);
+        }
+    }
+
+private:
+    __aicore__ inline void CopyIn(int32_t progress)
+    {
+        AscendC::LocalTensor<float> xLocal = inQueueX.AllocTensor<float>();
+        AscendC::DataCopy(xLocal, xGm[progress * this->tileLength], this->tileLength);
+        inQueueX.EnQue(xLocal);
+    }
+    __aicore__ inline void Compute(int32_t progress)
+    {
+        AscendC::LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+        AscendC::LocalTensor<float> yLocal = outQueueZ.AllocTensor<float>();
+        
+        for (int32_t i = 0; i < this->tileLength; ++i) {
+            int32_t row = (progress * this->tileLength + i) / this->cols;
+            int32_t col = (progress * this->tileLength + i) % this->cols;
+            if (row > col + this->diagonal) {
+                yLocal.SetValue(i, 0.0f);
+            } else {
+                yLocal.SetValue(i, xLocal.GetValue(i));
+            }
+        }
+        
+        outQueueZ.EnQue<float>(yLocal);
+        inQueueX.FreeTensor(xLocal);
+    }
+    __aicore__ inline void CopyOut(int32_t progress)
+    {
+        AscendC::LocalTensor<float> yLocal = outQueueZ.DeQue<float>();
+        AscendC::DataCopy(yGm[progress * this->tileLength], yLocal, this->tileLength);
+        outQueueZ.FreeTensor(yLocal);
+    }
+
+private:
+    AscendC::TPipe pipe;
+    AscendC::TQue<AscendC::QuePosition::VECIN, BUFFER_NUM> inQueueX;
+    AscendC::TQue<AscendC::QuePosition::VECOUT, BUFFER_NUM> outQueueZ;
+    AscendC::GlobalTensor<float> xGm;
+    AscendC::GlobalTensor<float> yGm;
+    uint32_t blockLength;
+    uint32_t tileNum;
+    uint32_t tileLength;
+    int32_t diagonal;
+    uint32_t rows;
+    uint32_t cols;
+};
+
+extern \"C\" __global__ __aicore__ void triu(GM_ADDR x, GM_ADDR y, GM_ADDR workspace)
+{
+    TilingDataDef tiling_data = {
+        .totalLength = 48 * 64,
+        .tileNum = 2,
+        .diagonal = 0,
+        .rows = 48,
+        .cols = 64,
+    };
+    KernelTriu op;
+    op.Init(x, y, tiling_data.totalLength, tiling_data.tileNum, tiling_data.diagonal, tiling_data.rows, tiling_data.cols);
+    op.Process();
+}
+```
+</kernel_impl>
+
+需要注意的是，在Compute函数中，progress参数表示当前处理的tile序号，每个tile的起始地址是progress * tileLength。因此，在计算row和col时，需要加上progress * tileLength的偏移。例如，元素i在tile中的偏移是i，但整个tile的起始偏移是progress * tileLength。因此，全局索引是progress * tileLength + i。然后，row = (global_index) / cols，col = global_index % cols。
+
+例如，假设progress=0，tileLength=16，cols=64。则global_index的范围是0-15。row=0/64=0，col=0-15。此时，行是0，列是0-15。对于diagonal=0，行0的列>=0的元素保留，即所有元素保留。因此，yLocal的这些位置会被复制。
+
+当progress=1时，global_index的范围是16-31。row=16/64=0，col=16-31。同样保留。
+
+这可能不正确，因为每个核处理的是blockLength=64个元素，即48x64中的每个核处理64个元素。例如，核0处理前64个元素（行0，列0-63），核1处理接下来的64个元素（行1，列0-63），依此类推。因此，在Compute函数中，global_index = progress * tileLength + i，对应的行是 (block_idx * blockLength + global_index) / (total_rows * cols) ? 这可能不正确。
+
+啊，这里存在一个错误。因为blockLength是每个核处理的元素数，即rows * cols。例如，总数据是48x64=3072，每个核处理3072/48=64个元素，即rows=48，cols=64，blockLength=48*64=3072？ 不，这不对。因为GetBlockNum()是48，totalLength=48*64=3072，所以blockLength=3072/48=64。这意味着每个核处理64个元素，即对应于原矩阵中的64个元素。例如，原矩阵是48行x64列，每个核处理的blockLength=64个元素可能对应于一行（行索引=block_idx）的全部列。例如，核0处理行0的列0-63（64个元素），核1处理行1的列0-63，依此类推。因此，在KernelTriu的Init函数中，xGm和yGm被设置为每个核处理的块：
+
+xGm.SetGlobalBuffer((__gm__ float*)x + blockLength * GetBlockIdx(), blockLength);
+
+因此，每个核处理的xGm数据是原矩阵中连续的blockLength个元素，即每行的cols个元素。因此，在Compute函数中，global_index是progress * tileLength + i，对应的行是 GetBlockIdx() + (progress * tileLength + i) / cols ?
+
+不，因为xGm的数据是原矩阵中每个核处理的一行。例如，核0的xGm数据是原矩阵的第0行，核1的xGm数据是原矩阵的第1行，依此类推。因此，在Compute函数中，处理的每个元素的行是 GetBlockIdx()，而列是 (progress * tileLength + i) % cols ?
+
+例如，假设核的block_idx是k，则处理的行是k，列范围是0到cols-1。因此，在Compute函数中，global_index within the block是 progress * tileLength + i，对应的列是 (progress * tileLength + i) % cols。行是k。
+
+因此，在Compute函数中，正确的行应该是当前核的block_idx，而列是 (progress * tileLength + i) % cols。
+
+因此，在Compute函数中，应该：
+
+int32_t row = AscendC::GetBlockIdx(); // 当前核处理的行
+int32_t col = (progress * tileLength + i) % cols;
+
+这样，判断row > col + diagonal是否成立。
+
+之前的代码中的row计算是错误的，导致逻辑错误。必须修正这一点。
+
+例如，在测试用例中，每个核处理一行（64个元素）。因此，在Compute函数中，row是GetBlockIdx()，而col是(progress * tileLength +i) % cols。
+
+因此，修正后的Compute函数：
+
+__aicore__ inline void Compute(int32_t progress)
+{
+    AscendC::LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+    AscendC::LocalTensor<float> yLocal = outQueueZ.AllocTensor<float>();
+    
+    int32_t row = AscendC::GetBlockIdx(); // 当前核处理的行
+    for (int32_t i = 0; i < this->tileLength; ++i) {
+        int32_t col = (progress * this->tileLength + i) % this->cols;
+        if (row > col + this->diagonal) {
+            yLocal.SetValue(i, 0.0f);
+        } else {
+            yLocal.SetValue(i, xLocal.GetValue(i));
+        }
+    }
+    
+    outQueueZ.EnQue<float>(yLocal);
+    inQueueX.FreeTensor(xLocal);
+}
+
+这样，每个核处理自己的行，根据col的位置判断是否置零。
+
+例如，对于核0（row=0），diagonal=0，col范围是0-63。行0的上三角是col >=0，因此所有元素保留。输出是原输入。
+
+对于核1（row=1），diagonal=0，col范围是0-63。行1的上三角是col >=1。因此，col<1的元素（即col=0）被置零。
+
+这样，整个矩阵的上三角部分被正确保留，下三角置零。
+
+因此，修正后的代码是正确的。
+
+综上，最终的代码应包含正确的行和列计算逻辑。</think><kernel_impl>
+```cpp
+#include \"kernel_operator.h\"
+
+using namespace AscendC;
+
+typedef struct {
+    uint32_t totalLength;
+    uint32_t tileNum;
+    int32_t diagonal;
+    uint32_t rows;
+    uint32_t cols;
+} TilingDataDef;
+
+constexpr int32_t BUFFER_NUM = 2; // tensor num for each queue
+
+class KernelTriu {
+public:
+    __aicore__ inline KernelTriu() {}
+    __aicore__ inline void Init(GM_ADDR x, GM_ADDR y, uint32_t totalLength, uint32_t tileNum, int32_t diagonal, uint32_t rows, uint32_t cols)
+    {
+        this->diagonal = diagonal;
+        this->rows = rows;
+        this->cols = cols;
+        this->blockLength = rows * cols;
+        this->tileNum = tileNum;
+        this->tileLength = this->blockLength / tileNum / BUFFER_NUM;
+
+        xGm.SetGlobalBuffer((__gm__ float*)x + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        yGm.SetGlobalBuffer((__gm__ float*)y + this->blockLength * AscendC::GetBlockIdx(), this->blockLength);
+        pipe.InitBuffer(inQueueX, BUFFER_NUM, this->tileLength * sizeof(float));
+        pipe.InitBuffer(outQueueZ, BUFFER_NUM, this->tileLength * sizeof(float));
+    }
+    __aicore__ inline void Process()
+    {
+        int32_t loopCount = this->tileNum * BUFFER_NUM;
+        for (int32_t i = 0; i < loopCount; i++) {
+            CopyIn(i);
+            Compute(i);
+            CopyOut(i);
+        }
+    }
+
+private:
+    __aicore__ inline void CopyIn(int32_t progress)
+    {
+        AscendC::LocalTensor<float> xLocal = inQueueX.AllocTensor<float>();
+        AscendC::DataCopy(xLocal, xGm[progress * this->tileLength], this->tileLength);
+        inQueueX.EnQue(xLocal);
+    }
+    __aicore__ inline void Compute(int32_t progress)
+    {
+        AscendC::LocalTensor<float> xLocal = inQueueX.DeQue<float>();
+        AscendC::LocalTensor<float> yLocal = outQueueZ.AllocTensor<float>();
+        
+        int32_t blockRow = AscendC::GetBlockIdx();
+        for (int32_t i = 0; i < this->tileLength; ++i) {
+            int32_t col = (progress * this->tileLength + i) % this->cols;
+            if (blockRow > col + this->diagonal) {
+                yLocal.SetValue(i, 0.0f);
+            } else {
+                yLocal.SetValue(i, xLocal.GetValue(i));
+            }
+        }
+        
+        outQueueZ.EnQue<float>(yLocal);
+        inQueueX.FreeTensor(xLocal);
+    }
+    __aicore__ inline void CopyOut(int32_t progress)
+    {
+        AscendC::LocalTensor<float> yLocal = outQueueZ.DeQue<float>();
+        AscendC::DataCopy(yGm[progress * this->tileLength], yLocal, this->tileLength);
+        outQueueZ.FreeTensor(yLocal);
+    }
+
+private:
+    AscendC::TPipe pipe;
+    AscendC::TQue<AscendC::QuePosition::VECIN, BUFFER_NUM> inQueueX;
+    AscendC::TQue<AscendC::QuePosition::VECOUT, BUFFER_NUM> outQueueZ;
+    AscendC::GlobalTensor<float> xGm;
+    AscendC::GlobalTensor<float> yGm;
+    uint32_t blockLength;
+    uint32_t tileNum;
+    uint32_t tileLength;
+    int32_t diagonal;
+    uint32_t rows;
+    uint32_t cols;
+};
+
+extern \"C\" __global__ __aicore__ void triu(GM_ADDR x, GM_ADDR y, GM_ADDR workspace)
+{
+    TilingDataDef tiling_data = {
+        .totalLength = 48 * 64,
+        .tileNum = 2,
+        .diagonal = 0,
+        .rows = 48,
+        .cols = 64,
+    };
+    KernelTriu op;
+    op.Init(x, y, tiling_data.totalLength, tiling_data.tileNum, tiling_data.diagonal, tiling_data.rows, tiling_data.cols);
+    op.Process();
+}
+```
+</kernel_impl>

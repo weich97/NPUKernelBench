@@ -1,0 +1,14 @@
+#ifndef SELECT_REDUCE_MAX_D_SUB_EXP_REDUCE_SUM_D_REAL_DIV_TILING_H
+#define SELECT_REDUCE_MAX_D_SUB_EXP_REDUCE_SUM_D_REAL_DIV_TILING_H
+#include "register/tilingdata_base.h"
+
+namespace optiling {
+BEGIN_TILING_DATA_DEF(SelectReduceMaxDSubExpReduceSumDRealDivTilingData)
+  TILING_DATA_FIELD_DEF(uint32_t, totalLength);
+  TILING_DATA_FIELD_DEF(uint32_t, tileNum);
+  TILING_DATA_FIELD_DEF(uint32_t, tmpSize);
+END_TILING_DATA_DEF;
+
+REGISTER_TILING_DATA_CLASS(SelectReduceMaxDSubExpReduceSumDRealDiv, SelectReduceMaxDSubExpReduceSumDRealDivTilingData)
+}
+#endif // SELECT_REDUCE_MAX_D_SUB_EXP_REDUCE_SUM_D_REAL_DIV_TILING_H

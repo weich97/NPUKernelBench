@@ -23,12 +23,11 @@ def reverse_sequence(x: Tensor, seq_lengths: Tensor, seq_dim: int = 0, batch_dim
 
     参数:
         x (Tensor): 输入 Device 侧张量。支持的数据类型包括：
-                    torch.float16、torch.bfloat16、torch.float。
+                    torch.float32、torch.float16、torch.bfloat16、torch.float64、torch.int8、torch.int16、torch.int32、torch.int64、torch.uint8、torch.uint16、torch.bool、torch.complex64、torch.complex128。
                     支持非连续 Tensor，shape 维度不超过 8 维，数据格式支持 ND。
-        seq_lengths (Tensor): 一维的 Device 侧 int64 张量，包含每个批次的序列长度。
-                              其大小必须等于输入张量 `x` 在 `batch_dim` 上的大小。
-        seq_dim (int): 指定进行反转的序列维度。默认为 0。
-        batch_dim (int): 指定批次维度。默认为 1。
+        seq_lengths (Tensor): 一维的 Device 侧 int32或int64 张量，包含每个批次的序列长度。其大小必须等于输入张量 `x` 在 `batch_dim` 上的大小。
+        seq_dim (int): 指定进行反转的序列维度。
+        batch_dim (int): 指定批次维度。默认为 0。
 
     返回:
         Tensor: 输出张量，与输入张量 `x` 具有相同的形状和数据类型。
@@ -36,27 +35,24 @@ def reverse_sequence(x: Tensor, seq_lengths: Tensor, seq_dim: int = 0, batch_dim
     注意:
         - `seqLengths` 的大小必须与输入张量在 `batch_dim` 上的大小一致。
         - `seqDim` 和 `batchDim` 必须是有效的维度索引且不能相等。
-        - 支持非连续 Tensor。
-        - 支持的最大维度为 8 维。
     """
+```
 
-    import torch
-    import kernel_gen_ops
+## 使用案例
 
-    # 构造输入张量和序列长度
-    x = torch.randn(3, 5, 7, dtype=torch.float)
-    seq_lengths = torch.tensor([2, 4, 1], dtype=torch.int64)
-    seq_dim = 1
-    batch_dim = 0
+```python
+import torch
+import kernel_gen_ops
 
-    # 执行 ReverseSequence 操作
-    y = kernel_gen_ops.reverse_sequence(x, seq_lengths, seq_dim, batch_dim)
+# 构造输入张量和序列长度
+x = torch.randn(3, 5, 7, dtype=torch.float)
+seq_lengths = torch.tensor([2, 4, 1], dtype=torch.int64)
+seq_dim = 1
+batch_dim = 0
 
-    print("Shape of x:", x.shape)
-    print("Shape of y:", y.shape)
-    print("Sequence Lengths:", seq_lengths)
-    print("Sequence Dimension:", seq_dim)
-    print("Batch Dimension:", batch_dim)
+# 执行 ReverseSequence 操作
+y = kernel_gen_ops.reverse_sequence(x, seq_lengths, seq_dim, batch_dim)
+```
 
 ### 约束与限制
 seqLengths 必须是一维张量。

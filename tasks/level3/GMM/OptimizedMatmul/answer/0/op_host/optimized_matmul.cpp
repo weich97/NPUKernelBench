@@ -1,0 +1,93 @@
+#include "register/op_def_registry.h"
+#include "tiling/platform/platform_ascendc.h"
+#include "optimized_matmul_tiling.h"
+
+namespace optiling {
+constexpr uint32_t alignByByte = 512;
+
+bool IsNeedPadding(uint32_t n, uint32_t align)
+{
+    // If the stride is greater than 65536, padding is required to reduce the stride.
+    if (n < 65536) {
+        return n % align != 0;
+    } else {
+        return true;
+    }
+}
+
+template <class T>
+constexpr T RoundUp(const T &val, const T align)
+{
+    return (val + align - 1) / align * align;
+}
+
+size_t GetWorkspaceLen(uint32_t m, uint32_t n, size_t blockRows, size_t blockCols)
+{
+    return RoundUp(static_cast<size_t>(m), blockRows) *
+        RoundUp(static_cast<size_t>(n), blockCols);
+}
+
+static ge::graphStatus TilingFunc(gert::TilingContext *context)
+{
+    auto aicCoreNum = platform_ascendc::PlatformAscendCManager::GetInstance()->GetCoreNumAic();
+    context->SetBlockDim(aicCoreNum);
+    TilingData tiling;
+    uint32_t m = context->GetInputShape(0)->GetStorageShape().GetDim(0);
+    uint32_t k = context->GetInputShape(0)->GetStorageShape().GetDim(1);
+    uint32_t n = context->GetInputShape(1)->GetStorageShape().GetDim(1);
+    auto dataType = context->GetInputDesc(0)->GetDataType();
+    size_t dataTypeByte = GetSizeByDataType(dataType);
+    bool isNeedPaddingA = IsNeedPadding(k, alignByByte / dataTypeByte);
+    bool isNeedPaddingB = IsNeedPadding(n, alignByByte / dataTypeByte);
+    size_t sizeWA = 0;
+    size_t sizeWB = 0;
+    if (isNeedPaddingA) {
+        sizeWA = GetWorkspaceLen(m, k, 128, 256) * dataTypeByte;
+    }
+    if (isNeedPaddingB) {
+        sizeWB = GetWorkspaceLen(k, n, 256, 256) * dataTypeByte;
+    }
+
+    tiling.set_m(m);
+    tiling.set_k(k);
+    tiling.set_n(n);
+    tiling.set_paddingASize(sizeWA);
+    tiling.set_paddingBSize(sizeWB);
+    tiling.SaveToBuffer(context->GetRawTilingData()->GetData(), context->GetRawTilingData()->GetCapacity());
+    context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
+
+    auto ascendcPlatform = platform_ascendc::PlatformAscendC(context->GetPlatformInfo());
+    size_t sysWorkspaceSize = ascendcPlatform.GetLibApiWorkSpaceSize();
+    size_t *currentWorkspace = context->GetWorkspaceSizes(1);
+    size_t lenWorkspace = sizeWA + sizeWB;
+    currentWorkspace[0] = lenWorkspace + sysWorkspaceSize;
+    return ge::GRAPH_SUCCESS;
+}
+} // namespace optiling
+
+namespace ops {
+class OptimizedMatmul : public OpDef {
+public:
+    explicit OptimizedMatmul(const char *name) : OpDef(name)
+    {
+        this->Input("a")
+            .ParamType(REQUIRED)
+            .DataType({ge::DT_FLOAT16})
+            .Format({ge::FORMAT_ND});
+        this->Input("b")
+            .ParamType(REQUIRED)
+            .DataType({ge::DT_FLOAT16})
+            .Format({ge::FORMAT_ND});
+        this->Output("c")
+            .ParamType(REQUIRED)
+            .DataType({ge::DT_FLOAT16})
+            .Format({ge::FORMAT_ND});
+
+        this->AICore()
+            .SetTiling(optiling::TilingFunc)
+            .AddConfig("ascend910_93")
+            .AddConfig("ascend910b");
+    }
+};
+OP_ADD(OptimizedMatmul);
+} // namespace ops

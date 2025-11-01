@@ -3,12 +3,20 @@
 ## 功能描述
 
 ### 算子功能
-实现了当向量x1小于等于x2时，向量y的对应位置输出true，否则为false的功能。
+逐元素比较两个向量，当 `x1 <= x2` 时，输出 `true` (1)，否则输出 `false` (0)。
 
 ### 计算公式
-$$
-  y = x1 <= x2
-$$
+$$y = x1 <= x2$$
+
+### AscendC 实现范式注意事项
+
+在 AscendC 中，比较类算子普遍采用一套 `Compare -> Duplicate -> Select -> Cast` 的标准指令组合。这是一种将硬件的逻辑比较结果“物化”为标准张量的通用方法。
+
+其核心逻辑是：
+1.  **`Compare`**：执行比较，生成一个内部的逻辑掩码（mask），标记出真/假位置。
+2.  **`Duplicate` 与 `Select`**：协同使用该掩码，从预设的 `1` (真) 和 `0` (假) 中进行选择，从而将逻辑掩码转换为一个内容为 `0` 和 `1` 的实体张量。
+3.  **`Cast`**：最后将此张量转换为最终需要的输出数据类型（如`int8_t`）。
+
 
 ## 接口定义
 
@@ -39,22 +47,19 @@ def less_equal(input1, input2):
 
 ## 使用案例
 
-```
+```python
 import torch
 import kernel_gen_ops
 
 
 # 创建两个张量
-a = torch.tensor([1.0, 2.0, 3.0], dtype=torch.float32)
-b = torch.tensor([1.5, 2.0, 2.5], dtype=torch.float32)
+input1 = torch.randint(-10, 10, 8, 2048, dtype=torch.float32)
+input2 = torch.randint(-10, 10, 8, 2048, dtype=torch.float32)
 
 # 元素级判断是否小于等于
-result = kernel_gen_ops.less_equal(a, b)
-print(result)  # 输出: tensor([True, True, False])
+result = kernel_gen_ops.less_equal(input1, input2)
+print(result)
 
-# 广播示例
-c = torch.tensor([2.0], dtype=torch.float32)
-print(kernel_gen_ops.less_equal(a, c))  # 输出: tensor([True, True, False])
 ```
 ## 约束与限制
 

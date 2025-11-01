@@ -41,36 +41,39 @@ def mse_loss_grad(gradOutput, self_input, target_input, reduction):
     返回:
         Tensor: 对预测值 `self_input` 的梯度张量。
     """
-    import torch
-    import kernel_gen_ops
+```
 
-    # 创建输入张量和参数
-    input_shape = [2, 2]
-    dtype = torch.float32
-    reduction = "mean"
+## 使用案例
 
-    input_predict = torch.randn(input_shape, dtype=dtype)
-    input_label = torch.randn(input_shape, dtype=dtype)
-    input_dout = torch.randn(input_shape, dtype=dtype) # Gradient from downstream
+```python
+import torch
+import kernel_gen_ops
 
-    # 使用 mse_loss_grad 计算反向梯度
-    out_grad = kernel_gen_ops.mse_loss_grad(input_dout, input_predict, input_label, reduction)
+# 创建输入张量和参数
+input_shape = [2, 2]
+dtype = torch.float32
+reduction = "mean"
 
-    print("Output gradient shape:", out_grad.shape)
+input_predict = torch.randn(input_shape, dtype=dtype)
+input_label = torch.randn(input_shape, dtype=dtype)
+input_dout = torch.randn(input_shape, dtype=dtype) # Gradient from downstream
 
-    # Example with 'sum' reduction
-    out_grad_sum = kernel_gen_ops.mse_loss_grad(
-        torch.randn(input_shape, dtype=dtype),
-        torch.randn(input_shape, dtype=dtype),
-        torch.randn(input_shape, dtype=dtype),
-        "sum"
-    )
-    print("Output gradient shape (sum reduction):", out_grad_sum.shape)
+# 使用 mse_loss_grad 计算反向梯度
+out_grad = kernel_gen_ops.mse_loss_grad(input_dout, input_predict, input_label, reduction)
+
+# Example with 'sum' reduction
+out_grad_sum = kernel_gen_ops.mse_loss_grad(
+    torch.randn(input_shape, dtype=dtype),
+    torch.randn(input_shape, dtype=dtype),
+    torch.randn(input_shape, dtype=dtype),
+    "sum"
+)
+```
 
 ## 约束与限制
 - **功能维度**
   * 数据格式支持：**ND**。
-  * 'gradOutput`、`self`（预测值）、`target`（目标值）和 `out` 的形状和数据类型必须一致。
-  * 'gradOutput`、`self`、`target` 的数据类型支持 **FLOAT16**、**FLOAT**、**BFLOAT16**、**INT32**、**INT64**、**DOUBLE**、**INT8** (实际支持取决于 NPU 硬件)。
-  * 'reduction` 必须是字符串 `"none"`、`"mean"` 或 `"sum"` 之一。
-  * 'reduction` 参数的映射：`"none"` 对应 `0`，`"mean"` 对应 `1`，`"sum"` 对应 `2`。
+  * `gradOutput`、`self`（预测值）、`target`（目标值）和 `out` 的形状和数据类型必须一致。
+  * `gradOutput`、`self`、`target` 的数据类型支持 **FLOAT16**、**FLOAT**、**BFLOAT16**。
+  * `reduction` 必须是字符串 `"none"`、`"mean"` 或 `"sum"` 之一。
+  * `reduction` 参数的映射：`"none"` 对应 `0`，`"mean"` 对应 `1`，`"sum"` 对应 `2`。

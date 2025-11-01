@@ -57,8 +57,8 @@ def equal(input1, input2):
         input2 (Tensor): 第二个输入张量，与 input1 的形状和数据类型必须一致。
 
     返回:
-        bool: 布尔值，表示两个张量的所有对应元素是否完全相等。
-              - 如果所有元素相等，返回 True；
+        bool: 布尔值，表示两个张量的对应元素是否完全相等。
+              - 如果元素相等，返回 True；
               - 否则返回 False。
 
     注意:
@@ -72,21 +72,17 @@ def equal(input1, input2):
 
 ## 使用案例
 
-```
+```python
 import torch
 import kernel_gen_ops
 
 # 创建两个张量
-a = torch.tensor([1.0, 2.0, 3.0], dtype=torch.float32)
-b = torch.tensor([1.0, 2.0, 3.0], dtype=torch.float32)
+input1 = torch.randn(32, 64, dtype=torch.float32)
+input2 = torch.randn(32, 64, dtype=torch.float32)
 
 # 检查它们是否完全相等
-result = kernel_gen_ops.equal(a, b)
-print(result)  # 输出: True
-
-# 不相等的例子
-c = torch.tensor([1.0, 2.0, 3.001], dtype=torch.float32)
-print(kernel_gen_ops.equal(a, c))  # 输出: False
+result = kernel_gen_ops.equal(input1, input2)
+print(result)
 ```
 ## 约束与限制
 

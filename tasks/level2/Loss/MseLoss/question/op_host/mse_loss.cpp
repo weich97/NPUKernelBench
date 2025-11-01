@@ -29,7 +29,7 @@ public:
             .DataType({ge::DT_FLOAT16, ge::DT_FLOAT})
             .Format({ge::FORMAT_ND, ge::FORMAT_ND})
             .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND});
-        this->Attr("reduction").AttrType(OPTIONAL).Int(1); //mean 1, sum 2, none3
+        this->Attr("reduction").AttrType(OPTIONAL).String("mean");
         this->AICore()
             .SetTiling(optiling::TilingFunc);
         this->AICore().AddConfig("ascend910_93")

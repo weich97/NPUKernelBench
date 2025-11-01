@@ -1,0 +1,7 @@
+case_id;input_shape;dtype;dst_type
+0;[1536];float16;float32
+1;[16];float32;int32
+2;[32];int32;int8
+3;[128];int8;bool
+4;[256];bool;int8
+5;[512];bfloat16;float32

@@ -18,14 +18,14 @@ def get_inputs(param, device=None):
 
     # Need to generate mean and rstd consistent with DeepNorm forward pass
     # DeepNorm: x_add = x * alpha + gx
-    x_add = x * alpha + gx
+    x_add = x.to(torch.float32) * alpha + gx.to(torch.float32)
     
     # Normalization typically over the last `len(normalized_shape)` dimensions
     reduction_dims = tuple(range(x_add.dim() - len(normalized_shape), x_add.dim()))
     
-    mean = x_add.mean(dim=reduction_dims, keepdim=True).to(device=device, dtype=dtype)
+    mean = x_add.mean(dim=reduction_dims, keepdim=True)
     variance = (x_add - mean).pow(2).mean(dim=reduction_dims, keepdim=True)
-    rstd = torch.rsqrt(variance + epsilon).to(device=device, dtype=dtype)
+    rstd = torch.rsqrt(variance + epsilon)
 
     # Ensure mean and rstd have broadcastable shapes for the grad op if needed
     # Usually they will have `1` in the normalized dimensions.

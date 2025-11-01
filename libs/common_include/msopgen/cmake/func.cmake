@@ -15,8 +15,13 @@ endfunction()
 function(opbuild)
   message(STATUS "Opbuild generating sources")
   cmake_parse_arguments(OPBUILD "" "OUT_DIR;PROJECT_NAME;ACCESS_PREFIX;ENABLE_SOURCE" "OPS_SRC" ${ARGN})
-  execute_process(COMMAND ${CMAKE_COMPILE} -g -fPIC -shared -std=c++11 ${OPBUILD_OPS_SRC} -D_GLIBCXX_USE_CXX11_ABI=0
-                  -I ${ASCEND_CANN_PACKAGE_PATH}/include -I ${CMAKE_CURRENT_SOURCE_DIR}/../op_kernel
+  execute_process(COMMAND ${CMAKE_COMPILE} -g -fPIC -shared -std=c++14 ${OPBUILD_OPS_SRC} -D_GLIBCXX_USE_CXX11_ABI=0
+                  -I ${ASCEND_CANN_PACKAGE_PATH}/include
+                  -I ${ASCEND_CANN_PACKAGE_PATH}/include/external
+                  -I ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/platform
+                  -I ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/runtime
+                  -I ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/msprof
+                  -I ${CMAKE_CURRENT_SOURCE_DIR}/../op_kernel
                   -L ${ASCEND_CANN_PACKAGE_PATH}/lib64 -lexe_graph -lregister -ltiling_api
                   -o ${OPBUILD_OUT_DIR}/libascend_all_ops.so
                   RESULT_VARIABLE EXEC_RESULT

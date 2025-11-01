@@ -2,7 +2,7 @@
 #include "register/op_def_registry.h"
 
 namespace optiling {
-const uint32_t BLOCK_DIM = 8;
+const uint32_t BLOCK_DIM = 48;
 const uint32_t TILE_NUM = 8;
 static ge::graphStatus TilingFunc(gert::TilingContext *context)
 {

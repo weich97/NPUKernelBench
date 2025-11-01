@@ -24,7 +24,7 @@ target_compile_options(${TARGET} PRIVATE
     -fstack-protector-strong
     -fstack-protector-all
     -O2
-    -std=c++11
+    -std=c++14
     -fvisibility-inlines-hidden
     -fvisibility=hidden
 )

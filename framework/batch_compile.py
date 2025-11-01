@@ -119,10 +119,17 @@ def prepare_source_files(task_obj: TaskObject, logger):
 
         task_obj.parse_gen_content()
 
-        files_to_write = [
-            (f"op_host/{task_obj.kernel_name}.cpp", task_obj.tiling_content),
-            (f"op_kernel/{task_obj.kernel_name}.cpp", task_obj.kernel_content)
-        ]
+        if not config.kernel_only_mode:
+            files_to_write = [
+                (f"op_host/{task_obj.kernel_name}_tiling.h", task_obj.tiling_def),
+                (f"op_host/{task_obj.kernel_name}.cpp", task_obj.tiling_content),
+                (f"op_kernel/{task_obj.kernel_name}.cpp", task_obj.kernel_content)
+            ]
+        else:
+            files_to_write = [
+                (f"op_host/{task_obj.kernel_name}.cpp", task_obj.tiling_content),
+                (f"op_kernel/{task_obj.kernel_name}.cpp", task_obj.kernel_content)
+            ]
 
         for file_name, content in files_to_write:
             if not content:
@@ -130,7 +137,7 @@ def prepare_source_files(task_obj: TaskObject, logger):
             safe_write_file(os.path.join(src_path, file_name), content)
     else:
         # Copy existing source files
-        if config.compile.mode == "cann-ops":
+        if not config.kernel_only_mode:
             ops_src = task_obj.fake_path
             ops_dst = f"{src_path}/src/ops/{task_obj.kernel_name}"
             shutil.copytree(ops_src, ops_dst, dirs_exist_ok=True)

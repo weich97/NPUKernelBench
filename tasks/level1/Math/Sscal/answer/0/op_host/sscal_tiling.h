@@ -1,0 +1,19 @@
+#ifndef SSCAL_TILING_H
+#define SSCAL_TILING_H
+#include "register/tilingdata_base.h"
+
+namespace optiling {
+
+constexpr static int MAX_ARRAY_NUM = 48;
+
+BEGIN_TILING_DATA_DEF(SscalTilingData)
+TILING_DATA_FIELD_DEF(uint32_t, n);
+TILING_DATA_FIELD_DEF(uint32_t, useCoreNum);
+TILING_DATA_FIELD_DEF_ARR(uint32_t, MAX_ARRAY_NUM, startOffset);
+TILING_DATA_FIELD_DEF_ARR(uint32_t, MAX_ARRAY_NUM, calNum);
+TILING_DATA_FIELD_DEF(float, alpha);
+END_TILING_DATA_DEF;
+
+REGISTER_TILING_DATA_CLASS(Sscal, SscalTilingData)
+} // namespace optiling
+#endif // SSCAL_TILING_H

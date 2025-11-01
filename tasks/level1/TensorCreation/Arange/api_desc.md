@@ -22,12 +22,12 @@ def arange(start, end, step=1):
     实现自定义arange操作，用于生成一个范围内的序列张量。
     
     参数:
-        start (float 或 int): 序列的起始值（包含）。
-        end (float 或 int): 序列的结束值（不包含）。
-        step (float 或 int, 可选): 步长，默认为1。不能为0。
+        start: 序列的起始值（包含）。
+        end: 序列的结束值（不包含）。
+        step: 步长，默认为1。不能为0。
         
     返回:
-        Tensor: 包含从start到end（不包括end），以step为步长的1维张量。数据类型为float32，数据格式支持ND。
+        Tensor: 包含从start到end（不包括end），以step为步长的1维张量。
     
     注意:
         - step 不能为0；
@@ -38,7 +38,7 @@ def arange(start, end, step=1):
 ```
 ## 使用案例
 
-```
+```python
 import torch
 import kernel_gen_ops
 

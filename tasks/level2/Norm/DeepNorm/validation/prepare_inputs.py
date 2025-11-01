@@ -17,7 +17,7 @@ def get_init_inputs(param, device=None):
     """
     Extract initialization parameters (beta, gamma, alpha, epsilon) for the model.
     """
-    normalized_shape = eval(param.get('normalized_shape', '[1]')) # Assuming beta/gamma shape comes from here
+    normalized_shape = eval(param.get('normalized_shape', '[1]'))
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
     alpha = param.get('alpha', 0.3)

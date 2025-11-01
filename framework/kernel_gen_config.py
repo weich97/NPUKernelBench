@@ -51,7 +51,6 @@ class EvalConfig:
     gpu_devices: List[int]
     max_rel_error: float
     max_abs_error: float
-    only_golden_eval: bool
     timeout_perf: int
     timeout_precision: int
 
@@ -71,6 +70,7 @@ class FullConfig:
     n_sample: int
     n_case: int
     static_shape_mode: bool
+    kernel_only_mode: bool
     active_stages: List
 
 
@@ -131,15 +131,30 @@ class ConfigManager:
 
 def configure_testing_mode(args, config_):
     """Configure testing mode based on arguments."""
+    if args.run_dir:
+        config_.run_dir = args.run_dir
+
+    if args.test_mode:
+        config_.static_shape_mode = (args.test_mode == 'static')
+
+    if args.template_mode:
+        config_.kernel_only_mode = (args.template_mode == 'kernel_only')
+
+    if args.n_sample:
+        config_.n_sample = args.n_sample
+
+    if args.n_case:
+        config_.n_case = args.n_case
+
     if args.chat:
         config_.chat.active = True
-        config_.compile.mode = "msopgen"
         config_.static_shape_mode = True
-        config_.eval.only_golden_eval = False
-    elif config_.compile.mode:
+    else:
         config_.chat.active = False
         config_.n_sample = 1
-        config_.compile.mode = args.compile_mode
+        if not config_.kernel_only_mode:
+            config_.n_case = 1
+            config_.compile.mode = "cann-ops"
 
 
 # Create global configuration manager instance

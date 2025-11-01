@@ -3,10 +3,11 @@ src_dir: "src"
 log_dir: "log"
 build_dir: "build"
 encoding: "utf-8"
-n_sample: 100
+n_sample: 1
 n_case: 1
 show_result_log_file: False
-static_shape_mode: True
+static_shape_mode: False
+kernel_only_mode: False
 
 chat:
   active: True
@@ -15,17 +16,17 @@ chat:
   api_max_retries: 3
   api_retry_delay: 5
   # vllm模型路径
-  model_path: "path_to_model_path"
+  model_path: ""
   num_processes: 16
-  timeout: 2400
+  timeout: 1200
   temperature: 0.7
   max_tokens: 16384
 
 compile:
-  mode: "cann-ops"
+  mode: "msopgen"
   common_dir: "libs/common_include"
   timeout: 400
-  num_processes: 120
+  num_processes: 128
 
 eval:
   verbose: True
@@ -36,9 +37,5 @@ eval:
   num_correct_trials: 1
   max_rel_error: 0.001
   max_abs_error: 0.001
-  only_golden_eval: False
   timeout_perf: 60
   timeout_precision: 300
-
-
-

@@ -8,8 +8,16 @@ def parse_arguments():
 
     parser.add_argument('-chat', '--chat', action='store_true',
                         help='Enable chat-based code generation')
-    parser.add_argument('-cm', '--compile-mode', type=str, default="cann-ops",
-                        choices=['cann-ops', 'msopgen'], help='Compilation mode')
+    parser.add_argument('-run_dir', '--run-dir', type=str, default=None, 
+                        help='Specifies the directory for the experiment run')    
+    parser.add_argument('-n_sample', '--n-sample', type=int, default=None,
+                        help='number of samples in chat mode')
+    parser.add_argument('-n_case', '--n-case', type=int, default=None,
+                        help='number of cases in chat mode')
+    parser.add_argument('-test_mode', '--test-mode', type=str, default=None,
+                        choices=['static', 'dynamic'], help='Test shape mode')
+    parser.add_argument('-template_mode', '--template-mode', type=str, default=None,
+                        choices=['kernel_only', 'full'], help='Template mode')
     parser.add_argument('-stages', '--stages', nargs='+',
                         choices=['perf', 'precision', 'code_gen', 'compile'],
                         default=['code_gen', 'compile', 'precision'],

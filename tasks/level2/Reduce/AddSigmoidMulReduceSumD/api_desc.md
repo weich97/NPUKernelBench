@@ -46,17 +46,15 @@ def add_sigmoid_mul_reduce_sum_d(add_0_input0, add_0_input1, mul_0_input1, mult_
 
 ## 使用案例
 
-```
+```python
 import torch
 import kernel_gen_ops  # 假设你将其封装为算子库
 
-shape = (32, 128)
-
-add_0_input0 = torch.rand(shape, dtype=torch.float32)
-add_0_input1 = torch.rand(shape, dtype=torch.float32)
-mul_0_input1 = torch.rand(shape, dtype=torch.float32)
-mult_1_input1 = torch.rand(shape, dtype=torch.float32)
-mult_2_input1 = torch.rand(shape, dtype=torch.float32)
+add_0_input0 = torch.randn(8, 2048, dtype=torch.float32)
+add_0_input1 = torch.randn(8, 2048, dtype=torch.float32)
+mul_0_input1 = torch.randn(8, 2048, dtype=torch.float32)
+mult_1_input1 = torch.randn(8, 2048, dtype=torch.float32)
+mult_2_input1 = torch.randn(8, 2048, dtype=torch.float32)
 
 result = kernel_gen_ops.add_sigmoid_mul_reduce_sum_d(
     add_0_input0, add_0_input1, mul_0_input1, mult_1_input1, mult_2_input1

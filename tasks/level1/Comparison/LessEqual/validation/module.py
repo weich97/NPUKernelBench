@@ -12,7 +12,7 @@ class Model(nn.Module):
 
     def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
         output = torch.less_equal(input1, input2)
-        output = output.to(dtype=input1.dtype)
+        output = output
         return output
 
 class ModelNew(nn.Module):
@@ -23,5 +23,5 @@ class ModelNew(nn.Module):
         import kernel_gen_ops
         # print(kernel_gen_ops.equal(input1, input2))
         result = kernel_gen_ops.less_equal(input1, input2)
-        result = result.to(dtype=input1.dtype)
+        result = result
         return result

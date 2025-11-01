@@ -39,34 +39,35 @@ def deep_norm(x, gx, beta, gamma, alpha, epsilon):
                       - 第二个张量 (`rstdOut`) 是计算过程中的标准差的倒数。
                       - 第三个张量 (`yOut`) 是 DeepNorm 的最终输出。
     """
-    import torch
-    import kernel_gen_ops
 
-    # 创建输入张量和参数
-    input_shape = [3, 1, 4]
-    normalized_shape = [4] # Assuming normalization over the last dimension
-    dtype = torch.float32
-    alpha = 0.3
-    epsilon = 1e-6
+```
+## 使用案例
+```python
+import torch
+import kernel_gen_ops
 
-    x = torch.randn(input_shape, dtype=dtype)
-    gx = torch.randn(input_shape, dtype=dtype)
-    beta = torch.randn(normalized_shape, dtype=dtype)
-    gamma = torch.randn(normalized_shape, dtype=dtype)
+# 创建输入张量和参数
+input_shape = [3, 1, 4]
+normalized_shape = [4] # Assuming normalization over the last dimension
+dtype = torch.float32
+alpha = 0.3
+epsilon = 1e-6
 
-    # 使用 deep_norm 执行操作
-    mean_out, rstd_out, y_out = kernel_gen_ops.deep_norm(x, gx, beta, gamma, alpha, epsilon)
+x = torch.randn(input_shape, dtype=dtype)
+gx = torch.randn(input_shape, dtype=dtype)
+beta = torch.randn(normalized_shape, dtype=dtype)
+gamma = torch.randn(normalized_shape, dtype=dtype)
 
-    print("Mean Output shape:", mean_out.shape)
-    print("RSTD Output shape:", rstd_out.shape)
-    print("DeepNorm Output (y_out) shape:", y_out.shape)
+# 使用 deep_norm 执行操作
+mean_out, rstd_out, y_out = kernel_gen_ops.deep_norm(x, gx, beta, gamma, alpha, epsilon)
+```
 
 ## 约束与限制
 - **功能维度**
   * 数据格式支持：**ND**。
   * 张量形状维度不高于**8维**。
-  * 'x`、`gx`、`yOut` 的形状和数据类型必须一致。
-  * 'beta` 和 `gamma` 的形状必须与**归一化维度**一致。
-  * 'meanOut` 和 `rstdOut` 的形状应与 `x` 的形状匹配，但在归一化维度上为 **1**。
-  * 'x`、`gx`、`beta`、`gamma` 的数据类型支持 **FLOAT16**、**FLOAT**、**BFLOAT16**、**INT32**、**INT64**、**DOUBLE**、**INT8** (实际支持取决于 NPU 硬件)。
-  * 'alpha` 和 `epsilon` 必须为**浮点数**。
+  * `x`、`gx`、`yOut` 的形状和数据类型必须一致。
+  * `beta` 和 `gamma` 的形状必须与**归一化维度**一致。
+  * `meanOut` 和 `rstdOut` 的形状应与 `x` 的形状匹配，但在归一化维度上为 **1**。
+  * `x`、`gx`、`beta`、`gamma` 的数据类型支持 **FLOAT16**、**FLOAT**、**BFLOAT16**。
+  * `alpha` 和 `epsilon` 必须为**浮点数**。

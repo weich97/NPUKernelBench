@@ -12,6 +12,15 @@ add_library(cust_op_proto SHARED
     ${ops_srcs}
     ${ASCEND_AUTOGEN_PATH}/op_proto.cc
 )
+target_include_directories(cust_op_proto PRIVATE
+        ${ASCEND_CANN_PACKAGE_PATH}/include
+        ${ASCEND_CANN_PACKAGE_PATH}/include/external
+        ${ASCEND_CANN_PACKAGE_PATH}/include/experiment
+        ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/platform
+        ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/metadef
+        ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/runtime
+        ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/msprof
+)
 target_compile_definitions(cust_op_proto PRIVATE OP_PROTO_LIB)
 target_compile_options(cust_op_proto PRIVATE
         -fvisibility=hidden
@@ -36,6 +45,15 @@ set_target_properties(cust_op_proto PROPERTIES OUTPUT_NAME
 )
 file(GLOB fallback_src ${ASCEND_AUTOGEN_PATH}/fallback_*.cpp)
 add_library(cust_optiling SHARED ${ops_srcs})
+target_include_directories(cust_optiling PRIVATE
+        ${ASCEND_CANN_PACKAGE_PATH}/include
+        ${ASCEND_CANN_PACKAGE_PATH}/include/external
+        ${ASCEND_CANN_PACKAGE_PATH}/include/experiment
+        ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/platform
+        ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/metadef
+        ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/runtime
+        ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/msprof
+)
 if (${fallback_src})
     target_sources(cust_optiling PRIVATE ${fallback_src})
 endif()

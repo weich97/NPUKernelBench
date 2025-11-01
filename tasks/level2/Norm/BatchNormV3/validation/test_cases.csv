@@ -1,0 +1,11 @@
+case_id;input_shape;num_features;dtype;affine;training;momentum;epsilon
+0;[1, 2, 4];2;float32;True;True;0.1;1e-5
+1;[128, 64, 32, 32];64;float16;True;True;0.1;1e-5
+2;[256, 128, 16, 16];128;float16;False;True;0.1;1e-5
+3;[64, 32, 8, 8];32;bfloat16;True;False;0.1;1e-5
+4;[1, 512];512;float32;True;True;0.1;1e-5
+5;[10, 20];20;float16;True;False;0.1;1e-5
+6;[32, 3, 224, 224];3;float32;True;True;0.01;1e-5
+7;[1, 1024];1024;float16;True;True;0.1;1e-6
+8;[1, 512, 7, 7];512;float32;True;False;0.05;1e-5
+9;[8, 16, 16, 16];16;float16;True;True;0.1;1e-5

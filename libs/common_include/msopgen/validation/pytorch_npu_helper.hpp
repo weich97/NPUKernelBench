@@ -151,6 +151,24 @@ inline void *GetOpApiFuncAddr(const char *apiName)
 //    return GetOpApiFuncAddrInLib(opApiHandler, GetOpApiLibName(), apiName);
 }
 
+inline aclScalar *ConvertTensorToAclScaler(const at::Tensor &tensor)
+{
+    const at::Tensor *aclInput = &tensor;
+    at::ScalarType scalarType = tensor.scalar_type();
+
+    static const auto aclCreateScalar = GET_OP_API_FUNC(aclCreateScalar);
+    if (aclCreateScalar == nullptr) {
+        return nullptr;
+    }
+
+    aclDataType aclScalarType = kATenScalarTypeToAclDataTypeTable[static_cast<int64_t>(scalarType)];
+    TORCH_CHECK(aclScalarType != ACL_DT_UNDEFINED,
+                std::string(c10::toString(scalarType)) + " has not been supported")
+
+    aclScalar* scalarValue = aclCreateScalar(aclInput->data_ptr(), aclScalarType);
+    return scalarValue;
+}
+
 inline c10::Scalar ConvertTensorToScalar(const at::Tensor &tensor)
 {
     c10::Scalar expScalar;

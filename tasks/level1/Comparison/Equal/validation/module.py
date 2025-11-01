@@ -4,7 +4,6 @@ import torch
 import torch_npu
 from torch_npu.contrib import transfer_to_npu
 import torch.nn as nn
-import math
 
 class Model(nn.Module):
     def __init__(self):
@@ -12,7 +11,7 @@ class Model(nn.Module):
 
     def forward(self, input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
         output = torch.eq(input1, input2)
-        output = output.to(dtype=input1.dtype)
+        output = output.to(dtype=torch.int)
         return output
 
 class ModelNew(nn.Module):
@@ -23,5 +22,5 @@ class ModelNew(nn.Module):
         import kernel_gen_ops
         # print(kernel_gen_ops.equal(input1, input2))
         result = kernel_gen_ops.equal(input1, input2)
-        result = result.to(dtype=input1.dtype)
+        result = result.to(dtype=torch.int)
         return result

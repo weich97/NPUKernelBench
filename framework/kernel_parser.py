@@ -34,14 +34,14 @@ class KernelParser:
         contents = []
 
         # Define tags to extract based on mode
-        if config.static_shape_mode:
-            tags = [('kernel_impl', 'kernel_impl')]
+        if config.kernel_only_mode:
+            tags = ["<kernel_impl>(.*?)</kernel_impl>"]
         else:
-            tags = [('tiling_cpp', 'tiling_cpp'), ('kernel_impl', 'kernel_impl')]
+            tags = [f"================== op_host/{self.kernel_name}_tiling.h ==================\n```cpp\n(.*?)\n```", 
+                    f"================== op_host/{self.kernel_name}.cpp ==================\n```cpp\n(.*?)\n```",
+                    f"================== op_kernel/{self.kernel_name}.cpp ==================\n```cpp\n(.*?)\n```"]
 
-        for start_tag, end_tag in tags:
-            # Match content within XML-like tags
-            pattern = rf'<{start_tag}>(.*?)</({end_tag})>'
+        for pattern in tags:
             match = re.search(pattern, gen_content, re.DOTALL)
 
             if match:
@@ -57,16 +57,17 @@ class KernelParser:
 
                 contents.append(content)
             else:
+                print(gen_content)
                 contents.append(None)
 
         # Validate that all required content was found
-        for (start_tag, end_tag), content in zip(tags, contents):
+        for pattern, content in zip(tags, contents):
             if content is None or len(content) == 0:
-                raise RuntimeError(f"Empty or missing content for tag <{start_tag}></{end_tag}>")
+                raise RuntimeError(f"Empty or missing content for tag {pattern}")
 
         # Adjust return format for dynamic shape mode
-        if config.static_shape_mode:
-            contents = [None] + contents
+        if config.kernel_only_mode:
+            contents = [None, None] + contents
 
         return tuple(contents)
 

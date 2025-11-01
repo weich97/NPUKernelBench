@@ -67,44 +67,45 @@ def deep_norm_grad(dy, x, gx, gamma, mean, rstd, alpha):
                       - 第三个张量 (`dbetaOut`) 是对 `beta` 的梯度。
                       - 第四个张量 (`dgammaOut`) 是对 `gamma` 的梯度。
     """
-    import torch
-    import kernel_gen_ops
+```
+## 使用案例
 
-    # 假设输入和参数
-    input_shape = [3, 1, 4]
-    normalized_shape = [4]
-    dtype = torch.float32
-    alpha = 0.3
-    epsilon = 1e-6
+```python
+import torch
+import kernel_gen_ops
 
-    # 模拟 DeepNorm 前向传播的输入和中间输出
-    dy = torch.randn(input_shape, dtype=dtype)
-    x = torch.randn(input_shape, dtype=dtype)
-    gx = torch.randn(input_shape, dtype=dtype)
-    beta = torch.randn(normalized_shape, dtype=dtype) # beta is not input to grad, but its shape is needed
-    gamma = torch.randn(normalized_shape, dtype=dtype)
+# 假设输入和参数
+input_shape = [3, 1, 4]
+normalized_shape = [4]
+dtype = torch.float32
+alpha = 0.3
+epsilon = 1e-6
 
-    # Calculate mean and rstd from a simulated DeepNorm forward pass
-    x_add = x * alpha + gx
-    reduction_dims = tuple(range(x_add.dim() - len(normalized_shape), x_add.dim()))
-    mean = x_add.mean(dim=reduction_dims, keepdim=True)
-    variance = (x_add - mean).pow(2).mean(dim=reduction_dims, keepdim=True)
-    rstd = torch.rsqrt(variance + epsilon)
+# 模拟 DeepNorm 前向传播的输入和中间输出
+dy = torch.randn(input_shape, dtype=dtype)
+x = torch.randn(input_shape, dtype=dtype)
+gx = torch.randn(input_shape, dtype=dtype)
+beta = torch.randn(normalized_shape, dtype=dtype) # beta is not input to grad, but its shape is needed
+gamma = torch.randn(normalized_shape, dtype=dtype)
 
-    # 使用 deep_norm_grad 计算反向梯度
-    dx, dgx, dbeta, dgamma = kernel_gen_ops.deep_norm_grad(dy, x, gx, gamma, mean, rstd, alpha)
+# Calculate mean and rstd from a simulated DeepNorm forward pass
+x_add = x * alpha + gx
+reduction_dims = tuple(range(x_add.dim() - len(normalized_shape), x_add.dim()))
+mean = x_add.mean(dim=reduction_dims, keepdim=True)
+variance = (x_add - mean).pow(2).mean(dim=reduction_dims, keepdim=True)
+rstd = torch.rsqrt(variance + epsilon)
 
-    print("dx shape:", dx.shape)
-    print("dgx shape:", dgx.shape)
-    print("dbeta shape:", dbeta.shape)
-    print("dgamma shape:", dgamma.shape)
+# 使用 deep_norm_grad 计算反向梯度
+dx, dgx, dbeta, dgamma = kernel_gen_ops.deep_norm_grad(dy, x, gx, gamma, mean, rstd, alpha)
+
+```
 
 ## 约束与限制
 - **功能维度**
   * 数据格式支持：**ND**。
   * 张量形状维度不高于**8维**。
-  * 'dy`、`x`、`gx`、`dxOut`、`dgxOut` 的形状和数据类型必须一致。
-  * 'gamma`、`dbetaOut`、`dgammaOut` 的形状和数据类型必须一致。
-  * 'mean` 和 `rstd` 的形状应与 `x` 匹配，但在归一化维度上为 **1**。
-  * 'dy`、`x`、`gx`、`gamma`、`mean`、`rstd` 的数据类型支持 **FLOAT16**、**FLOAT**、**BFLOAT16**、**INT32**、**INT64**、**DOUBLE**、**INT8** (实际支持取决于 NPU 硬件)。
-  * 'alpha` 必须为**浮点数**。
+  * `dy`、`x`、`gx`、`dxOut`、`dgxOut` 的形状和数据类型必须一致。
+  * `gamma`、`dbetaOut`、`dgammaOut` 的形状和数据类型必须一致。
+  * `mean` 和 `rstd` 的形状应与 `x` 匹配，但在归一化维度上为 **1**。
+  * `dy`、`x`、`gx`、`gamma`的数据类型支持 **FLOAT16**、**FLOAT**、**BFLOAT16**。
+  * `rstd`、`mean`的数据类型支持**FLOAT32**。

@@ -1,0 +1,16 @@
+case_id;input_shape;normalized_shape;dtype;dsum_type
+0;[128, 256];[256];float16;None
+1;[256, 384];[384];float16;present
+2;[64, 128];[128];bfloat16;None
+3;[512, 128];[128];bfloat16;present
+4;[128, 384];[384];float32;None
+5;[1, 2, 8];[8];float32;present
+6;[4096, 2048];[2048];float16;None
+7;[8, 1024, 512];[512];float32;present
+8;[32, 64, 128];[128];float16;None
+9;[64, 64];[64];float32;present
+10;[2, 3, 4, 5];[4, 5];float32;None
+11;[2, 3, 4, 5, 6];[5, 6];float16;present
+12;[2, 3, 4];[4];float32;None
+13;[2, 3, 4, 5];[5];float32;present
+14;[8, 64];[64];bfloat16;present

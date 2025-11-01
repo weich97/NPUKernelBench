@@ -536,7 +536,7 @@ def safe_kill_process(process):
 
 def _signal_handler(signum, frame):
     """Handle termination signals gracefully."""
-    sys.exit(0)
+    os._exit(0)
 
 
 def _process_wrapper(target_func, args, conn):
@@ -636,6 +636,7 @@ def batch_execute_tests_base(
     """
     Execute batch processing with enhanced resource management and fault tolerance.
     """
+    mp.set_start_method("spawn", force=True)
     if not task_obj_list:
         return []
 

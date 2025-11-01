@@ -16,12 +16,12 @@ class Model(nn.Module):
             eps=epsilon,
             elementwise_affine=True
         )
-        self.layer_norm.weight.data = gamma
-        self.layer_norm.bias.data = beta
+        self.layer_norm.weight.data = gamma.float()
+        self.layer_norm.bias.data = beta.float()
         self.additional_out = additional_out
 
     def forward(self, x1: torch.Tensor, x2: torch.Tensor, bias: torch.Tensor) -> List[torch.Tensor]:
-        x = x1 + x2
+        x = x1.float() + x2.float()
         if bias is not None:
             x = x + bias
         if self.additional_out:

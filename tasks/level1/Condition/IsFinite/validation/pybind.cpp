@@ -18,7 +18,7 @@
  *
  * 注意：替换时需保持函数签名和逻辑不变，仅修改上述指定的名称，这一替换过程将在batch_compile.py文件中自动被执行
  */
-std::vector<at::Tensor> is_finite(at::Tensor x)
+at::Tensor is_finite(at::Tensor x)
 {
     // 1. Create an output tensor 'y_bool_output' with boolean data type.
     //    This is because aclnnIsFinite is expected to produce a boolean result.
@@ -31,8 +31,7 @@ std::vector<at::Tensor> is_finite(at::Tensor x)
     //    We convert it to the same dtype as the input 'x' for consistency.
     at::Tensor y_numeric_output = y_bool_output.to(x.dtype());
 
-    std::vector<at::Tensor> result = {y_numeric_output};
-    return result;
+    return y_numeric_output;
 }
 
 

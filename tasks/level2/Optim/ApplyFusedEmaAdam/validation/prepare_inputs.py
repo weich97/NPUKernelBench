@@ -1,5 +1,5 @@
 import torch
-
+from framework.utils import check_precision
 
 def get_inputs(param, device=None):
     """
@@ -40,3 +40,10 @@ def get_init_inputs(param, device=None):
     biasCorrection = bool(param.get('biasCorrection', 'True'))
     weightDecay = param.get('weightDecay', 0.0)
     return lr, emaDecay, beta1, beta2, eps, mode, biasCorrection, weightDecay
+
+def custom_check_precision(param, outputs, outputs_new):
+    dtype_str = param.get('dtype', 'float16')
+    if dtype_str == 'bfloat16':
+        return check_precision(outputs, outputs_new, max_abs_error=0.01, max_rel_error=0.01)
+    else:
+        return check_precision(outputs, outputs_new, max_abs_error=0.001, max_rel_error=0.001)

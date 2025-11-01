@@ -26,12 +26,6 @@ std::vector<at::Tensor> mse_loss_grad(at::Tensor gradOutput, at::Tensor self_inp
     // Convert reduction string to const char*
     const char* reduction_cstr = reduction.c_str();
 
-    // EXEC_NPU_CMD takes the actual NPU operator name, `aclnnMseLossBackward`.
-    // The arguments must match the `aclnnMseLossBackwardGetWorkspaceSize` signature:
-    // const aclTensor* gradOutput, const aclTensor* self, const aclTensor* target,
-    // int64_t reduction, aclTensor* out
-    // Note: The reduction parameter for aclnn is int64_t, usually mapping to an enum (0 for none, 1 for mean, 2 for sum).
-    // We need to convert the string reduction to an int64_t enum value.
     int64_t reduction_int;
     if (reduction == "none") {
         reduction_int = 0;

@@ -13,9 +13,9 @@ def get_inputs(param, device=None):
 
     dtype = getattr(torch, dtype_str)
 
-    start = torch.tensor(start, device=device, dtype=dtype)
-    end = torch.tensor(end, device=device, dtype=dtype)
-    step = torch.tensor(step, device=device, dtype=dtype)
+    start = torch.tensor(start, dtype=dtype, device=device)
+    end = torch.tensor(end, dtype=dtype)
+    step = torch.tensor(step, dtype=dtype)
 
     return (start, end, step)
 

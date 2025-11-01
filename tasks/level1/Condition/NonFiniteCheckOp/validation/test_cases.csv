@@ -1,0 +1,9 @@
+case_id;input_shape;dtype;contains_non_finite
+0;[[48, 1024, 128],[48, 1024, 128]];float32;True
+1;[[10,10],[20,10]];bfloat16;False
+2;[[1,1,2,2,2],[5,6]];float32;True
+3;[[128,256],[33]];bfloat16;True
+4;[[1,3,10,10],[22,55]];float16;False
+5;[[1],[1]];float32;True
+6;[[1000],[100]];float32;True
+7;[[5,5,5,5],[6,6]];float16;False

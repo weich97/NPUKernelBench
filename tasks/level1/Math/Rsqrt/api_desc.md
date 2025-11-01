@@ -35,7 +35,7 @@ def rsqrt(x):
 
 ## 使用案例
 
-```
+```python
 import torch
 import kernel_gen_ops
 

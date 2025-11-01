@@ -6,7 +6,7 @@ target_compile_options(intf_pub INTERFACE
     -fvisibility-inlines-hidden
     $<$<CONFIG:Release>:-O2>
     $<$<CONFIG:Debug>:-O0 -g>
-    $<$<COMPILE_LANGUAGE:CXX>:-std=c++11>
+    $<$<COMPILE_LANGUAGE:CXX>:-std=c++14>
     $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:Debug>>:-ftrapv -fstack-check>
     $<$<COMPILE_LANGUAGE:C>:-pthread -Wfloat-equal -Wshadow -Wformat=2 -Wno-deprecated -Wextra>
     $<IF:$<VERSION_GREATER:${CMAKE_C_COMPILER_VERSION},4.8.5>,-fstack-protector-strong,-fstack-protector-all>

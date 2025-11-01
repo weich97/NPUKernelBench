@@ -2,6 +2,6 @@ case_id;batch_shape;num_rows;num_columns;dtype
 0;[48];128;128;float16
 1;[32];64;64;float32
 2;[96];256;256;float32
-3;[64];512;512;float16
+3;[64];512;512;int32
 4;[32];16;32;float16
-5;[48];256;512;float32
+5;[48];256;512;int32

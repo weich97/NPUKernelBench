@@ -39,14 +39,10 @@ def select_reduce_max_d_sub_exp_reduce_sum_d_real_div(sel, input1, input2):
         
 
     返回:
-        Tuple[Tensor, Tensor]:
-            - softmax_result: 在选择结果上按最后一维计算得到的 softmax。
-            - sigmoid_result: 对中心化后的选择结果执行 sigmoid 激活。
+        Tensor: 输出张量，形状与input1一致.
 
     注意:
         - 所有输入张量的形状必须一致；
-        - 仅在最后一维（axis=-1）上执行 softmax/sigmoid 操作；
-        - 本函数实现了数值稳定版本的 softmax，即减去最大值后再执行 exp；
         - 可用于注意力机制、分类预测中的选择性归一化处理。
     """
 
@@ -55,7 +51,7 @@ def select_reduce_max_d_sub_exp_reduce_sum_d_real_div(sel, input1, input2):
 
 ## 使用案例
 
-```
+```python
 import torch
 import kernel_gen_ops
 
@@ -65,7 +61,7 @@ input2 = torch.randn(2, 4, 8, 16, dtype=torch.float32)
 sel = torch.randint(0, 2, (2, 4, 8, 16), dtype=torch.bool)  # 随机布尔 mask
 
 # 执行计算
-softmax_result, sigmoid_result = kernel_gen_ops.select_reduce_max_d_sub_exp_reduce_sum_d_real_div(sel, input1, input2)
+result = kernel_gen_ops.select_reduce_max_d_sub_exp_reduce_sum_d_real_div(sel, input1, input2)
 
 ```
 ## 约束与限制

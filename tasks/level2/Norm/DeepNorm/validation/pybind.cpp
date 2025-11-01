@@ -34,12 +34,6 @@ std::vector<at::Tensor> deep_norm(at::Tensor x, at::Tensor gx, at::Tensor beta, 
     at::Tensor meanOut = torch::empty(reduced_shape, options);
     at::Tensor rstdOut = torch::empty(reduced_shape, options);
     
-    // EXEC_NPU_CMD takes the actual NPU operator name,
-    // which here is `aclnnDeepNorm` as per your requirement.
-    // The arguments must match the `aclnnDeepNormGetWorkspaceSize` signature:
-    // const aclTensor *x, const aclTensor *gx, const aclTensor *beta, const aclTensor *gamma,
-    // double alphaOptional, double epsilonOptional,
-    // const aclTensor *meanOut, const aclTensor *rstdOut, const aclTensor *yOut
     EXEC_NPU_CMD(aclnnDeepNorm, x, gx, beta, gamma, alphaOptional, epsilonOptional, meanOut, rstdOut, yOut);
 
     std::vector<at::Tensor> result = {meanOut, rstdOut, yOut};

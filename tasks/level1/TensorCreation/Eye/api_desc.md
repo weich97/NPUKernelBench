@@ -12,16 +12,16 @@
 
 
 ```python
-def eye(y, num_rows, num_columns=None, batch_shape=None, dtype=torch.float16, device=None):
+def eye(x, num_rows, num_columns=None, batch_shape=None, dtype=torch.float32):
     """
     实现自定义单位矩阵（或对角矩阵）生成操作。
 
     参数:
+        x: 生成张量的形状, 初始值为zero，大小为 [batch_shape, n, m]。
         n (int): 行数（必选）。生成的张量将有 n 行。
         m (int): 列数（必选）。生成的张量将有 m 列。
         batch_shape: 形状，广播到指定形状。
         dtype (torch.dtype, 可选): 返回张量的数据类型，默认 `torch.float32`。
-        device (torch.device, 可选): 张量创建的设备，如 `'cpu'` 或 `'cuda'`。
 
     返回:
         Tensor: 输出张量，其对角线为 1，其余元素为 0。数据类型和设备根据参数指定。
@@ -41,10 +41,15 @@ import torch
 import kernel_gen_ops
 
 # 创建输入张量
-x = torch.rand(4, 8, 2048, dtype=torch.float32)  # 高维ND张量
+x = torch.zeros(4, 8, 2048, dtype=torch.float32)  # 高维ND张量
 
-# 使用 triu 执行计算
-result = kernel_gen_ops.eye(x)
+num_rows = 8
+num_columns = 2048
+batch_shape = 4
+dtype = float32
+
+# 使用 eye 执行计算
+result = kernel_gen_ops.eye(x, num_rows, num_columns, batch_shape, dtype)
 ```
 ## 约束与限制
 

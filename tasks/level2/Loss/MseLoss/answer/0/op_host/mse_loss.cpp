@@ -1,4 +1,5 @@
 #include <cstring>
+#include <iostream>
 #include "register/op_def_registry.h"
 #include "graph/utils/type_utils.h"
 #include "tiling/platform/platform_ascendc.h"
@@ -10,7 +11,7 @@ namespace optiling {
 
     uint32_t GetSizeOfDataType(gert::TilingContext* context)
     {
-        uint32_t sizeOfDataType;
+        uint32_t sizeOfDataType = 4;
         auto dt = context->GetInputDesc(0)->GetDataType();
         if (dt == 1) {
             sizeOfDataType = 2;
@@ -18,11 +19,24 @@ namespace optiling {
         return sizeOfDataType;
     }
 
+    uint32_t DetermineReductionMode(const char* reduction) {
+        if (strcmp(reduction, "mean") == 0) {
+            return 1;
+        }
+        if (strcmp(reduction, "sum") == 0) {
+            return 2;
+        }
+        if (strcmp(reduction, "none") == 0) {
+            return 3;
+        }
+        return 0;
+    }
+
     uint32_t CalculateAlignedLength(uint32_t totalLength, uint32_t ALIGN_NUM) {
         if (ALIGN_NUM == 0) {
             return totalLength;
         }
-        return (totalLength % ALIGN_NUM != 0) 
+        return (totalLength % ALIGN_NUM != 0)
             ? ((totalLength + ALIGN_NUM - 1) / ALIGN_NUM) * ALIGN_NUM
             : totalLength;
     }
@@ -71,18 +85,19 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context) {
     uint32_t ALIGN_NUM = BLOCK_SIZE / sizeOfDataType;
     uint32_t ub_block_num = (1024 % 2 != 0) ? 1023 : 1024;
 
-    int64_t reduction = *context->GetAttrs()->GetInt(0);
-    tiling.set_mode(reduction);
+    auto reduction = context->GetAttrs()->GetAttrPointer<char>(0);
+    tiling.set_mode(DetermineReductionMode(reduction));
 
     uint32_t totalLengthAligned = CalculateAlignedLength(totalLength, ALIGN_NUM);
     tiling.set_totalLength(totalLength);
 
     context->SetBlockDim(1);
+    std::cout << "### BlockDim = " << context->GetBlockDim() << std::endl;
     auto block_dim = context->GetBlockDim();
 
     uint32_t blockLength, tile_num, tileLength, lastTileLength;
-    CalculateTileParameters(totalLengthAligned, block_dim, ALIGN_NUM, 
-        ub_block_num, blockLength, tile_num, 
+    CalculateTileParameters(totalLengthAligned, block_dim, ALIGN_NUM,
+        ub_block_num, blockLength, tile_num,
         tileLength, lastTileLength);
 
     tiling.set_blockLength(blockLength);
@@ -90,20 +105,17 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context) {
     tiling.set_tileLength(tileLength);
     tiling.set_lastTileLength(lastTileLength);
 
+    std::cout << "### mode = " << tiling.get_mode() << std::endl;
+    std::cout << "### totalLength = " << tiling.get_totalLength() << std::endl;
+    std::cout << "### blockLength = " << tiling.get_blockLength() << std::endl;
+    std::cout << "### tileNum = " << tiling.get_tileNum() << std::endl;
+    std::cout << "### tileLength = " << tiling.get_tileLength() << std::endl;
+    std::cout << "### lastTileLength = " << tiling.get_lastTileLength() << std::endl;
     tiling.SaveToBuffer(context->GetRawTilingData()->GetData(),
         context->GetRawTilingData()->GetCapacity());
     context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
     size_t* currentWorkspace = context->GetWorkspaceSizes(1);
     currentWorkspace[0] = 0;
-    std::cout << "*******************START*******************" << std::endl;
-    std::cout << "coreNum = " << 1 << std::endl;
-    std::cout << "mode = " << tiling.get_mode() << std::endl;
-    std::cout << "totalLength = " << tiling.get_totalLength() << std::endl;
-    std::cout << "blockLength = " << tiling.get_blockLength() << std::endl;
-    std::cout << "tileNum = " << tiling.get_tileNum() << std::endl;
-    std::cout << "tileLength = " << tiling.get_tileLength() << std::endl;
-    std::cout << "lastTileLength = " << tiling.get_lastTileLength() << std::endl;
-    std::cout << "*******************END*******************" << std::endl;
     return ge::GRAPH_SUCCESS;
 }
 }
@@ -129,7 +141,7 @@ public:
             .DataType({ge::DT_FLOAT16, ge::DT_FLOAT})
             .Format({ge::FORMAT_ND, ge::FORMAT_ND})
             .UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND});
-        this->Attr("reduction").AttrType(OPTIONAL).Int(1); //mean 1, sum 2, none3
+        this->Attr("reduction").AttrType(OPTIONAL).String("mean");
         this->AICore()
             .SetTiling(optiling::TilingFunc);
         this->AICore().AddConfig("ascend910_93")

@@ -4,7 +4,7 @@ import torch
 import torch_npu
 from torch_npu.contrib import transfer_to_npu
 import torch.nn as nn
-
+import kernel_gen_ops
 import math
 
 class Model(nn.Module):
@@ -39,5 +39,4 @@ class ModelNew(nn.Module):
         super(ModelNew, self).__init__()
 
     def forward(self, input_tensor: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        import kernel_gen_ops
         return kernel_gen_ops.masked_select_v3(input_tensor, mask)

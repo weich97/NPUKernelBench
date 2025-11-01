@@ -7,14 +7,7 @@ import torch.nn as nn
 
 import torch.nn.functional as F
 
-import torch
-import torch.nn as nn
-
-import torch
-import torch.nn as nn
-
-import torch
-import torch.nn as nn
+import kernel_gen_ops
 
 class Model(nn.Module):
     def __init__(self):
@@ -60,5 +53,4 @@ class ModelNew(nn.Module):
         super(ModelNew, self).__init__()
 
     def forward(self, x: torch.Tensor, seq_lengths: torch.Tensor, seq_dim: int = 1, batch_dim: int = 0) -> torch.Tensor:
-        import kernel_gen_ops
         return kernel_gen_ops.reverse_sequence(x, seq_lengths, seq_dim, batch_dim)

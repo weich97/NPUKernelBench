@@ -1,0 +1,43 @@
+#include <torch/csrc/autograd/custom_function.h>
+#include <torch/library.h>
+
+#include "pytorch_npu_helper.hpp" // Assuming this contains EXEC_NPU_CMD macro and necessary headers for ACLNN
+
+/**
+ * register forward implementation for NPU device
+ * 使用说明：
+ * 1. 将此文件中的 aclnnCustomOp 替换为实际算子名称，如 aclnnForeachExp
+ * 2. 将 custom_pybind_api 替换为对应的下划线命名形式，如 foreach_exp
+ *
+ * 替换示例：
+ * - aclnnCustomOp -> aclnnXXX (其中XXX为算子名，如替换为aclnnForeachExp)
+ * - custom_pybind_api -> YYY (其中YYY为算子名的下划线形式，如foreach_exp)
+ *
+ * 注意：替换时需保持函数签名和逻辑不变，仅修改上述指定的名称，这一替换过程将在batch_compile.py文件中自动被执行
+ */
+std::vector<at::Tensor> custom_pybind_api(at::Tensor uniqueLen, at::Tensor uniqueIndices,
+                               at::Tensor indices, at::Tensor values)
+{
+    int64_t new_nnz = uniqueLen.numel();
+    int64_t sparse_dim = indices.size(1);
+
+    at::Tensor newIndices = torch::empty({new_nnz, sparse_dim}, indices.options());
+
+    std::vector<int64_t> new_values_shape_vec;
+    new_values_shape_vec.push_back(new_nnz);
+    for (int i = 1; i < values.dim(); ++i) {
+        new_values_shape_vec.push_back(values.size(i));
+    }
+    at::Tensor newValues = torch::empty(new_values_shape_vec, values.options());
+    newValues.zero_(); 
+    EXEC_NPU_CMD(aclnnCoalesceSparse, uniqueLen, uniqueIndices, indices, values, newIndices, newValues);
+    std::vector<at::Tensor> result_tensors;
+    result_tensors.push_back(newIndices);
+    result_tensors.push_back(newValues);
+    return result_tensors;
+}
+
+PYBIND11_MODULE(kernel_gen_ops, m) {
+    m.doc() = "Python bindings for kernel_gen_ops";
+    m.def("coalesce_sparse", &custom_pybind_api, "");
+}

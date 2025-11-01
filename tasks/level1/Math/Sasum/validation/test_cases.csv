@@ -1,0 +1,4 @@
+case_id;input_shape;dtype;n;incx
+0;[32];float32;32;1
+1;[16];float16;16;1
+2;[64];float32;32;2

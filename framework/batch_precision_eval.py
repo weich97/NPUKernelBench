@@ -99,49 +99,42 @@ def run_precision_single(task_obj: TaskObject, idx: int = 0, logger=None) -> Pre
                 # Run precision tests
                 all_abs_diff, all_rel_diff, all_acc = [], [], []
 
-                with torch.no_grad():
-                    n_acc = 0
-                    for trial_idx in range(config.eval.num_correct_trials):
-                        # Execute reference model
-                        inputs_copy = deep_copy_tensors(inputs_cpu)
-                        ref_output = model(*inputs_copy)
-                        ref_output = transfer_to_device(ref_output, device)
-                        # print("inputs_npu", inputs_npu)
-                        # print("inputs_cpu", inputs_cpu)
-                        torch_npu.npu.synchronize()
-                        # Execute test model
-                        if config.eval.only_golden_eval and config.compile.mode == "msopgen":
-                            test_output = ref_output
-                        else:
-                            inputs_copy = deep_copy_tensors(inputs_npu)
-                            test_output = model_new(*inputs_copy)
-
-                        torch_npu.npu.synchronize()
-                        # Check precision
-                        if hasattr(prepare_inputs, 'custom_check_precision'):
-                            logger.debug("Using custom precision check...")
-                            acc, abs_diff, rel_diff = prepare_inputs.custom_check_precision(row, ref_output,
-                                                                                            test_output)
-                        else:
-                            acc, abs_diff, rel_diff = check_precision(
-                                ref_output, test_output,
-                                config.eval.max_abs_error, config.eval.max_rel_error
-                            )
-
-                        n_acc += acc
-                        all_acc.append(acc)
-                        all_abs_diff.append(abs_diff)
-                        all_rel_diff.append(rel_diff)
-
-                        # Log detailed results for first trial
-                        if config.eval.verbose:
-                            _log_output_details(logger, inputs_cpu, ref_output, test_output, abs_diff, rel_diff)
-
-                    # Determine success for this test case
-                    if n_acc == config.eval.num_correct_trials:
-                        n_success += 1
+                n_acc = 0
+                for trial_idx in range(config.eval.num_correct_trials):
+                    # Execute reference model
+                    inputs_copy = deep_copy_tensors(inputs_cpu)
+                    ref_output = model(*inputs_copy)
+                    torch_npu.npu.synchronize()
+                    # Execute test model
+                    inputs_copy = deep_copy_tensors(inputs_npu)
+                    test_output = model_new(*inputs_copy)
+                    torch_npu.npu.synchronize()
+                    # Check precision
+                    test_output = transfer_to_device(test_output, 'cpu')
+                    if hasattr(prepare_inputs, 'custom_check_precision'):
+                        logger.debug("Using custom precision check...")
+                        acc, abs_diff, rel_diff = prepare_inputs.custom_check_precision(row, ref_output,
+                                                                                        test_output)
                     else:
-                        n_failed += 1
+                        acc, abs_diff, rel_diff = check_precision(
+                            ref_output, test_output,
+                            config.eval.max_abs_error, config.eval.max_rel_error
+                        )
+
+                    n_acc += acc
+                    all_acc.append(acc)
+                    all_abs_diff.append(abs_diff)
+                    all_rel_diff.append(rel_diff)
+
+                    # Log detailed results for first trial
+                    if config.eval.verbose:
+                        _log_output_details(logger, inputs_cpu, ref_output, test_output, abs_diff, rel_diff)
+
+                # Determine success for this test case
+                if n_acc == config.eval.num_correct_trials:
+                    n_success += 1
+                else:
+                    n_failed += 1
 
                 # Calculate statistics
                 all_abs_cat = torch.cat(all_abs_diff, dim=0)
@@ -204,17 +197,25 @@ def _log_output_details(logger, inputs, ref_output, test_output, abs_diff, rel_d
                     logger.debug(f"======{name}[{idx}]======shape={t.shape}==========\n{t}")
                 else:
                     logger.debug(f"======{name}[{idx}]======type={type(t)}==========\n{t}")
+                if isinstance(t, torch.Tensor):
+                    tensor_to_check = t.coalesce().values() if t.is_sparse else t
+                    has_non_finite = torch.any(~torch.isfinite(tensor_to_check))
+                    logger.debug(f"======{name}[{idx}]======has_non_finite=========={has_non_finite}")
         else:
             if hasattr(output, 'shape'):
                 logger.debug(f"======{name}======shape={output.shape}==========\n{output}")
             else:
                 logger.debug(f"======{name}======type={type(output)}==========\n{output}")
+            if isinstance(output, torch.Tensor):
+                tensor_to_check = output.coalesce().values() if output.is_sparse else output
+                has_non_finite = torch.any(~torch.isfinite(tensor_to_check))
+                logger.debug(f"======{name}======has_non_finite=========={has_non_finite}")
 
     log_tensor_info(inputs, "inputs")
     log_tensor_info(ref_output, "ref_output")
     log_tensor_info(test_output, "test_output")
-    logger.debug(f"======abs_diff===mean={abs_diff.float().mean()}==========")
-    logger.debug(f"======rel_diff===mean={rel_diff.float().mean()}==========")
+    logger.debug(f"======abs_diff===max={abs_diff.float().max()}==========")
+    logger.debug(f"======rel_diff===max={rel_diff.float().max()}==========")
 
 
 def post_precision_callback(task_obj: TaskObject, result_or_exception, idx):

@@ -1,6 +1,6 @@
 case_id;shape;dtype;reduction
-0;[96, 128];float16;mean
-1;[48, 128, 256];float16;mean
+0;[128];float16;mean
+1;[48, 256];float16;mean
 2;[64, 1024];float32;sum
 3;[48, 128, 1024];float16;none
 4;[32, 1024];float32;sum

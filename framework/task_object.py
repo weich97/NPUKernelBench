@@ -114,6 +114,7 @@ class TaskObject:
 
         # Initialize content and parsers
         self.gen_content = None
+        self.tiling_def = None
         self.tiling_content = None
         self.kernel_content = None
         self.kernel_parser = KernelParser(self.kernel_name)
@@ -270,9 +271,9 @@ class TaskObject:
 
     def parse_gen_content(self):
         """Parse generated content into tiling and kernel components."""
-        self.tiling_content, self.kernel_content = self.kernel_parser.parse(gen_content=self.gen_content)
+        self.tiling_def, self.tiling_content, self.kernel_content = self.kernel_parser.parse(gen_content=self.gen_content)
 
-        if config.static_shape_mode:
+        if config.kernel_only_mode:
             # Load tiling content from template
             tiling_template_path = f"{self.problem_def_full_path}/question/op_host/{self.kernel_name}.cpp"
             self.tiling_content = safe_read_file(tiling_template_path)
@@ -283,7 +284,7 @@ class TaskObject:
                 'GM_ADDR workspace, GM_ADDR tiling'
             )
 
-        return [self.tiling_content, self.kernel_content]
+        return [self.tiling_def, self.tiling_content, self.kernel_content]
 
     def set_custom_opp_path(self):
         """Set environment variables for custom operator paths."""

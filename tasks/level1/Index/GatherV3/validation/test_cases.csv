@@ -1,0 +1,8 @@
+case_id;self_shape;indices_shape;axis;dtype
+0;[256, 512];[32];0;float16
+1;[8, 16];[4];0;float16
+2;[32, 64];[8];1;float16
+3;[1, 32, 64];[4];0;float16
+4;[8, 1024];[16];1;float16
+5;[32, 512, 128];[64];0;float16
+6;[4, 2];[2];1;float16

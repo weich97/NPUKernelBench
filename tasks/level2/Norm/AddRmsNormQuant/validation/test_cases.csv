@@ -1,0 +1,6 @@
+case_id;input_shape;normalized_shape;dtype;scales_dtype;zeros_dtype;epsilon;div_mode
+0;[8, 4];[4];float16;float32;int32;1e-6;true
+1;[8, 512];[512];float16;float32;int32;1e-6;true
+2;[48, 64, 64];[64];bfloat16;bfloat16;bfloat16;1e-6;true
+3;[24, 128, 1024];[1024];bfloat16;float32;int32;1e-6;true
+4;[64, 1024, 512];[512];bfloat16;float32;int32;1e-6;true

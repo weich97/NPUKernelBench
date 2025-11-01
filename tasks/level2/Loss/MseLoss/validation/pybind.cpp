@@ -5,22 +5,16 @@
 /**
  * register forward implementation for NPU device
  */
-at::Tensor custom_pybind_fun(at::Tensor &predict, at::Tensor &label, std::string reduction)
+at::Tensor custom_pybind_fun(at::Tensor &predict, at::Tensor &label, std::string &reduction)
 {
     at::Tensor result;
-    int64_t reductionCode = 0;
+    const char* reduction_cstr = reduction.c_str();
     if (reduction == "none") {
         result = torch::empty_like(predict);
-        reductionCode = 3;
     } else {
         result = at::empty({1}, predict.options());
-        if (reduction == "mean") {
-            reductionCode = 1;
-        } else if (reduction == "sum") {
-            reductionCode = 2;
-        }
     }
-    EXEC_NPU_CMD(aclnnCustomOp, predict, label, reductionCode, result);
+    EXEC_NPU_CMD(aclnnCustomOp, predict, label, reduction_cstr, result);
     return result;
 }
 

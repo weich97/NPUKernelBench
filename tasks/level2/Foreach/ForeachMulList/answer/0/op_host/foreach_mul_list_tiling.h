@@ -1,11 +1,19 @@
-#ifndef ASCEND_KERNEL_BENCH_CUSTOM_TILING_H
-#define ASCEND_KERNEL_BENCH_CUSTOM_TILING_H
-
 #include "register/tilingdata_base.h"
 
 namespace optiling {
 constexpr uint16_t MAX_TENSOR_CONT = 50;
 constexpr uint16_t MAX_CORE_CONT = 50;
+struct ForeachCompileInfo {
+    uint64_t coreNum;
+    uint64_t aivCoreNum;
+    uint64_t aicCoreNum;
+    uint64_t ubSize;
+    uint64_t l1Size;
+    uint64_t l0ASize;
+    uint64_t l0BSize;
+    uint64_t l0CSize;
+    uint64_t sysWorkspaceSize;
+};
 
 BEGIN_TILING_DATA_DEF(ForeachCommonTilingData)
     TILING_DATA_FIELD_DEF(uint64_t, inputsTensorUbSize);
@@ -17,6 +25,4 @@ BEGIN_TILING_DATA_DEF(ForeachCommonTilingData)
 END_TILING_DATA_DEF;
 
 REGISTER_TILING_DATA_CLASS(ForeachMulList, ForeachCommonTilingData)
-}  // namespace optiling
-
-#endif  // ASCEND_KERNEL_BENCH_CUSTOM_TILING_H
+}

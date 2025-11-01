@@ -1,0 +1,7 @@
+case_id;batch;q_seqlen;kv_seqlen;num_heads;kv_heads;head_size;head_size_rope;num_blocks;block_size;dtype
+0;2;1;2;128;1;512;64;16;128;float16
+1;2;2;64;16;1;512;64;48;128;bfloat16
+2;1;4;24;8;1;512;64;16;128;float16
+3;4;1;16;128;1;512;64;32;128;bfloat16
+4;8;1;32;1;1;512;64;16;128;float16
+5;1;2;128;32;1;512;64;16;128;float16

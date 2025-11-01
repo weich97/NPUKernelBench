@@ -1,8 +1,8 @@
 
 
 /*!
- * \file common_dtype.h
- * \brief
+ * ile common_dtype.h
+ * rief
  */
 
 #ifndef AIR_CXX_RUNTIME_V2_OP_IMPL_COMMON_DTYPE_H_
@@ -93,3 +93,4 @@ inline uint64_t GetTilingKeyByDtypeOnly(ge::DataType dataType) {
 }
 
 #endif
+

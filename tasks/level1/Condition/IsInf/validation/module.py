@@ -4,7 +4,7 @@ import torch
 import torch_npu
 from torch_npu.contrib import transfer_to_npu
 import torch.nn as nn
-
+import kernel_gen_ops
 
 class Model(nn.Module):
     def __init__(self):
@@ -22,6 +22,5 @@ class ModelNew(nn.Module):
         super(ModelNew, self).__init__()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        import kernel_gen_ops
         # Call the custom NPU operator
         return kernel_gen_ops.is_inf(x)

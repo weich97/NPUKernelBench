@@ -24,18 +24,11 @@ def foreach_mul_list(tensor_list1, tensor_list2):
     对两个张量列表中的每对张量执行相乘操作。
     
     参数:
-        tensor_list1 (List[Tensor]): 第一个输入Device侧张量列表。
-                                    张量shape维度不高于8维，数据格式支持ND。支持非连续的Tensor。
-        tensor_list2 (List[Tensor]): 第二个输入Device侧张量列表，列表中张量的数据类型、数据格式和shape
-                                    必须与tensor_list1对应的张量相匹配。支持非连续的Tensor。
+        tensor_list1 (List[Tensor]): 公式中的`x1`，Device侧的aclTensorList，数据类型支持FLOAT、FLOAT16、BFLOAT16、INT32。数据格式支持ND，shape维度不高于8维。支持非连续的Tensor。
+        tensor_list2 (List[Tensor]): 公式中的`x2`，Device侧的aclTensorList，数据类型支持FLOAT、FLOAT16、BFLOAT16、INT32，数据格式支持ND，shape维度不高于8维。数据类型、数据格式和shape跟入参`x`的数据类型、数据格式和shape一致。支持非连续的Tensor。
         
     返回:
-        List[Tensor]: 一个新的Device侧张量列表，其中每个张量是对应两个输入张量相乘的结果。
-        输出张量与输入张量具有相同的形状、数据类型和数据格式。
-    
-    注意:
-        - 张量shape维度不高于8维，数据格式支持ND
-        - 支持非连续的Tensor
+        List[Tensor]: 公式中的`y`，Device侧的aclTensorList，数据类型支持FLOAT、FLOAT16、BFLOAT16、INT32，数据格式支持ND，shape维度不高于8维。数据类型、数据格式和shape跟入参`x`的数据类型、数据格式和shape一致。支持非连续的Tensor。
     """
 ```
 

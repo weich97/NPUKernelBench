@@ -1,0 +1,6 @@
+case_id;input_shape;dtype;dim;approximate;activateLeft
+0;[128, 512];float16;-1;0;True
+1;[64, 1024];float16;1;0;True
+2;[32, 768];float32;-1;1;True
+3;[1, 4096];float16;0;0;True
+4;[256, 384];float32;-1;1;True

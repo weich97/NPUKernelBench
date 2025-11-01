@@ -23,15 +23,9 @@ std::vector<at::Tensor> deep_norm_grad(at::Tensor dy, at::Tensor x, at::Tensor g
     // Output tensors: dxOut, dgxOut, dbetaOut, dgammaOut
     at::Tensor dxOut = torch::empty_like(x);
     at::Tensor dgxOut = torch::empty_like(gx);
-    at::Tensor dbetaOut = torch::empty_like(gamma); // dbeta and dgamma have same shape as beta/gamma
-    at::Tensor dgammaOut = torch::empty_like(gamma);
+    at::Tensor dbetaOut = torch::empty_like(gamma, torch::dtype(torch::kFloat32)); // dbeta and dgamma have same shape as beta/gamma
+    at::Tensor dgammaOut = torch::empty_like(gamma, torch::dtype(torch::kFloat32));
 
-    // EXEC_NPU_CMD takes the actual NPU operator name,
-    // which here is `aclnnDeepNormGrad` as per your requirement.
-    // The arguments must match the `aclnnDeepNormGradGetWorkspaceSize` signature:
-    // const aclTensor *dy, const aclTensor *x, const aclTensor *gx, const aclTensor *gamma,
-    // const aclTensor *mean, const aclTensor *rstd, double alpha,
-    // aclTensor *dxOut, aclTensor *dgxOut, aclTensor *dbetaOut, aclTensor *dgammaOut
     EXEC_NPU_CMD(aclnnDeepNormGrad, dy, x, gx, gamma, mean, rstd, alpha, dxOut, dgxOut, dbetaOut, dgammaOut);
 
     std::vector<at::Tensor> result = {dxOut, dgxOut, dbetaOut, dgammaOut};

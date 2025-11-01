@@ -1,0 +1,20 @@
+case_id;input_shape;dtype;activate_left;quant_mode;bias_present;weight_scale_present;activate_scale_present;group_index_present;quant_scale_present;quant_offset_present;group
+0;[128, 512];float16;False;static;False;False;False;False;True;True;0
+1;[64, 1024];float16;True;static;False;False;False;False;True;True;0
+2;[32, 768];float16;False;dynamic;False;False;False;False;True;True;0
+3;[1, 4096];float16;True;dynamic;False;False;False;False;True;True;0
+4;[256, 384];float16;False;static;False;False;False;False;True;True;0
+5;[128, 512];bfloat16;False;static;False;False;False;False;True;True;0
+6;[64, 1024];bfloat16;True;static;False;False;False;False;True;True;0
+7;[32, 768];bfloat16;False;dynamic;False;False;False;False;True;True;0
+8;[1, 4096];bfloat16;True;dynamic;False;False;False;False;True;True;0
+9;[256, 384];bfloat16;False;static;False;False;False;False;True;True;0
+10;[128, 512];int32;False;static;True;True;False;False;True;True;0
+11;[64, 1024];int32;True;static;True;True;True;False;True;True;0
+12;[32, 768];int32;False;dynamic;True;True;False;False;True;True;0
+13;[1, 4096];int32;True;dynamic;True;True;True;False;True;True;0
+14;[256, 384];int32;False;static;False;True;True;False;True;True;0
+15;[128, 512];int32;False;dynamic;False;True;True;True;True;True;3
+16;[64, 1024];int32;True;dynamic;False;True;True;True;True;True;41
+17;[32, 768];int32;False;dynamic;False;True;True;True;True;True;26
+18;[256, 384];int32;False;dynamic;False;True;True;True;True;True;229

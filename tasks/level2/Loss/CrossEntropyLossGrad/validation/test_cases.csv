@@ -1,0 +1,12 @@
+case_id;batch;num_classes;input_dtype;target_dtype;weight_type;weight_dtype;ignore_index;label_smoothing;reduction;grad_zloss_type;lse_for_zloss_type;lse_square_scale_for_zloss
+0;4;10;float32;int64;present;float32;-100;0.0;mean;None;None;0.0
+1;16;100;float16;int64;None;float32;-100;0.0;mean;None;None;0.0
+2;32;50;bfloat16;int64;None;float32;-100;0.0;sum;None;None;0.0
+3;64;200;float32;int64;None;float32;0;0.0;none;None;None;0.0
+4;128;500;float16;int64;present;float32;5;0.0;mean;None;None;0.0
+5;256;1000;float32;int64;present;float32;-100;0.0;sum;None;None;0.00
+6;512;1024;float16;int64;present;float32;-100;0.0;none;None;None;0.00
+7;1024;2048;float32;int64;present;float32;0;0.0;mean;None;None;0.0
+8;4096;1024;float16;int64;present;float32;-100;0.0;mean;None;None;0.00
+9;8;10;float32;int64;present;float32;-100;0.0;mean;None;None;0.0
+10;16;100;float32;int64;present;float32;-100;0.0;mean;None;None;0.0

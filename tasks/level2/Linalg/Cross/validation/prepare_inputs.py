@@ -29,3 +29,13 @@ def get_init_inputs(param, device=None):
         list: Empty list as no special initialization inputs needed
     """
     return []  # No special initialization inputs needed
+
+
+from framework.utils import check_precision
+
+def custom_check_precision(param, outputs, outputs_new):
+    dtype_str = param.get('dtype', 'float16')
+    if dtype_str == 'bfloat16':
+        return check_precision(outputs, outputs_new, max_abs_error=0.01, max_rel_error=0.01)
+    else:
+        return check_precision(outputs, outputs_new, max_abs_error=0.01, max_rel_error=0.01)

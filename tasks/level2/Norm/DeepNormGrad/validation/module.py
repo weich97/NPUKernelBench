@@ -7,59 +7,47 @@ import torch.nn as nn
 
 
 class Model(nn.Module):
-
     def __init__(self):
         super(Model, self).__init__()
 
     def forward(self, dy: torch.Tensor, x: torch.Tensor, gx: torch.Tensor,
                 gamma: torch.Tensor, mean: torch.Tensor, rstd: torch.Tensor, alpha: float) -> List[torch.Tensor]:
-        
+        # Convert all inputs to float32 for intermediate calculations
+        dy_fp32 = dy.to(torch.float32)
+        x_fp32 = x.to(torch.float32)
+        gx_fp32 = gx.to(torch.float32)
+        gamma_fp32 = gamma.to(torch.float32)
+        mean_fp32 = mean.to(torch.float32)
+        rstd_fp32 = rstd.to(torch.float32)
+
         # Determine the normalization dimension (D) for the mean/variance calculations
-        # Assuming last dimension is normalized, consistent with DeepNorm forward pass
-        # D should be the size of the innermost normalized dimension.
-        D = float(x.shape[-1]) # Or gamma.shape[-1] if gamma is 1D
+        D = float(torch.prod(torch.tensor(gamma_fp32.shape)))  # Or gamma.shape[-1] if gamma is 1D
 
         # Calculate intermediate terms
-        tmpone = dy * gamma
-        tmptwo = alpha * x + gx - mean
+        tmpone = dy_fp32 * gamma_fp32
+        tmptwo = alpha * x_fp32 + gx_fp32 - mean_fp32
 
         # Calculate d_var and d_mean (sum over the normalized dimension)
-        # Use keepdim=True for sum to maintain dimensions for broadcasting
-        # The sum should be over the dimension(s) that were normalized in the forward pass.
-        # Assuming the last dimension was normalized, so sum over -1.
-        d_var = torch.sum(-0.5 * tmpone * tmptwo * rstd.pow(3), dim=-1, keepdim=True)
-        d_mean = torch.sum(-1.0 * tmpone * rstd, dim=-1, keepdim=True)
+        reduction_dims = tuple(range(x_fp32.dim() - gamma_fp32.dim(), x_fp32.dim()))
+        d_var = torch.sum(-0.5 * tmpone * tmptwo * rstd_fp32.pow(3), dim=reduction_dims, keepdim=True)
+        d_mean = torch.sum(-1.0 * tmpone * rstd_fp32, dim=reduction_dims, keepdim=True)
 
         # Calculate d_gx
-        # Note: The formula for d_gx_i seems to miss a term relating to alpha*x.
-        # It's usually like: d_gx = tmpone * rstd + 2/D * d_var * tmptwo + 1/D * d_mean
-        # This matches common LayerNorm-like backward passes.
-        dgx = tmpone * rstd + (2.0 / D) * d_var * tmptwo + (1.0 / D) * d_mean
+        dgx = tmpone * rstd_fp32 + (2.0 / D) * d_var * tmptwo + (1.0 / D) * d_mean
 
         # Calculate d_x
-        # d_x_i = alpha * d_gx_i (This is a simplified form, usually derived from chain rule)
-        # Assuming the formula provided is accurate for this specific DeepNormGrad.
-        dx = alpha * dgx # This aligns with `d_x_i = alpha * {gx}_i` if gx is meant as a placeholder for dgx.
-                         # If it literally means the input gx, then the formula is suspicious for a grad.
-                         # Assuming `dgx_i` is the gradient we just calculated for `gx`.
-        # Re-interpreting: the formula d_x_i = alpha * {gx}_i seems like a typo or specific simplification.
-        # Standard chain rule for `x_add = x * alpha + gx` would imply:
-        # d(x_add)/d(x) = alpha, d(x_add)/d(gx) = 1
-        # So dx = dgx_add * alpha, dgx = dgx_add * 1.
-        # Where dgx_add is the gradient of `x_add` after norm.
-        # The provided d_gx is `dgx_add`. So dx = dgx_add * alpha = dgx * alpha.
-        # This seems consistent.
+        dx = alpha * dgx
 
         # Calculate d_beta (sum over all dimensions except normalized_shape)
-        # d_beta should be a sum over all dimensions that were *not* normalized.
-        # If gamma/beta are 1D (e.g., shape D), and x is (B,L,D), then sum over (0,1).
-        # This is `dy_i` summed for each element of beta/gamma.
-        dbeta_reduction_dims = tuple(range(dy.dim() - gamma.dim()))
-        dbeta = torch.sum(dy, dim=dbeta_reduction_dims, keepdim=False)
+        d_reduction_dims_for_gamma_beta = tuple(range(dy_fp32.dim() - gamma_fp32.dim()))
+        dbeta = torch.sum(dy_fp32, dim=d_reduction_dims_for_gamma_beta, keepdim=False)
 
         # Calculate d_gamma (sum over all dimensions except normalized_shape)
-        # d_gamma = sum(dy_i * rstd * tmptwo_i)
-        dgamma = torch.sum(dy * rstd * tmptwo, dim=dbeta_reduction_dims, keepdim=False) # Reuse dbeta_reduction_dims
+        dgamma = torch.sum(dy_fp32 * rstd_fp32 * tmptwo, dim=d_reduction_dims_for_gamma_beta, keepdim=False)
+
+        # Convert outputs back to original dtype
+        dx = dx.to(x.dtype)
+        dgx = dgx.to(gx.dtype)
 
         return [dx, dgx, dbeta, dgamma]
 

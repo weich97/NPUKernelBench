@@ -214,6 +214,8 @@ class StatisticsGenerator:
     @staticmethod
     def _display_statistics(results_by_group):
         """Display formatted statistics."""
+
+        from tabulate import tabulate
         with pd.option_context('display.max_rows', None, 'display.max_columns', None,
                                'display.width', None, 'display.max_colwidth', None):
             print("\n\nDetailed Statistics by Operator Level:\n")
@@ -224,7 +226,10 @@ class StatisticsGenerator:
             for level in df_results['op_level'].unique():
                 print(f"[Statistics for Level {level}]\n")
                 level_data = df_results[df_results['op_level'] == level]
-                print(level_data.reset_index(drop=True))
+                print(tabulate(level_data.reset_index(drop=True),
+                               headers='keys',
+                               tablefmt='grid',
+                               showindex=False))
                 print("\n")
 
             # Overall statistics
@@ -243,7 +248,13 @@ class StatisticsGenerator:
                         (summary_stats[old_key] / summary_stats['total_samples'] * 100).round(2).astype(str) + '%'
                 )
 
-            print(summary_stats[['total_samples', 'parse_pass_rate', 'compile_pass_rate', 'precision_pass_rate']])
+            final_summary = summary_stats[
+                ['total_samples', 'parse_pass_rate', 'compile_pass_rate', 'precision_pass_rate']]
+
+            print(tabulate(final_summary,
+                           headers='keys',
+                           tablefmt='grid',
+                           showindex=True))
             print("\n")
 
             console = Console()

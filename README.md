@@ -1,10 +1,10 @@
-# NPUKernelBenchV2.0：高质量QTA数据与领域知识注入驱动的大模型AscendC算子生成与测评框架
+# NPUKernelBenchV2.0：集成领域知识注入模型的AscendC算子生成与测评框架
 
 [[License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 ## 1. 简介
 
-NPUKernelBenchV2.0是一个面向华为昇腾NPU 的大模型算子生成与测评框架，支持对大语言模型自动生成的 AscendC 算子进行系统测评与性能分析。此次发布除框架本身外，还同步推出了一个结合高质量 QTA（Question–Thought–Answer）数据与 NPU AscendC 领域知识注入机制的大语言模型。该模型在算子生成能力上取得显著突破：可从输入的自然语言或算子需求描述中自动生成 50 余个可用的 AscendC 内核，相比V1.0版本提升400%，显著增强了大模型在昇腾架构上的内核代码生成质量。
+NPUKernelBenchV2.0框架面向华为昇腾NPU，专注于大模型算子生成与系统化测评，可对基于大语言模型自动生成的AscendC算子进行全面测评。除框架本身外，本次还同步推出了一个融合高质量QTA（Question–Thought–Answer）数据与AscendC领域知识（涵盖语义与硬件架构）的大语言模型。该模型通过学习人类编写算子的设计流程，能够模拟算子开发工程师在硬件约束下的设计思维，在算子生成能力上实现突破：可直接根据自然语言或功能描述，生成超过50余个可用的AscendC内核，生成数量较可行性验证版本V1.0提升400%，代码质量与实用性也得到大幅增强。
 
 ## 2. 核心特性
 

@@ -71,7 +71,7 @@ $$C_{ij} = \sum_{p=1}^{k} A_{ip} B_{pj}$$
     * `<operator_name>.cpp`: Host端代码模板（算子原型注册相关的宏和函数）。
     * `<operator_name>_tiling.h`: (如果需要) Tiling策略的头文件模板。
 
-框架目前支持 `kernel only` 和 `full` 两种模板模式，这两种模式可通过 `base_config.yaml` 文件中的 `kernel_only_mode` 变量进行配置。在 `kernel only` 模式下，LLM 仅需完善 op_kernel/<operator_name>.cpp 文件；而在 full 模式下，LLM 则需要填充 `op_host` 和 `op_kernel` 目录下的所有相关模板内容。
+框架目前支持 `kernel only` 和 `full` 两种模板模式，这两种模式可通过 `base_config.yaml` 文件中的 `kernel_only_mode` 变量进行配置。在 `kernel only` 模式下，LLM 仅需完善 op_kernel/<operator_name>.cpp 文件；而在 `full` 模式下，LLM 则需要填充 `op_host` 和 `op_kernel` 目录下的所有相关模板内容。
 
 #### c. 通用指令与角色设定
 

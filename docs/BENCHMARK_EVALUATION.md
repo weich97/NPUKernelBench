@@ -315,7 +315,7 @@ def custom_check_precision(param, outputs, outputs_new):
 - **执行控制**:
   - `encoding: "utf-8"`: 文件编码
   - `n_sample: 100`: 对于一个任务的一个测试用例（case），模型需要执行多少次代码生成尝试（rollout）
-  - `n_case: 1`: 每个算子任务默认测试多少个用例（case）。一个 case 对应 `test_cases.csv` 文件中的一行，通常是一个特定的 shape（仅在静态 shape 测试场景内适应）
+  - `n_case: 1`: 每个算子任务默认测试多少个用例（case）。一个 case 对应 `test_cases.csv` 文件中的一行，通常是一个特定的 shape（仅在静态 shape 测试模式下适用）
   - `show_result_log_file: False`: 是否在控制台输出中显式打印结果日志文件的完整内容
   - `static_shape_mode: True`: 是否启用静态 shape 测试模式（分为静态、动态 shape 测试两种模式）
   - `kernel_only_mode: True`: 是否启用 kernel only 模版（分为kernel only / full 两种模版）

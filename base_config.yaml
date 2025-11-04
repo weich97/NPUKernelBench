@@ -6,8 +6,8 @@ encoding: "utf-8"
 n_sample: 1
 n_case: 1
 show_result_log_file: False
-static_shape_mode: False
-kernel_only_mode: False
+static_shape_mode: True
+kernel_only_mode: True
 
 chat:
   active: True

@@ -148,12 +148,10 @@ def configure_testing_mode(args, config_):
 
     if args.chat:
         config_.chat.active = True
-        config_.static_shape_mode = True
     else:
         config_.chat.active = False
         config_.n_sample = 1
         if not config_.kernel_only_mode:
-            config_.n_case = 1
             config_.compile.mode = "cann-ops"
 
 

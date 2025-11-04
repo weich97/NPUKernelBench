@@ -21,68 +21,57 @@ NPU Kernel Bench 中的 Kernel Generator 模块利用大语言模型（LLM）辅
 
 **示例片段 (`api_desc.md`)**:
 ```markdown
-# AddCustom
+# aclnnBasicMatmul
 
 ## 功能描述
 
 ### 算子功能
-实现了两个数据相加，返回相加结果的功能。
+该Ascend C算子用于执行两个二维矩阵的乘法运算，即 `A` 乘以 `B`。该算子是深度学习模型中线性层和注意力机制等结构的基础和核心。它接收两个符合矩阵乘法规则的二维张量作为输入，并输出它们的乘积。
 
 ### 计算公式
+假设输入张量为 $A$（维度为 $m \times k$）和 $B$（维度为 $k \times n$），则输出张量 $C$（维度为 $m \times n$）的计算公式如下：
 
-  $$
-  z = x + y
-  $$
+$$C_{ij} = \sum_{p=1}^{k} A_{ip} B_{pj}$$
+
+其中，$i$ 的范围是从 $1$ 到 $m$，$j$ 的范围是从 $1$ 到 $n$。$C_{ij}$ 表示输出矩阵 $C$ 中第 $i$ 行第 $j$ 列的元素值。
+
+### 计算过程与类型转换
+为了在执行大规模累加操作时保持较高的数值精度，并有效防止数据溢出，该算子在内部计算过程中采用了高精度累加的策略。具体流程如下：
+
+1.  算子接收两个数据类型为 `float16` 的输入张量 `a` 和 `b`。
+2.  在执行乘加计算时，内部的累加器（Accumulator）会使用 `float32` 类型。也就是说，`float16` 的乘积结果会先转换为 `float32`，然后再进行累加。
+3.  所有累加计算完成后，得到 `float32` 类型的结果。
+4.  最后，将 `float32` 的结果张量转换回 `float16` 类型，作为最终的输出。
 
 ## 接口定义
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.add_custom()` 函数形式提供：
-
-```python
-def add_custom(x, y):
-    """
-    实现自定义加法操作。
-    
-    参数:
-        x (Tensor): 输入张量，Device侧的张量，数据格式支持ND。
-        y (Tensor): 输入张量，Device侧的张量，数据格式支持ND。
-        
-    返回:
-        Tensor: 计算结果张量，数据类型与输入一致，数据格式支持ND。
-    
-    注意:
-        张量数据格式支持ND
-    """
-
-## 使用案例
-
-import torch
-import kernel_gen_ops
-
-# 创建输入张量
-x = torch.randn(8, 2048, dtype=torch.float16)
-y = torch.randn(8, 2048, dtype=torch.float16)
-
-# 使用add_custom执行计算
-result = kernel_gen_ops.add_custom(x, y)
+### 算子原型定义接口
+#### Input
+- a：Device侧的aclTensor，公式中的A，数据类型支持float16，维度支持2维，数据格式支持ND。
+- b：Device侧的aclTensor，公式中的B，数据类型支持float16，维度支持2维，数据格式支持ND。
+#### Output
+- c：Device侧的aclTensor，公式中的C，数据类型支持float16，维度支持2维，数据格式支持ND。
+#### Attr
+- 无
 
 ## 约束与限制
-
-- 输入输出张量数据格式支持ND。
+  * 输入张量 `a` 和 `b` 的数据类型当前仅支持 `float16`。
+  * 输入张量 `a` 和 `b` 必须为二维矩阵。
+  * `a` 的第二个维度（列数）必须与 `b` 的第一个维度（行数）相等。
+  * 输入张量的数据格式只支持ND。
 ```
 
 #### b. 代码框架与待填补信息 (来自 `tasks/.../question/` 目录)
 
 为了引导 LLM 生成结构化的代码，框架会提供代码模板（骨架）。这些模板位于具体任务的 `question/` 目录下，通常包含：
 
-* （当前支持）
-    * `op_kernel/<operator_name>.cpp`: Kernel（Device端）代码模板。
-* （未来支持）
-    * `op_host/<operator_name>.cpp`: Host端代码模板。
-    * `op_host/<operator_name>_tiling.h`: (如果需要) Tiling策略的头文件模板。
+* op_kernel
+    * `<operator_name>.cpp`: Kernel（Device端）代码模板。
+* op_host
+    * `<operator_name>.cpp`: Host端代码模板（算子原型注册相关的宏和函数）。
+    * `<operator_name>_tiling.h`: (如果需要) Tiling策略的头文件模板。
 
-目前，LLM 仅需完善 op_kernel/<operator_name>.cpp 文件中的待填充内容，后两类模板将在未来逐步支持。
+框架目前支持 `kernel only` 和 `full` 两种模板模式，这两种模式可通过 `base_config.yaml` 文件中的 `kernel_only_mode` 变量进行配置。在 `kernel only` 模式下，LLM 仅需完善 op_kernel/<operator_name>.cpp 文件；而在 full 模式下，LLM 则需要填充 `op_host` 和 `op_kernel` 目录下的所有相关模板内容。
 
 #### c. 通用指令与角色设定
 
@@ -91,7 +80,7 @@ result = kernel_gen_ops.add_custom(x, y)
 * **角色扮演：** "你是一个专业的昇腾的算子开发工程师..."
 * **目标语言与API：** "请使用 Ascend C 进行开发..."
 * **代码风格要求：** "请确保代码可读性高，添加必要的注释..."
-* **输出格式要求：** "请为 Kernel 和 Host 端分别生成代码。确保 Kernel 部分包含 `<kernel_name>_kernel` 函数，Host 部分包含 `Operator<OperatorName>Paras` 结构体和 `REGISTER_OP` 等宏。"
+* **输出格式要求：** "请为 Kernel 和 Host 端分别生成代码。确保 Kernel 部分包含 `<kernel_name>_kernel` 函数，Host 部分包含 `Operator<OperatorName>Paras` 结构体声明和具体计算等。"
 * **关键信息提示：** "请注意处理张量的数据类型、形状和布局。"
 
 
@@ -108,8 +97,7 @@ result = kernel_gen_ops.add_custom(x, y)
 
 ### 2. 模型需要生成/写哪些内容
 
-在理解了上述 Prompt 后，大语言模型被期望生成以下内容，这些内容通常会替换或填入 `question/` 目录下的模板文件，最终形成一套完整的算子代码（通常保存在 `answer/` 或指定输出目录）：
-当前主要支持 Kernel 端代码的生成，Host 端代码与 Tiling 头文件将在未来逐步支持。
+在理解了上述 Prompt 后，大语言模型被期望生成以下内容，这些内容通常会替换或填入 `question/` 目录下的模板文件，最终形成一套完整的算子代码保存在指定输出目录`src_dir`）：
 
 #### a. Kernel 端代码 (`op_kernel/<operator_name>.cpp`)
 
@@ -123,17 +111,15 @@ result = kernel_gen_ops.add_custom(x, y)
 #### b. Host 端代码 (`op_host/<operator_name>.cpp`)
 
 这是在 CPU（Host）上运行的代码，负责准备数据、调用 Kernel 并处理结果。模型需要：
-* 实现算子注册相关的宏和函数（如 `REGISTER_OP(<OperatorName>).INPUT(...).OUTPUT(...).ATTR(...).OP_END_FACTORY_REG(...)`）。
 * 定义参数结构体 (`Operator<OperatorName>Paras`) 用于解析和传递算子属性。
 * 实现 `InferShape` 函数，根据输入推导输出形状。
 * 实现 Tiling 函数的调用或 Tiling 逻辑本身，用于计算 Kernel 的分块信息和参数。
-* (对于 Ascend C) 实现 Kernel Launch 相关的逻辑。
+* 实现 Kernel Launch 相关 BlockDim 选择的逻辑。
 
 #### c. Tiling 头文件 (`op_host/<operator_name>_tiling.h`，如果适用)
 
 对于一些复杂的 Ascend C 算子，Tiling 逻辑可能比较复杂，会单独放在一个头文件中。模型可能需要：
 * 定义 Tiling 结构体或类。
-* 实现 `DoTiling` 方法，根据输入形状、数据类型和硬件资源计算出合理的 Tiling 参数（如 `blockDim`, ` BufferNum` 等）。
 
 
 **总结来说，模型的核心任务是根据 `api_desc.md` 的语义描述和代码模板的结构引导，生成一套功能正确、语法合规、可以被框架编译和运行的昇腾算子 C++ 代码（包括 Kernel 和 Host 两部分，以及可能的 Tiling 逻辑）。其完成此任务的能力，可能部分源于其基础训练，部分源于针对此类任务的特定SFT。**

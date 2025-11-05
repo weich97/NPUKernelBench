@@ -31,3 +31,32 @@ def get_inputs(param, device=None) -> Tuple[List[torch.Tensor], torch.Tensor, to
 
 def get_init_inputs(param, device=None) -> List:
     return []
+
+def custom_check_precision(param, outputs, outputs_new):
+    # Ensure inputs are in list format
+    max_abs_error = max_rel_error = 0.01
+    outputs = [outputs] if not isinstance(outputs, list) else outputs
+    outputs_new = [outputs_new] if not isinstance(outputs_new, list) else outputs_new
+
+    all_abs_diff, all_rel_diff = [], []
+    is_accurate = True
+
+    # Process each output pair
+    for out, out_new in zip(outputs, outputs_new):
+        if out_new.dtype == torch.bool:
+            out = out.to(torch.int)
+            out_new = out_new.to(torch.int)
+        abs_diff = torch.abs(out - out_new)
+        rel_diff = abs_diff / (torch.abs(out) + 1e-7)
+        all_abs_diff.append(abs_diff.reshape(-1))
+        all_rel_diff.append(rel_diff.reshape(-1))
+
+        # Check if within precision requirements
+        if ((abs_diff > max_abs_error) & (rel_diff > max_rel_error)).any():
+            is_accurate = False
+
+    # Combine all differences
+    all_abs_diff = torch.cat(all_abs_diff)
+    all_rel_diff = torch.cat(all_rel_diff)
+
+    return (1 if is_accurate else 0), all_abs_diff, all_rel_diff

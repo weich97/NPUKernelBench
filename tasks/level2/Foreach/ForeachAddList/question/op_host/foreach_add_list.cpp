@@ -4,6 +4,21 @@
 #include "tiling/tiling_api.h"
 
 namespace ops {
+inline ge::DataType DtypeScalarToTensor2(ge::DataType dtype) {
+    switch(dtype) {
+        case ge::DT_FLOAT16:
+            return ge::DT_FLOAT16;
+        case ge::DT_FLOAT:
+            return ge::DT_FLOAT;
+        case ge::DT_BF16:
+            return ge::DT_FLOAT;
+        case ge::DT_INT32:
+            return ge::DT_INT32;
+        default:
+            return ge::DT_UNDEFINED;
+    }
+    return ge::DT_UNDEFINED;
+}
 class ForeachAddList: public OpDef {
 public:
     explicit ForeachAddList(const char* name) : OpDef(name) {

@@ -11,35 +11,51 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
 } // namespace optiling
 
 namespace ops {
-    class ForeachPowScalar: public OpDef {
-    public:
-    explicit ForeachPowScalar(const char* name) : OpDef(name) {
-        std::vector<ge::DataType> tensor_dtype_list = {ge::DT_FLOAT16, ge::DT_FLOAT, ge::DT_INT32, ge::DT_BF16};
-        std::vector<ge::Format> format_list(tensor_dtype_list.size(), ge::FORMAT_ND);
-        std::vector<ge::DataType> scalar_tensor_dtype_list;
-        std::for_each(tensor_dtype_list.cbegin(), tensor_dtype_list.cend(), [&scalar_tensor_dtype_list](ge::DataType dtype){scalar_tensor_dtype_list.push_back(DtypeScalarToTensor2(dtype));});
-        this->Input("x")
-            .ParamType(DYNAMIC)
-            .DataType(tensor_dtype_list)
-            .Format(format_list)
-            .UnknownShapeFormat(format_list)
-            .AutoContiguous();
-        this->Input("scalar")
-            .ParamType(REQUIRED)
-            .DataType(scalar_tensor_dtype_list)
-            .Format(format_list)
-            .UnknownShapeFormat(format_list);
-        this->Output("y")
-            .ParamType(DYNAMIC)
-            .DataType(tensor_dtype_list)
-            .Format(format_list)
-            .UnknownShapeFormat(format_list)
-            .AutoContiguous();
-        this->AICore()
-            .SetTiling(optiling::TilingFunc)
-            .AddConfig("ascend910_93")
-            .AddConfig("ascend910b");
+inline ge::DataType DtypeScalarToTensor2(ge::DataType dtype) {
+    switch(dtype) {
+        case ge::DT_FLOAT16:
+            return ge::DT_FLOAT16;
+        case ge::DT_FLOAT:
+            return ge::DT_FLOAT;
+        case ge::DT_BF16:
+            return ge::DT_FLOAT;
+        case ge::DT_INT32:
+            return ge::DT_INT32;
+        default:
+            return ge::DT_UNDEFINED;
     }
-    };
-    OP_ADD(ForeachPowScalar);
+    return ge::DT_UNDEFINED;
+}
+
+class ForeachPowScalar: public OpDef {
+public:
+explicit ForeachPowScalar(const char* name) : OpDef(name) {
+    std::vector<ge::DataType> tensor_dtype_list = {ge::DT_FLOAT16, ge::DT_FLOAT, ge::DT_INT32, ge::DT_BF16};
+    std::vector<ge::Format> format_list(tensor_dtype_list.size(), ge::FORMAT_ND);
+    std::vector<ge::DataType> scalar_tensor_dtype_list;
+    std::for_each(tensor_dtype_list.cbegin(), tensor_dtype_list.cend(), [&scalar_tensor_dtype_list](ge::DataType dtype){scalar_tensor_dtype_list.push_back(DtypeScalarToTensor2(dtype));});
+    this->Input("x")
+        .ParamType(DYNAMIC)
+        .DataType(tensor_dtype_list)
+        .Format(format_list)
+        .UnknownShapeFormat(format_list)
+        .AutoContiguous();
+    this->Input("scalar")
+        .ParamType(REQUIRED)
+        .DataType(scalar_tensor_dtype_list)
+        .Format(format_list)
+        .UnknownShapeFormat(format_list);
+    this->Output("y")
+        .ParamType(DYNAMIC)
+        .DataType(tensor_dtype_list)
+        .Format(format_list)
+        .UnknownShapeFormat(format_list)
+        .AutoContiguous();
+    this->AICore()
+        .SetTiling(optiling::TilingFunc)
+        .AddConfig("ascend910_93")
+        .AddConfig("ascend910b");
+}
+};
+OP_ADD(ForeachPowScalar);
 }  // namespace ops

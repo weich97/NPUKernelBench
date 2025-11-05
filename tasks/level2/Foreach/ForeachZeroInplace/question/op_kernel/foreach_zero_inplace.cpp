@@ -3,6 +3,6 @@
 using namespace AscendC;
 
 // 核函数入口
-extern "C" __global__ __aicore__ void foreach_log(GM_ADDR x,  GM_ADDR y,
+extern "C" __global__ __aicore__ void foreach_zero_inplace(GM_ADDR x,
     GM_ADDR workspace, GM_ADDR tiling) {
 }

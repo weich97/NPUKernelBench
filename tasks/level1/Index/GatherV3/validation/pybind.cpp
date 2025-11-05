@@ -16,7 +16,7 @@ at::Tensor custom_pybind_api(at::Tensor &self_tensor, at::Tensor &axis, at::Tens
     // Allocate output tensor with the correct shape
     at::Tensor result = torch::empty(self_sizes, self_tensor.options());
 
-    EXEC_NPU_CMD(aclnnGatherV3, self_tensor, axis, indices, result);
+    EXEC_NPU_CMD(aclnnGatherV3, self_tensor, indices, axis, result);
     return result;
 }
 

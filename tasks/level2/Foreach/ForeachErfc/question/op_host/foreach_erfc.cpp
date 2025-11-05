@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "register/op_def_registry.h"
 #include "tiling/platform/platform_ascendc.h"
 

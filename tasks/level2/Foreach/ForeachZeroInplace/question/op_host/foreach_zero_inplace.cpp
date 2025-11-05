@@ -10,10 +10,10 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
 } // namespace optiling
 
 namespace ops {
-class ForeachLog: public OpDef {
+    class ForeachZeroInplace: public OpDef {
     public:
-        explicit ForeachLog(const char* name) : OpDef(name) {
-            std::vector<ge::DataType> tensor_dtype_list = {ge::DT_FLOAT16, ge::DT_FLOAT, ge::DT_BF16};
+        explicit ForeachZeroInplace(const char* name) : OpDef(name) {
+            std::vector<ge::DataType> tensor_dtype_list = {ge::DT_FLOAT16, ge::DT_FLOAT, ge::DT_INT32, ge::DT_INT16, ge::DT_BF16};
             std::vector<ge::Format> format_list(tensor_dtype_list.size(), ge::FORMAT_ND);
             this->Input("x")
                 .ParamType(DYNAMIC)
@@ -21,16 +21,9 @@ class ForeachLog: public OpDef {
                 .Format(format_list)
                 .UnknownShapeFormat(format_list)
                 .AutoContiguous();
-            this->Output("y")
-                .ParamType(DYNAMIC)
-                .DataType(tensor_dtype_list)
-                .Format(format_list)
-                .UnknownShapeFormat(format_list)
-                .AutoContiguous();
-            this->AICore().SetTiling(optiling::TilingFunc);
             this->AICore().AddConfig("ascend910b");
             this->AICore().AddConfig("ascend910_93");
         }
-};
-OP_ADD(ForeachLog);
-}  // namespace ops
+    };
+    OP_ADD(ForeachZeroInplace);
+}

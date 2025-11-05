@@ -131,7 +131,6 @@ NPUKernelBench/
 ├── framework/                 # 自动化测试与评估框架核心逻辑
 ├── kernel_generator/          # LLM 内核生成器
 ├── libs/                      # 依赖库 (CANN, JSON等)
-├── model_generated_kernels/   # LLM 生成的部分算子代码样例：含思维连和Kernle实现
 ├── tasks/                     # 核心：基准测试任务集
 ├── base_config.yaml           # 全局配置文件
 ├── run_multi_test.py          # 总执行入口脚本

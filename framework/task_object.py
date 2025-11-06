@@ -246,6 +246,58 @@ class TaskObject:
         overall_success = ops_so_exists and custom_opapi_exists and kernel_exists
         return overall_success, ops_so_exists, custom_opapi_exists, kernel_exists
 
+    def check_precision_success(self) -> PrecisionResult:
+        """
+        Parses the precision log file and returns a PrecisionResult object.
+
+        Returns:
+            PrecisionResult: An object containing the parsed results.
+                             On failure (e.g., file not found), returns
+                             default values (False, 0, 0).
+        """
+        log_path = self.eval_precision_log_path
+        
+        # Default values for failure cases
+        parsed_success = False
+        parsed_n_success = 0
+        parsed_n_failed = 0
+
+        # Helper function to find a value
+        def find_value(pattern, content, converter, default):
+            match = re.search(pattern, content)
+            if match:
+                try:
+                    return converter(match.group(1))
+                except (ValueError, TypeError):
+                    return default  # Handle conversion errors
+            return default
+
+        try:
+            with open(log_path, 'r', encoding='utf-8') as f:
+                content = f.read()  # Read the entire file content
+
+            # Define converters
+            to_bool = lambda v: v == "True"
+            to_int = lambda v: int(v)
+
+            # Find values, falling back to defaults if not found
+            parsed_success = find_value(r"success\s*=\s*(True|False)", content, to_bool, default=False)
+            parsed_n_success = find_value(r"n_success\s*=\s*(\d+)", content, to_int, default=0)
+            parsed_n_failed = find_value(r"n_failed\s*=\s*(\d+)", content, to_int, default=0)
+
+        except FileNotFoundError:
+            pass
+        except Exception as e:
+            pass
+        
+        # Create and return the PrecisionResult object
+        return PrecisionResult(
+            success=parsed_success,
+            n_success=parsed_n_success,
+            n_failed=parsed_n_failed,
+            log_file=log_path
+        )
+
     def save_code_gen_content(self, data, logger):
         save_json_file(data, self.prompt_save_file_path)
         if logger:

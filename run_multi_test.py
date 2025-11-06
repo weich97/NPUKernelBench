@@ -150,6 +150,9 @@ class TestRunner:
                                  update_callback=update_callback)
             for task in precision_tasks:
                 print(f"[INFO] Task {task.short_id} precision result:\n{task.precision_result}")
+        else:
+            for task in task_objs:
+                task.precision_result = task.check_precision_success()
 
         # Performance evaluation stage
         if TestStage.PERFORMANCE in config.active_stages:

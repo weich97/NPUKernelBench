@@ -47,7 +47,7 @@ NPUKernelBench V2.0框架面向华为昇腾NPU，专注于大模型算子生成�
 
 1. **克隆项目**
    ```bash
-   git clone https://openi.pcl.ac.cn/stepbystepbin/NPUKernelBench.git
+   git clone https://openi.pcl.ac.cn/PCL-Benchmark/NPUKernelBench.git
    cd NPUKernelBench
    ```
 

@@ -73,7 +73,7 @@ The evaluation pipeline covers the three core stages of operator development:
    ```bash
    nohup bash start_vllm_server.sh > vllm_server.log 2>&1 &
    ```
-   > 👉 **For startup instructions, please refer to the [vLLM service launch guide](./docs/START_VLLM_SERVER).**
+   > 👉 **For startup instructions, please refer to the [vLLM service launch guide](./docs/START_VLLM_SERVER.md).**
 
 ### 4.2 Example Run
 

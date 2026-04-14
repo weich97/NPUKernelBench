@@ -65,7 +65,7 @@ The evaluation pipeline covers the three core stages of operator development:
 
 4. **Install vLLM-Ascend**
 
-   Please refer to the official vLLM-Ascend installation guide: https://vllm-ascend.readthedocs.io/en/v0.7.3-dev/installation.html
+   Please refer to the official vLLM-Ascend installation guide: https://docs.vllm.ai/projects/ascend/en/latest/installation.html. You need vllm 0.7.3-dev or higher
 
 5. **Launch the vLLM service**
 

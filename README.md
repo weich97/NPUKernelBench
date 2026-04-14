@@ -49,7 +49,7 @@ The evaluation pipeline covers the three core stages of operator development:
 
 1. **Clone the repository**
    ```bash
-   git clone https://openi.pcl.ac.cn/PCL-Benchmark/NPUKernelBench.git
+   git clone [https://openi.pcl.ac.cn/PCL-Benchmark/NPUKernelBench.git](https://github.com/weich97/NPUKernelBench.git)
    cd NPUKernelBench
    ```
 

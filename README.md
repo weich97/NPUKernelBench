@@ -1,10 +1,33 @@
-# NPUKernelBench V2.0: Benchmarking LLM-Driven AscendC Kernel Generation
+# NPUKernelBench V2.0
 
 [[License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+![AscendC](https://img.shields.io/badge/AscendC-kernel%20generation-0f6abf)
+![Huawei Ascend](https://img.shields.io/badge/Huawei%20Ascend-NPU%20benchmark-c62828)
+![LLM](https://img.shields.io/badge/LLM-code%20generation-6b46c1)
+
+**Benchmarking LLM-driven AscendC kernel generation for Huawei Ascend NPUs.**
 
 NPUKernelBench is a benchmark and evaluation framework for studying automated operator generation on Huawei Ascend NPUs. The benchmark focuses on AscendC kernel synthesis, compilation, numerical validation, and performance-oriented analysis under realistic operator-development constraints.
 
 The V2.0 release extends the feasibility-oriented V1.0 benchmark with a larger operator suite and a domain-knowledge-injected model trained on high-quality Chain-of-Thought (CoT) supervision. The model is designed to internalize AscendC programming conventions, hardware-aware tiling strategies, and operator implementation patterns. Given natural-language requirements or formal operator descriptions, it can generate more than 50 usable AscendC kernels, representing a 400% increase over V1.0 and a substantial improvement in implementation quality and practical usability.
+
+## At a Glance
+
+NPUKernelBench evaluates whether language models can produce deployable NPU operator kernels rather than only syntactically plausible code. Each generated implementation is tested through the same stages that AscendC developers face in practice: source generation, CANN/MSOPGEN compilation, numerical validation against PyTorch references, and optional latency measurement on Ascend hardware.
+
+| Focus | What NPUKernelBench Provides |
+| --- | --- |
+| **Benchmark tasks** | A hierarchical operator suite covering elementary, composite, and advanced AscendC kernels. |
+| **Generation pipeline** | Prompt construction, model serving integration, code extraction, and candidate-kernel management. |
+| **Evaluation protocol** | Compilation checks, precision validation, and performance-oriented measurement hooks. |
+| **Research artifacts** | English task specifications, validation references, workflow diagrams, and case-study figures. |
+
+## Documentation Map
+
+- [Benchmark Task Design](./docs/BENCHMARK_TASKS.md): task hierarchy, operator categories, and benchmark coverage.
+- [Benchmark Evaluation](./docs/BENCHMARK_EVALUATION.md): compilation, correctness, and performance metrics.
+- [LLM Kernel Generation](./docs/LLM_KERNEL_GENERATION.md): prompt construction and generated-code handling.
+- [Start vLLM Server](./docs/START_VLLM_SERVER.md): model-serving setup for generation experiments.
 
 ## Core Contributions
 

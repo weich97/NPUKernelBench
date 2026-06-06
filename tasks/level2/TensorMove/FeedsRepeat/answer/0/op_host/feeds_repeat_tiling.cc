@@ -114,7 +114,7 @@ static ge::graphStatus SetTilingLength(gert::TilingContext* context, FeedsRepeat
         length_aligned = length_space / SIZE_OF_INT32;
     }
     else if (dtype_length == ge::DT_INT64){
-        tiling_key = 100;   //feeds_repeat_times为int64时tiling_key百位为1
+        tiling_key = 100; // Implementation note.
         length_space = ((length + ALIGN_INT64 - 1) / ALIGN_INT64) * ALIGN_NUM;
         length_aligned = length_space / SIZE_OF_INT64;
     }
@@ -142,15 +142,15 @@ static ge::graphStatus SetTilingElemRow(gert::TilingContext* context, FeedsRepea
     int64_t elem_per_loop = 0;
     uint32_t align_data = 0;
     if (dtype == ge::DT_FLOAT){
-        tiling_key += 1;    //feeds为fp32,tiling_key后两位为1
+        tiling_key += 1; // Implementation note.
         align_data = ALIGN_FP32;
         elem_per_loop = (max_ub_size - length_space * SPACE_USED_RATIO - UB_BUFFER_USED) / SIZE_OF_FP32 / DOUBLE_BUFFER;
     }else if (dtype == ge::DT_FLOAT16){
-        tiling_key += 2;    //feeds为fp16,tiling_key后两位为2
+        tiling_key += 2; // Implementation note.
         align_data = ALIGN_FP16;
         elem_per_loop = (max_ub_size - length_space * SPACE_USED_RATIO - UB_BUFFER_USED) / SIZE_OF_FP16 / DOUBLE_BUFFER;
     }else if (dtype == ge::DT_BF16){
-        tiling_key += 3;    //feeds为bf16,tiling_key后两位为3
+        tiling_key += 3; // Implementation note.
         align_data = ALIGN_BF16;
         elem_per_loop = (max_ub_size - length_space * SPACE_USED_RATIO - UB_BUFFER_USED) / SIZE_OF_BF16 / DOUBLE_BUFFER;
     }

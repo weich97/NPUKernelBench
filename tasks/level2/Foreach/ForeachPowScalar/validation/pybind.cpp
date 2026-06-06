@@ -4,18 +4,18 @@
 
 /**
  * register forward implementation for NPU device
- * 使用说明：
- * 1. 将此文件中的 aclnnCustomOp 替换为实际算子名称，如 aclnnForeachPowScalar
- * 2. 将 custom_pybind_api 替换为对应的下划线命名形式，如 foreach_pow_scalar
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
  *
- * 替换示例：
+ * Implementation note.
  * - aclnnCustomOp -> aclnnForeachPowScalar
  * - custom_pybind_api -> foreach_pow_scalar
  *
- * 注意：替换时需保持函数签名和逻辑不变，仅修改上述指定的名称，这一替换过程将在batch_compile.py文件中自动被执行
+ * Implementation note.
  */
 #include <torch/extension.h>
-#include "pytorch_npu_helper.hpp"   // 包含 EXEC_NPU_CMD 宏
+#include "pytorch_npu_helper.hpp" // Implementation note.
 
 std::vector<at::Tensor> custom_pybind_api(std::vector<at::Tensor> &x, at::Tensor &scalar)
 {
@@ -31,7 +31,7 @@ std::vector<at::Tensor> custom_pybind_api(std::vector<at::Tensor> &x, at::Tensor
     at::TensorList result_list = at::TensorList(result);
     at::TensorList x_list = at::TensorList(x);
 
-    // 直接传引用
+    // Implementation note.
     EXEC_NPU_CMD(aclnnForeachPowScalar, x_list, scalar, result_list);
 
     return result;

@@ -74,17 +74,17 @@ protected:
         LOG_PRINT("[error]s2Size need to be greater than %d, current s2Size is : %d\n", s2sizeLimitMin, s2Size);
         return false;
     }
-    // 1、获取平台信息比如CoreNum、UB/L1/L0C资源大小
+    // Implementation note.
     ge::graphStatus GetPlatformInfo();
-    // 2、获取INPUT/OUTPUT/ATTR信息
+    // Implementation note.
     ge::graphStatus GetShapeAttrsInfo();
-    // 3、计算数据切分TilingData
+    // Implementation note.
     ge::graphStatus DoOpTiling();
-    // 4、计算高阶API的TilingData
+    // Implementation note.
     ge::graphStatus DoLibApiTiling();
-    // 6、计算Workspace 大小
+    // Implementation note.
     ge::graphStatus GetWorkspaceSize();
-    // 7、保存Tiling数据
+    // Implementation note.
     ge::graphStatus PostTiling();
     ge::graphStatus CheckContext();
     bool MatchTemplate();
@@ -163,7 +163,7 @@ ge::graphStatus FlashAttentionScoreWithLargeHeadDimTiling::GetShapeAttrsInfo()
     CHECK_RET(CheckContext() != ge::GRAPH_SUCCESS, LOG_PRINT("invalid context.");
                return ge::GRAPH_FAILED);
 
-    // 获取属性值
+    // Implementation note.
     auto attrs = context_->GetAttrs();
     CHECK_NULL(attrs, return false);
     size_t idx = 0;
@@ -174,7 +174,7 @@ ge::graphStatus FlashAttentionScoreWithLargeHeadDimTiling::GetShapeAttrsInfo()
     CHECK_RET(n1Size == 0, LOG_PRINT("Head num is zero."); return false);
     LOG_PRINT("attrs: scale_value[%f] head_num[%ld].\n", scaleValue, n1Size);
 
-    // 根据属性值n1Size解析输入shape值
+    // Implementation note.
     auto &queryShape = context_->GetInputShape(0)->GetStorageShape();
     auto &keyShape = context_->GetInputShape(1)->GetStorageShape();
     bSize = queryShape.GetDim(0);
@@ -233,7 +233,7 @@ ge::graphStatus FlashAttentionScoreWithLargeHeadDimTiling::GetPlatformInfo()
 
 bool FlashAttentionScoreWithLargeHeadDimTiling::MatchTemplate()
 {
-    // s1.i: 默认64，当按64切分时，如果核外BNGS1out超vector核数时，S1.i设置为128
+    // Implementation note.
     // s2.i: 1024
     // UB Size calc logic: s1s2 * X * sizeof(T) + s1d * Y * sizeof(T) + s1 * expNum * 32 + s1 * 64 + apiTmp
     s1BasicBlock = std::min(64L, alignedS1);
@@ -250,7 +250,7 @@ bool FlashAttentionScoreWithLargeHeadDimTiling::MatchTemplate()
 
 void FlashAttentionScoreWithLargeHeadDimTiling::SetCoreParams()
 {
-    // 矩阵size
+    // Implementation note.
     tilingData.coreParams.set_s1BaseSize(s1BasicBlock);
     tilingData.coreParams.set_s1OuterSize(CeilDivision(s1Size, s1BasicBlock));
     tilingData.coreParams.set_s2BaseSize(s2BasicBlock);
@@ -269,11 +269,11 @@ void FlashAttentionScoreWithLargeHeadDimTiling::SetMultiCoreParams()
 ge::graphStatus FlashAttentionScoreWithLargeHeadDimTiling::DoOpTiling()
 {
     auto &inputParams = tilingData.inputParams;
-    // 计算基本块大小
+    // Implementation note.
     MatchTemplate();
-    // 根据基本块大小设置单核数据
+    // Implementation note.
     SetCoreParams();
-    // 计算多核切分相关数据
+    // Implementation note.
     SetMultiCoreParams();
     return ge::GRAPH_SUCCESS;
 }
@@ -282,13 +282,13 @@ bool FlashAttentionScoreWithLargeHeadDimTiling::SetBmm1TilingInput(int64_t s1Bas
                                                        matmul_tiling::MatmulApiTiling &bmm1)
 {
     bmm1.SetAType(matmul_tiling::TPosition::GM, matmul_tiling::CubeFormat::ND, matmul_tiling::DataType::DT_FLOAT16, false);
-    // B矩阵转置
+    // Implementation note.
     bmm1.SetBType(matmul_tiling::TPosition::GM, matmul_tiling::CubeFormat::ND, matmul_tiling::DataType::DT_FLOAT16, true);
     bmm1.SetCType(matmul_tiling::TPosition::GM, matmul_tiling::CubeFormat::ND, matmul_tiling::DataType::DT_FLOAT);
-    // 设置Matmul计算时的单次计算的形状singleM、singleN、singleK，单位为元素个数。
+    // Implementation note.
     bmm1.SetShape(std::min(s1BasicBlock, s1Size),
                     std::min(s2BasicBlock * tilingData.coreParams.get_nRatio(), s2Size), dSize);
-    // 设置Matmul计算时的原始完整的形状M、N、K，单位为元素个数。
+    // Implementation note.
     bmm1.SetOrgShape(s1Size, s2BasicBlock * tilingData.coreParams.get_nRatio(), s1StrideSize, s2StrideSize);
     bmm1.SetBias(false);
     if (bmm1.SetBufferSpace(aicoreParams_.l1Size, aicoreParams_.l0cSize) != 0) {
@@ -406,9 +406,9 @@ ge::graphStatus FlashAttentionScoreWithLargeHeadDimTiling::GetWorkspaceSize()
     size_t *workspaces = context_->GetWorkspaceSizes(1);
     int64_t bmm1Bytes = coreParams.get_nRatio() * s1BasicBlock * s2BasicBlock * calcTypeSize;
 
-    // dSize小于64的场景，无需切D， workspace占用较小
+    // Implementation note.
     if (dSize <= D_SPECIFIC_SIZE) {
-        // stage1占用2倍的空间，stage2占用2倍空间
+        // Implementation note.
         workspaces[0] = static_cast<size_t>((bmm1Bytes * SPACE_NUM_2 +
                         SPACE_NUM_2 * coreParams.get_s1BaseSize() * alignedD * calcTypeSize) * aivNum) +
                         WORK_SPACE_RESERVE_SIZE;
@@ -418,7 +418,7 @@ ge::graphStatus FlashAttentionScoreWithLargeHeadDimTiling::GetWorkspaceSize()
                             WORK_SPACE_RESERVE_SIZE;
         }
     } else {
-        // 切D场景，stage1占用2倍的空间，stage2占用4倍空间
+        // Implementation note.
         workspaces[0] = static_cast<size_t>((bmm1Bytes * SPACE_NUM_2 +
                         SPACE_NUM_4 * coreParams.get_s1BaseSize() * alignedD * calcTypeSize) * aivNum) +
                         WORK_SPACE_RESERVE_SIZE;

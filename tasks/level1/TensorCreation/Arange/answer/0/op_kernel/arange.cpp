@@ -55,7 +55,7 @@ public:
 
   __aicore__ inline void Process()
   {
-    /*初始化第一个UNIT序列值*/
+    // Implementation note.
     work_init();
 
     for (int32_t i = 0; i < this->unitLoops; i++)
@@ -107,11 +107,11 @@ private:
   uint32_t unitNum;
   uint32_t unitLoops;
   uint32_t tailNum;
-  /*UNIT之间元素值差间隔*/
+  // Implementation note.
   float offset_step_base;
 };
 
-/*INT64/BF16/FP16均转成FP32运算*/
+// Implementation note.
 template <typename TYPE_START, typename TYPE_STEP, typename TYPE_OUT>
 class KernelArange_Cast
 {
@@ -133,7 +133,7 @@ public:
     pipe.InitBuffer(temp2, unitNum * sizeof(float));
     pipe.InitBuffer(temp3, unitNum * sizeof(float));
     pipe.InitBuffer(temp4, unitNum * sizeof(float));
-    pipe.InitBuffer(tempFloat, 2*sizeof(float)); // 2表示两个float类型的大小
+    pipe.InitBuffer(tempFloat, 2*sizeof(float)); // Implementation note.
 
     this->totalNum = totalNum;
     this->unitNum = unitNum;
@@ -201,7 +201,7 @@ public:
 
   __aicore__ inline void Process()
   {
-    /*初始化第一个UNIT序列值*/
+    // Implementation note.
     work_init();
 
     for (int32_t i = 0; i < this->unitLoops; i++)
@@ -258,7 +258,7 @@ private:
   uint32_t unitNum;
   uint32_t unitLoops;
   uint32_t tailNum;
-  /*UNIT之间元素值差间隔*/
+  // Implementation note.
   float offset_step_base;
 };
 

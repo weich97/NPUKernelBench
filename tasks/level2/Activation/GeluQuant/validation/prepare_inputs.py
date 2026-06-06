@@ -5,13 +5,13 @@ from typing import List, Tuple
 
 def get_inputs(param, device=None):
     """
-    返回：
-        x         : Tensor         输入张量（不再是 List）
-        scale     : Tensor(float)  量化 scale
-        offset    : Tensor(float)  量化 offset
+    Reference implementation detail.
+        Reference implementation detail.
+        Reference implementation detail.
+        Reference implementation detail.
         quantMode : str            "static" or "dynamic"
     """
-    input_shape = eval(param.get('input_shape', '[8, 2048]'))  # 单个 shape
+    input_shape = eval(param.get('input_shape', '[8, 2048]'))  # Implementation note.
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
     scale_value = float(param.get('scale_value', 1.0))

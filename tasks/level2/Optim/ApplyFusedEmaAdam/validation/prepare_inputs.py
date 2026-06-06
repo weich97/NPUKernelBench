@@ -10,12 +10,12 @@ def get_inputs(param, device=None):
     dtype = getattr(torch, dtype_str)
     step = torch.tensor([param.get('step', 1)], device=device, dtype=torch.int64)
 
-    # 生成输入张量
+    # Implementation note.
     grad = torch.randn(shape, device=device, dtype=dtype)
     varRef = torch.randn(shape, device=device, dtype=dtype)
-    mRef = torch.zeros(shape, device=device, dtype=dtype)  # 初始化为0
-    vRef = torch.zeros(shape, device=device, dtype=dtype)  # 初始化为0
-    sRef = torch.zeros(shape, device=device, dtype=dtype)  # 初始化为0
+    mRef = torch.zeros(shape, device=device, dtype=dtype)  # Implementation note.
+    vRef = torch.zeros(shape, device=device, dtype=dtype)  # Implementation note.
+    sRef = torch.zeros(shape, device=device, dtype=dtype)  # Implementation note.
 
     return grad, varRef, mRef, vRef, sRef, step
 
@@ -30,7 +30,7 @@ def get_init_inputs(param, device=None):
     Returns:
         dict: Model initialization parameters
     """
-    # 从CSV读取初始化参数，如果不存在则使用默认值
+    # Implementation note.
     lr = param.get('lr', 0.001)
     emaDecay = param.get('emaDecay', 0.999)
     beta1 = param.get('beta1', 0.9)

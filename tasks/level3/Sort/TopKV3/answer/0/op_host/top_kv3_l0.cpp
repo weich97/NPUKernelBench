@@ -29,7 +29,7 @@ const int64_t MAX_AICORE_CALC_INPUTSIZE = 32768;
 const int64_t MAX_AICORE_CALC_DIM = 8;
 const int64_t K_LIMIT = 16;
 
-// 根据芯片类型、dtype判断算子是否支持走TopKV3
+// Implementation note.
 static bool IsAscendCSupport(const aclTensor *self, int64_t k) {
   SocVersion version = GetCurrentPlatformInfo().GetSocVersion();
   if (version == SocVersion::ASCEND310P && CheckType(self->GetDataType(), {op::DataType::DT_FLOAT16}) && k < K_LIMIT) {
@@ -37,12 +37,12 @@ static bool IsAscendCSupport(const aclTensor *self, int64_t k) {
   }
   return false;
 }
-// AICORE算子kernel
+// Implementation note.
 std::tuple<aclTensor*, aclTensor*> TopkV2(const aclTensor *self, const aclTensor *k, int64_t dim,
                                               bool largest, bool sorted, aclTensor *values, aclTensor *indices,
                                               aclOpExecutor *executor) {
   L0_DFX(TopkV2, self, k, dim, largest, sorted, values, indices);
-  // 使用框架宏ADD_TO_LAUNCHER_LIST_AICORE，将AiCore TopKV2算子加入任务队列
+  // Implementation note.
   ADD_TO_LAUNCHER_LIST_AICORE(TopKV2,
                               OP_INPUT(self, k),
                               OP_OUTPUT(values, indices),
@@ -54,7 +54,7 @@ std::tuple<aclTensor*, aclTensor*> TopkV3(const aclTensor *self, const aclTensor
                                               bool largest, bool sorted, aclTensor *values, aclTensor *indices,
                                               aclOpExecutor *executor) {
   L0_DFX(TopkV3, self, k, dim, largest, sorted, values, indices);
-  // 使用框架宏ADD_TO_LAUNCHER_LIST_AICORE，将AiCore TopKV3算子加入任务队列
+  // Implementation note.
   ADD_TO_LAUNCHER_LIST_AICORE(TopKV3,
                               OP_INPUT(self, k),
                               OP_OUTPUT(values, indices),

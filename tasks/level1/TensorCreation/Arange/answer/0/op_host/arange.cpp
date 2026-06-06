@@ -44,7 +44,7 @@ namespace optiling
         uint64_t ub_size;
         auto ascendcPlatform = platform_ascendc::PlatformAscendC(context->GetPlatformInfo());
         ascendcPlatform.GetCoreMemSize(platform_ascendc::CoreMemType::UB, ub_size);
-        /*单次api计算大小：将ub 10等份后并按BLOCK_SIZE对齐*/
+        // Implementation note.
         uint64_t ub_unit_size = DIVIDE_AND_ALIGN(ub_size, 10, BLOCK_SIZE);
         uint32_t totalNum = totalLength;
         uint32_t unitNum  = ub_unit_size / dtype_size;

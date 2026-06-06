@@ -9,25 +9,25 @@ import kernel_gen_ops
 
 class Model(nn.Module):
     """
-    实现ForeachMinimumScalar算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, inputs: List[torch.Tensor], scalar: torch.Tensor) -> List[torch.Tensor]:
         """
-        实现ForeachMinimumScalar算子功能。
+        Reference implementation detail.
 
         Args:
-            inputs: 输入张量列表
-            scalar: 标量张量
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            输入张量列表和标量逐元素比较后的最大值张量列表
+            Reference implementation detail.
         """
         return [torch.minimum(x, scalar) for x in inputs]
 

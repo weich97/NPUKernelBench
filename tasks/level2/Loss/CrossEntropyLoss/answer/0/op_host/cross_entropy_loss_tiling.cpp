@@ -184,7 +184,7 @@ static void UbSplitTiling(gert::TilingContext* context)
     uint64_t oneBatchByte = 0;
     uint64_t weightBuf = 0;
     if (inputDtype == ge::DT_FLOAT) {
-        weightBuf = needWeightBuf ? NUM_1 : 0; // labelSmoothing计算需要搬入weight[C]
+        weightBuf = needWeightBuf ? NUM_1 : 0; // Implementation note.
         inputUbByte = ((maxUbSize - reserveUb) / (DOUBLE_BUFFER + weightBuf)) / BLOCK_512 * BLOCK_512;
         oneBatchByte = CeilDiv(targetNum * NUM_4, BLOCK_32) * BLOCK_32;
         inputUbByte = inputUbByte >= oneBatchByte ? oneBatchByte : inputUbByte;
@@ -196,7 +196,7 @@ static void UbSplitTiling(gert::TilingContext* context)
         weightBuf = needWeightBuf ? NUM_2 : 0;
         inputUbByte = ((maxUbSize - reserveUb) / (DOUBLE_BUFFER + NUM_1 + NUM_2 + weightBuf)) / BLOCK_512 * BLOCK_512;
         oneBatchByte = CeilDiv(targetNum * NUM_2, BLOCK_32) * BLOCK_32;
-        inputUbByte = inputUbByte >= oneBatchByte ? oneBatchByte : inputUbByte; // 小shape一次搬入一个batch，暂不考虑多载的情况。
+        inputUbByte = inputUbByte >= oneBatchByte ? oneBatchByte : inputUbByte; // Implementation note.
         castTmpBufByte = NUM_2 * inputUbByte;
         probOutBufByte = inputUbByte;
         weight4SmoothingBufByte = needWeightBuf ? castTmpBufByte : 0;
@@ -221,7 +221,7 @@ static void VecCalcTiling(gert::TilingContext* context)
         ubLoopNum = CeilDiv(targetNum, inputUbSize);
         ubTailNum = GetRemainder(targetNum, inputUbSize);
         if (ubTailNum != 0) {ubLoopNum -= 1;}
-    } else { // 小C的模板后续补充
+    } else { // Implementation note.
         ubLoopNum = 0;
         ubTailNum = targetNum;
     }

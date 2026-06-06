@@ -17,7 +17,7 @@ extern "C" {
 #endif
 
 /**
- * @brief aclnnLayerNorm的第一段接口，根据具体的计算流程，计算workspace大小。
+ * Implementation note.
  * @domain aclnn_ops_infer
  */
 __attribute__((visibility("default"))) aclnnStatus aclnnLayerNormGetWorkspaceSize(const aclTensor *input,
@@ -26,7 +26,7 @@ __attribute__((visibility("default"))) aclnnStatus aclnnLayerNormGetWorkspaceSiz
     aclOpExecutor **executor);
 
 /**
- * @brief aclnnLayerNormWithImplMode的第一段接口，根据具体的计算流程，计算workspace大小。
+ * Implementation note.
  * @domain aclnn_ops_infer
  */
 __attribute__((visibility("default"))) aclnnStatus aclnnLayerNormWithImplModeGetWorkspaceSize(const aclTensor *input,
@@ -35,13 +35,13 @@ __attribute__((visibility("default"))) aclnnStatus aclnnLayerNormWithImplModeGet
     aclOpExecutor **executor);
 
 /**
- * @brief aclnnLayerNorm的第二段接口，用于执行计算。
+ * Implementation note.
  */
 __attribute__((visibility("default"))) aclnnStatus aclnnLayerNorm(
     void *workspace, uint64_t workspaceSize, aclOpExecutor *executor, aclrtStream stream);
 
 /**
- * @brief aclnnLayerNormWithImplMode的第二段接口，用于执行计算。
+ * Implementation note.
  */
 __attribute__((visibility("default"))) aclnnStatus aclnnLayerNormWithImplMode(
     void *workspace, uint64_t workspaceSize, aclOpExecutor *executor, aclrtStream stream);

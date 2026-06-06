@@ -260,7 +260,7 @@ ge::graphStatus GeluQuantTiling::GetPlatformInfo()
         VECTOR_INNER_ERR_REPORT_TILIING(nodeName_, "GeluQuantTiling get ub size is less than or equal to 0."),
         return ge::GRAPH_FAILED);
 
-    baseInfoOp.ubSize -= RESERVED_UB_SIZE; // 可用UB空间
+    baseInfoOp.ubSize -= RESERVED_UB_SIZE; // Implementation note.
 
     return ge::GRAPH_SUCCESS;
 }
@@ -368,12 +368,12 @@ ge::graphStatus GeluQuantTiling::DoStaticQuantTiling()
 
     int64_t mulRowsInUb = splitCoreOp.coexistentNodeElementNum / baseInfoOp.endAxisLenAligned;
     if (baseInfoOp.fusedFrontAxis >= baseInfoOp.vectorCoreNum && mulRowsInUb < TWO_END_AXIS) {
-        splitCoreOp.templateMode = STATIC_FUNCTION_TEMPLATE; // 满核模式 正常尾轴或者大尾轴
+        splitCoreOp.templateMode = STATIC_FUNCTION_TEMPLATE; // Implementation note.
         return ge::GRAPH_SUCCESS;
     }
 
     splitCoreOp.templateMode = STATIC_PERFORMANCE_TEMPLATE;
-    if (baseInfoOp.fusedFrontAxis >= baseInfoOp.vectorCoreNum) { // 满核模式 小尾轴
+    if (baseInfoOp.fusedFrontAxis >= baseInfoOp.vectorCoreNum) { // Implementation note.
         return DoStaticQuantFullKernelSmallEndAxis();
     } else {
         return DoStaticQuantNotFullKernelSplitEndAxis();

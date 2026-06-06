@@ -9,7 +9,7 @@ def get_inputs(param, device=None):
     head_num = param.get('head_num')
     scale_value = param.get('scale_value', 1.0)
 
-    # 创建query、key和value张量，所有元素的值在-0.01~0.01之间随机，数据类型为float16
+    # Implementation note.
     query = torch.rand(shape, device=device, dtype=torch.float16) * 0.02 - 0.01
     key = torch.rand(shape, device=device, dtype=torch.float16) * 0.02 - 0.01
     value = torch.rand(shape, device=device, dtype=torch.float16) * 0.02 - 0.01

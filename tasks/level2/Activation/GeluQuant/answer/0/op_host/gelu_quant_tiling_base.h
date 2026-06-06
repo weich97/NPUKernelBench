@@ -18,7 +18,7 @@
 #include <string>
 
 namespace optiling {
-// 公共变量区
+// Implementation note.
 constexpr int64_t X_INPUT_INDEX = 0;
 constexpr int64_t SCALE_INPUT_INDEX = 1;
 constexpr int64_t OFFSET_INPUT_INDEX = 2;
@@ -62,7 +62,7 @@ constexpr int64_t WORKSPACE_BUFFER = 20 * 1024 * 1024;
 
 enum class InputDataType : int64_t { HALF_HALF = 1, HALF_FLOAT = 2, FLOAT_FLOAT = 3, BF16_BF16 = 4, BF16_FLOAT = 5 };
 
-// 公共方法区
+// Implementation note.
 template <class T> inline T AlignToCeil(const T n, const T alignSize)
 {
     return (n + alignSize - 1) & (~(alignSize - 1));

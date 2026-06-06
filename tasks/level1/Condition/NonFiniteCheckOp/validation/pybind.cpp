@@ -14,11 +14,11 @@ at::TensorList to_tensor_list(const std::vector<at::Tensor>& vec) {
 
 at::Tensor non_finite_check_op(std::vector<at::Tensor> &x)
 {
-    // 输出张量列表，每个 input tensor 映射一个标量输出
+  // Alignment and tail-handling logic.
     at::Tensor y = torch::empty({1}, x[0].options().dtype(torch::kFloat32));
     y.zero_();
     
-    auto x_list = to_tensor_list(x);  // 先保存再传
+    auto x_list = to_tensor_list(x);  // Alignment and tail-handling logic.
     EXEC_NPU_CMD(aclnnNonFiniteCheckOp, x_list, y);
 
     return y;

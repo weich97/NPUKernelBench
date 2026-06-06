@@ -3,31 +3,31 @@ import torch
 
 def get_inputs(param, device=None):
     """
-    根据 DataFrame 行中的参数生成模型的输入张量列表和标量。
+    Reference implementation detail.
     """
     shape_list = eval(param.get('input_shape', '[[1]]'))
-    scalar_value = float(param.get('scalar', '1.0'))  # 使用单个标量
+    scalar_value = float(param.get('scalar', '1.0'))  # Implementation note.
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
 
     inputs = []
     for shape in shape_list:
         if dtype == torch.int32:
-            # 整数类型使用 randint
+            # Implementation note.
             x = torch.randint(-100, 100, shape, device=device, dtype=dtype)
         else:
-            # 浮点类型使用 randn
+            # Implementation note.
             x = torch.randn(shape, device=device, dtype=dtype)
         inputs.append(x)
 
-    # 根据文档规则设置标量的数据类型：
-    # - 当x的数据类型为FLOAT、FLOAT16、INT32时，数据类型与x的数据类型保持一致
-    # - 当x的数据类型为BFLOAT16时，数据类型支持FLOAT
+    # Implementation note.
+    # Implementation note.
+    # Implementation note.
     if dtype == torch.bfloat16:
         scalar = torch.tensor(scalar_value, device=device, dtype=torch.float)
     elif dtype == torch.int32:
         scalar = torch.tensor(int(scalar_value), device=device, dtype=torch.int32)
-    else:  # float或float16
+    else:  # Implementation note.
         scalar = torch.tensor(scalar_value, device=device, dtype=dtype)
 
     return inputs, scalar

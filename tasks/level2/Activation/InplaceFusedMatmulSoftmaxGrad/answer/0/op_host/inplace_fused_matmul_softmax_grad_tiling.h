@@ -13,22 +13,22 @@ BEGIN_TILING_DATA_DEF(BaseTiling)
     TILING_DATA_FIELD_DEF(uint32_t, m);                    // rowLenPerBatch
     TILING_DATA_FIELD_DEF(uint32_t, n);                    // colLen
     TILING_DATA_FIELD_DEF(uint32_t, k);                    // k
-    TILING_DATA_FIELD_DEF(uint32_t, rowLen);               // 行数
-    TILING_DATA_FIELD_DEF(uint32_t, colLen);               // 列数
-    TILING_DATA_FIELD_DEF(uint32_t, alignColLen);          // 每次计算的对齐列数
-    TILING_DATA_FIELD_DEF(uint32_t, rowLenPerHeadCore);    // 头核处理行数
-    TILING_DATA_FIELD_DEF(uint32_t, rowLenPerTailCore);    // 尾核处理行数
-    TILING_DATA_FIELD_DEF(uint32_t, basicRowLenHeadCore);  // 头核每次计算的行数 类似于TILE_LENGTH
-    TILING_DATA_FIELD_DEF(uint32_t, basicRowLenTailCore);  // 尾核每次计算的行数
-    TILING_DATA_FIELD_DEF(uint32_t, realCoreNum);          // 实际使用的核数
-    TILING_DATA_FIELD_DEF(uint32_t, headCoreNum);          // 使用的head核数
-    TILING_DATA_FIELD_DEF(uint32_t, tailCoreNum);          // 使用的tail核数
-    TILING_DATA_FIELD_DEF(uint32_t, blockNum);             // 32B块的元素个数
+    TILING_DATA_FIELD_DEF(uint32_t, rowLen); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, colLen); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, alignColLen); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, rowLenPerHeadCore); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, rowLenPerTailCore); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, basicRowLenHeadCore); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, basicRowLenTailCore); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, realCoreNum); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, headCoreNum); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, tailCoreNum); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, blockNum); // Implementation note.
     // basicColLen
-    TILING_DATA_FIELD_DEF(uint32_t, innerLoopTimes);       // 大shape下对colLen的循环次数
-    TILING_DATA_FIELD_DEF(uint32_t, innerLoopHeadColLen);  // 大shape下对colLen的循环每次计算的列数
-    TILING_DATA_FIELD_DEF(uint32_t, innerLoopTailColLen);  // 大shape下对colLen的循环的尾块大小
-    TILING_DATA_FIELD_DEF(uint32_t, headLocalWorkSpaceSize);    // softmax高阶API所需的临时空间
+    TILING_DATA_FIELD_DEF(uint32_t, innerLoopTimes); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, innerLoopHeadColLen); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, innerLoopTailColLen); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, headLocalWorkSpaceSize); // Implementation note.
     TILING_DATA_FIELD_DEF(uint32_t, tilingKey);
 END_TILING_DATA_DEF;
 REGISTER_TILING_DATA_CLASS(BaseTilingOp, BaseTiling)
@@ -44,9 +44,9 @@ struct InplaceFusedMatmulSoftmaxGradCompileInfo {
     uint32_t inputDataByte = 2;
     ge::DataType inputDataType;
 
-    uint32_t dataNumSingleUb = 1;  // UB空间可处理的最大数据量
-    uint32_t blockNum = 1;        // 32B对齐使用 //
-    uint32_t cacheLineLen = 1;     // 512B对齐使用
+    uint32_t dataNumSingleUb = 1; // Implementation note.
+    uint32_t blockNum = 1; // Implementation note.
+    uint32_t cacheLineLen = 1; // Implementation note.
     
     uint32_t coreNum = 1; //
     uint32_t aivNum = 0; //

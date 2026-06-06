@@ -22,7 +22,7 @@
 
 namespace GeluQuantALL {
 using namespace AscendC;
-// dynamic quant 基础模板  ub内单个尾轴或者多个尾轴
+// Implementation note.
 template <typename T1, typename T2> class GeluDynamicQuant : public GeluQuantBase {
 public:
     __aicore__ inline GeluDynamicQuant(){};

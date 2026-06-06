@@ -7,33 +7,29 @@ import torch.nn as nn
 import kernel_gen_ops
 import math
 
+
 class Model(nn.Module):
-    """
-    实现GatherV3算子功能的模型。
-    """
+    """Reference PyTorch model for the GatherV3 operator."""
 
     def __init__(self):
-        """
-        初始化模型。
-        """
+        """Initialize the reference model."""
         super(Model, self).__init__()
 
     def forward(self, self_tensor: torch.Tensor, axis: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
         """
-        实现GatherV3算子功能。
+        Execute the GatherV3/index_select operation.
 
         Args:
-            self_tensor: 第一个输入张量
-            indices: 索引张量
-            axis: 轴张量
+            self_tensor: Source input tensor.
+            indices: Index tensor.
+            axis: Axis tensor.
 
         Returns:
-            GatherV3算子的输出
+            GatherV3 output tensor.
         """
-
         output = torch.index_select(self_tensor, dim=axis, index=indices)
-
         return output
+
 
 class ModelNew(nn.Module):
     def __init__(self):

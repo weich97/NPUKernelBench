@@ -9,7 +9,7 @@ def get_inputs(param, device=None):
     dtype = getattr(torch, dtype_str)
 
     if dtype in (torch.int8, torch.uint8, torch.int16, torch.int32, torch.int64):
-        # 根据类型确定合适的范围
+        # Implementation note.
         if dtype == torch.int8:
             low, high = -128, 127
         elif dtype == torch.uint8:
@@ -20,7 +20,7 @@ def get_inputs(param, device=None):
     elif dtype == torch.bool:
         x = torch.randint(0, 2, shape, device=device, dtype=torch.bool)
     else:
-        # 浮点类型使用randn
+        # Implementation note.
         x = torch.randn(shape, device=device, dtype=dtype)
 
     dst_type_str = param.get('dst_type', 'float16')

@@ -10,48 +10,48 @@ import math
 
 class Model(nn.Module):
     """
-    实现FeedsRepeat算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, feeds: torch.Tensor, feeds_repeat_times: torch.Tensor, output_feeds_size: int) -> torch.Tensor:
         """
-        实现FeedsRepeat算子功能。
+        Reference implementation detail.
 
         Args:
-            feeds: 输入张量
-            feeds_repeat_times: 重复次数张量
-            output_feeds_size: 输出的feeds大小
+            Reference implementation detail.
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            处理后的输出张量
+            Reference implementation detail.
         """
 
-        # 重复张量元素
+        # Implementation note.
         repeated = torch.repeat_interleave(feeds, feeds_repeat_times, dim=0)
 
-        # 计算需要填充的数量
+        # Implementation note.
         total_repeated = feeds_repeat_times.sum().item()
         pad_size = output_feeds_size - total_repeated
 
-        # 如果需要填充
+        # Implementation note.
         if pad_size > 0:
-            # 创建输出张量
+            # Implementation note.
             output_shape = (output_feeds_size,) + feeds.shape[1:]
             output = torch.zeros(output_shape,
                                  dtype=feeds.dtype,
                                  device=feeds.device)
 
-            # 将重复后的数据拷贝到输出中
+            # Implementation note.
             output[:total_repeated] = repeated
             return output
         else:
-            # 如果不需要填充，直接返回重复后的数据
+            # Implementation note.
             return repeated
 
 

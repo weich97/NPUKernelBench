@@ -137,24 +137,24 @@ private:
       LocalTensor<half> x2_local = x2_inque.DeQue<half>();
       LocalTensor<int8_t> y_local = y_outque.AllocTensor<int8_t>();
       LocalTensor<half> y_compute = calc_buf_1.Get<half>();
-      // Step 1: 计算差值 diff = x1 - x2
+  // Alignment and tail-handling logic.
       Sub(y_compute, x1_local, x2_local, this->tile_cache);
 
-      // Step 2: 取绝对值 abs_diff = |diff|
+  // Alignment and tail-handling logic.
       Abs(y_compute, y_compute, this->tile_cache);
 
-      // Step 3: 误差容差处理，将小于误差值的差值设置为 0
+  // Alignment and tail-handling logic.
       Mins(y_compute, y_compute, (half)MIN_ACCURACY_FP16, this->tile_cache);
 
-      // Step 4: 将所有非零值设置为 1
+  // Alignment and tail-handling logic.
       Muls(y_compute, y_compute, (half)MAX_MUL_FP16, this->tile_cache);
       Muls(y_compute, y_compute, (half)MAX_MUL_FP16, this->tile_cache);
 
-      // Step 5: 最终结果：将所有非零值设置为 1，零值保持为 0
+  // Alignment and tail-handling logic.
       Duplicate(x1_local, (half)POSITIVE_ONE_FP32, this->tile_cache);
       Sub(y_compute, x1_local, y_compute, this->tile_cache);
 
-      // 将结果转换为 FP16 类型并保存到输出张量
+  // Alignment and tail-handling logic.
       Cast(y_local, y_compute, RoundMode::CAST_NONE, this->tile_cache);
       y_outque.EnQue<int8_t>(y_local);
       x1_inque.FreeTensor(x1_local);
@@ -169,25 +169,25 @@ private:
 
       LocalTensor<half> y_fp16 = calc_buf_2.Get<half>();
 
-      // Step 1: 计算差值 diff = x1 - x2
+  // Alignment and tail-handling logic.
       Sub(y_compute, x1_local, x2_local, this->tile_cache);
 
-      // Step 2: 取绝对值 abs_diff = |diff|
+  // Alignment and tail-handling logic.
       Abs(y_compute, y_compute, this->tile_cache);
 
-      // Step 3: 误差容差处理，将小于误差值的差值设置为 0
+  // Alignment and tail-handling logic.
       Mins(y_compute, y_compute, (float)MIN_ACCURACY_FP32, this->tile_cache);
 
-      // Step 4: 将所有非零值设置为 1
+  // Alignment and tail-handling logic.
       Muls(y_compute, y_compute, (float)MAX_MUL_1_FP32, this->tile_cache);
       Muls(y_compute, y_compute, (float)MAX_MUL_1_FP32, this->tile_cache);
       Muls(y_compute, y_compute, (float)MAX_MUL_2_FP32, this->tile_cache);
 
-      // Step 5: 最终结果：将所有非零值设置为 1，零值保持为 0
+  // Alignment and tail-handling logic.
       Duplicate(x1_local, (float)POSITIVE_ONE_FP32, this->tile_cache);
       Sub(y_compute, x1_local, y_compute, this->tile_cache);
 
-      // 将结果转换为 FP16 类型并保存到输出张量
+  // Alignment and tail-handling logic.
       Cast(y_fp16, y_compute, RoundMode::CAST_NONE, this->tile_cache);
       Cast(y_local, y_fp16, RoundMode::CAST_NONE, this->tile_cache);
       y_outque.EnQue<int8_t>(y_local);
@@ -200,28 +200,28 @@ private:
       LocalTensor<int8_t> x2_local = x2_inque.DeQue<int8_t>();
       LocalTensor<int8_t> y_local = y_outque.AllocTensor<int8_t>();
       LocalTensor<int8_t> y_compute = calc_buf_1.Get<int8_t>();
-      // Step 1: 初始化中间张量
+  // Alignment and tail-handling logic.
       LocalTensor<half> x1_local_fp16 = calc_buf_2.Get<half>();
       LocalTensor<half> x2_local_fp16 = calc_buf_3.Get<half>();
       LocalTensor<half> y_local_fp16 = calc_buf_4.Get<half>();
 
-      // Step 2: 将 int8 转换为 FP16
+  // Alignment and tail-handling logic.
       Cast(x1_local_fp16, x1_local, RoundMode::CAST_NONE, this->tile_cache);
       Cast(x2_local_fp16, x2_local, RoundMode::CAST_NONE, this->tile_cache);
 
-      // Step 3: 计算差值 diff = x1 - x2
+  // Alignment and tail-handling logic.
       Sub(y_local_fp16, x1_local_fp16, x2_local_fp16, this->tile_cache);
-      // Step 4: 取绝对值 abs_diff = |diff|
+  // Alignment and tail-handling logic.
       Abs(y_local_fp16, y_local_fp16, this->tile_cache);
 
-      // Step 5: 将所有非零值设置为 1
+  // Alignment and tail-handling logic.
       Mins(y_local_fp16, y_local_fp16, (half)POSITIVE_ONE_FP32, this->tile_cache);
 
-      // Step 6: 布尔值反转，将零值设为 1，非零值设为 0
+  // Alignment and tail-handling logic.
       Duplicate(x1_local_fp16, (half)POSITIVE_ONE_FP32, this->tile_cache);
       Sub(y_local_fp16, x1_local_fp16, y_local_fp16, this->tile_cache);
 
-      // Step 7: 将结果转换为 int8 并保存到输出张量
+  // Alignment and tail-handling logic.
       Cast(y_local, y_local_fp16, RoundMode::CAST_NONE, this->tile_cache);
       y_outque.EnQue<int8_t>(y_local);
       x1_inque.FreeTensor(x1_local);
@@ -245,7 +245,7 @@ private:
       Duplicate(x1_local, (int32_t)POSITIVE_ONE_I32, this->tile_cache);
       Sub(y_compute, x1_local, y_compute, this->tile_cache);
 
-      // 将结果转换为 FP16 类型并保存到输出张量
+  // Alignment and tail-handling logic.
       // int32->float
       Cast(y_fp32, y_compute, RoundMode::CAST_NONE, this->tile_cache);
       // float->half

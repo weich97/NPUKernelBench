@@ -1,43 +1,44 @@
 # aclnnMatmulBias
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-该Ascend C算子用于执行一个融合了矩阵乘法和偏置加法的复合运算。它首先计算两个二维矩阵 `A` 和 `B` 的乘积，然后将一个一维的偏置（bias）张量加到乘积结果的每一行上。这种 `MatMul + BiasAdd` 的融合操作是构建神经网络（如全连接层）中的一个关键且常见的步骤，可以有效提升计算效率。
+### Operator Semantics
+`aclnnMatmulBias` is an Ascend NPU benchmark operator in the `level3` `GMM` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.matmul_bias()`.
 
-### 计算公式
-假设输入张量为 $A$（维度为 $m \times k$）、$B$（维度为 $k \times n$）以及偏置向量 $bias$（维度为 $n$），则输出张量 $D$（维度为 $m \times n$）的计算公式如下：
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
 
 $$D_{ij} = \left(\sum_{p=1}^{k} A_{ip} B_{pj}\right) + \text{bias}_j$$
 
-其中，$i$ 的范围是从 $1$ 到 $m$，$j$ 的范围是从 $1$ 到 $n$。公式表示，输出矩阵 $D$ 的每个元素 $D_{ij}$ 是由矩阵 $A$ 的第 $i$ 行与矩阵 $B$ 的第 $j$ 列的点积，再加上偏置向量 $bias$ 的第 $j$ 个元素得到的。
+## Interface Definition
 
-### 计算过程与类型转换
-为了在计算过程中保证数值精度并防止溢出，该算子内部采用了高精度数据类型进行计算。详细流程如下：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
-1.  算子接收三个数据类型为 `float16` 的输入张量 `a`、`b` 和 `bias`。
-2.  在执行矩阵乘法和偏置加法之前，所有输入张量都会被内部转换为 `float32` 类型。
-3.  核心的乘加计算（包括累加过程）完全在 `float32` 精度下进行。
-4.  所有计算完成后，得到的 `float32` 类型的结果张量。
-5.  最后，将该 `float32` 结果转换回 `float16` 类型，作为算子的最终输出。
+```python
+def matmul_bias(*args, **kwargs):
+    """Execute `aclnnMatmulBias` on Ascend NPU tensors."""
 
-## 接口定义
+```
 
-### 算子原型定义接口
-#### Input
-- a：Device侧的aclTensor，公式中的A，数据类型支持float16，维度支持2维，数据格式支持ND。
-- b：Device侧的aclTensor，公式中的B，数据类型支持float16，维度支持2维，数据格式支持ND。
-- bias：Device侧的aclTensor，公式中的bias，数据类型支持float16，维度支持1维，数据格式支持ND。
-#### Output
-- d：Device侧的aclTensor，公式中的D，数据类型支持float16，维度支持2维，数据格式支持ND。
-#### Attr
-- 无
+### Inputs
+- Operator arguments are supplied by the benchmark input generator and follow the reference validation signature.
 
-## 约束与限制
-  * 所有输入张量 `a`、`b` 和 `bias` 的数据类型当前仅支持 `float16`。
-  * 输入张量 `a` 和 `b` 必须为二维矩阵。
-  * 输入张量 `bias` 必须为一维向量。
-  * 维度匹配约束：
-    * `a` 的第二个维度（列数）必须与 `b` 的第一个维度（行数）相等。
-    * `bias` 的维度必须与 `b` 的第二个维度（列数）相等。
-  * 所有输入张量的数据格式只支持ND。
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
+
+```python
+import kernel_gen_ops
+
+result = kernel_gen_ops.matmul_bias(...)
+```
+
+## Constraints and Notes
+
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

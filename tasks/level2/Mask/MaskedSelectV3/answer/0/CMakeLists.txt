@@ -36,7 +36,7 @@ target_include_directories(opsproto PRIVATE
 )
 
 
-# 手动实现的aclnn
+// Implementation note.
 target_sources(op_host_aclnnInner PRIVATE
         op_host/masked_select_v3_def.cpp
 )

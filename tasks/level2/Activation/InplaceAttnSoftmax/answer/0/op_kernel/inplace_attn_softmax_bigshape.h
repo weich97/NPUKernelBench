@@ -31,7 +31,7 @@ public:
 private:
     __aicore__ inline void InitAndSetBuffer(GM_ADDR x, GM_ADDR workspace_gm)
     {
-        // gm数据
+        // Implementation note.
         xGm.SetGlobalBuffer((__gm__ inType *)x,this->tilingData_.rowLen * this->tilingData_.colLen);
         // queue
         this->pPipe->InitBuffer(inQueueA, BUFFER_NUM, this->basicColLen * sizeof(inType));
@@ -54,7 +54,7 @@ private:
         splitCopyoutParams = {1,(uint16_t)(this->basicColLen * sizeof(outType)),0,0};
 
         for (uint32_t ridx = 0; ridx < this->rowLoop; ridx++) {
-            // 每个核心每次循环的起始偏移地址
+            // Implementation note.
             for(uint32_t cidx = 0; cidx < this->colLoop; cidx++){
                 ComputeVecInGmOffset(ridx,cidx);
                 maxCopyIn(this->offsetParam,splitCopyinParams,ridx,cidx);

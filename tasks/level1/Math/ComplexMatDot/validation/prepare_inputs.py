@@ -8,18 +8,18 @@ def get_inputs(param, device=None):
     m = int(param.get('m', 1))
     n = int(param.get('n', 1))
     
-    # 生成随机的实部和虚部（必须是 float32/float64）
-    real = torch.rand(m, n, dtype=torch.float32, device=device)  # 实部
-    imag = torch.rand(m, n, dtype=torch.float32, device=device)  # 虚部
+    # Implementation note.
+    real = torch.rand(m, n, dtype=torch.float32, device=device)  # Implementation note.
+    imag = torch.rand(m, n, dtype=torch.float32, device=device)  # Implementation note.
 
-    # 组合成复数矩阵
+    # Implementation note.
     matx = torch.complex(real, imag)  # dtype=torch.complex64
     
-    # 生成随机的实部和虚部（必须是 float32/float64）
-    real = torch.rand(m, n, dtype=torch.float32, device=device)  # 实部
-    imag = torch.rand(m, n, dtype=torch.float32, device=device)  # 虚部
+    # Implementation note.
+    real = torch.rand(m, n, dtype=torch.float32, device=device)  # Implementation note.
+    imag = torch.rand(m, n, dtype=torch.float32, device=device)  # Implementation note.
 
-    # 组合成复数矩阵
+    # Implementation note.
     maty = torch.complex(real, imag)  # dtype=torch.complex64
 
     return matx, maty, m, n

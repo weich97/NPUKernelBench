@@ -15,12 +15,12 @@ namespace optiling {
         uint32_t sizeofdatatype;
         uint32_t totalLengthAligned;
 
-        // 1. 获取平台信息
+        // Implementation note.
         uint64_t ub_size;
         auto ascendcPlatform = platform_ascendc::PlatformAscendC(context->GetPlatformInfo());
         ascendcPlatform.GetCoreMemSize(platform_ascendc::CoreMemType::UB, ub_size);
 
-        // 2. 获取数据信息
+        // Implementation note.
         uint32_t dataNum;
         uint32_t totalLength = context->GetInputTensor(0)->GetShapeSize();
         uint32_t tanhxLength = context->GetOptionalInputTensor(0)->GetShapeSize();
@@ -66,22 +66,22 @@ namespace optiling {
 
         tiling.set_typeKey(typeKey);
 
-        // 3. 填满UB大小
+        // Implementation note.
         uint32_t ub_block_num = ub_size / BLOCK_SIZE / dataNum - 256;
 	uint32_t DOUBLE_BUFFER = 2;
         if (ub_block_num % DOUBLE_BUFFER != 0) {
             ub_block_num = ub_block_num - 1;
         }
 
-        // 4. 输入向量满足32字节对齐
+        // Implementation note.
         uint32_t ALIGN_NUM = BLOCK_SIZE / sizeofdatatype;
-        if (totalLength % ALIGN_NUM != 0) {  //不对齐，先32位对齐
+        if (totalLength % ALIGN_NUM != 0) { // Implementation note.
             totalLengthAligned = ((totalLength + ALIGN_NUM - 1) / ALIGN_NUM) * ALIGN_NUM;
         } else {
             totalLengthAligned = totalLength;
         }
 
-        // 5. Tiling参数计算
+        // Implementation note.
         uint32_t tile_num, block_dim = 1;
         context->SetBlockDim(block_dim);
         uint32_t blockLength = 0;
@@ -90,18 +90,18 @@ namespace optiling {
         blockLength = totalLengthAligned / block_dim;
         tile_num = blockLength / ALIGN_NUM / ub_block_num;
 
-        if (tile_num == 0) { // 不足一个ub的情况
+        if (tile_num == 0) { // Implementation note.
             tile_num = 1;
-            tileLength = ((blockLength / ALIGN_NUM) + 1) / 2 * 2 * ALIGN_NUM; // 计算块的长度，使其对齐到ALIGN_NUM的倍数
+            tileLength = ((blockLength / ALIGN_NUM) + 1) / 2 * 2 * ALIGN_NUM; // Implementation note.
             lasttileLength = tileLength;
-        } else if((blockLength / ALIGN_NUM) % ub_block_num == 0){ // 核内能均分
+        } else if((blockLength / ALIGN_NUM) % ub_block_num == 0){ // Implementation note.
             tileLength = ub_block_num * ALIGN_NUM;
             lasttileLength = tileLength;
-        }else{ // 核内不能均分
-            tile_num = tile_num + 1;    // 加一个小包的数量
+        }else{ // Implementation note.
+            tile_num = tile_num + 1; // Implementation note.
             tileLength = ub_block_num * ALIGN_NUM;
             lasttileLength = blockLength - (tile_num - 1) * tileLength;
-            lasttileLength = ((lasttileLength / ALIGN_NUM) + 1) / 2 * 2 * ALIGN_NUM; // 计算最后一个块的长度，使其对齐到ALIGN_NUM的倍数
+            lasttileLength = ((lasttileLength / ALIGN_NUM) + 1) / 2 * 2 * ALIGN_NUM; // Implementation note.
         }
 
         tiling.set_blockLength(blockLength);

@@ -10,10 +10,10 @@ def get_inputs(param, device=None):
     dtype = getattr(torch, dtype_str)
 
     if dtype == torch.int32 or dtype == torch.int8:
-        # 整数类型使用randint
+        # Implementation note.
         x = torch.randint(-100, 100, shape, device=device, dtype=dtype)
     else:
-        # 浮点类型使用randn
+        # Implementation note.
         x = torch.randn(shape, device=device, dtype=dtype)
 
     return (x,)

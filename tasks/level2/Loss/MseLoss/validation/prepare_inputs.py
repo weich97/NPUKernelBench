@@ -9,7 +9,7 @@ def get_inputs(param, device=None):
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
 
-    # 创建预测值和目标值两个张量
+    # Implementation note.
     predict = torch.rand(shape, device=device, dtype=dtype)
     label = torch.rand(shape, device=device, dtype=dtype)
 
@@ -26,7 +26,7 @@ def get_init_inputs(param, device=None):
     Returns:
         list: Initialization parameters for the MSE Loss model
     """
-    # 从参数中获取reduction值
+    # Implementation note.
     reduction = param.get('reduction', 'mean')
 
     return [reduction]

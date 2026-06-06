@@ -101,18 +101,18 @@ REGISTER_TILING_DATA_CLASS(LayerNormV4_120, LayerNormV4TilingDataSingleRead)
 REGISTER_TILING_DATA_CLASS(LayerNormV4_122, LayerNormV4TilingDataSingleRead)
 
 BEGIN_TILING_DATA_DEF(LayerNormV4TilingDataTranspose)
-TILING_DATA_FIELD_DEF(uint64_t, col);                     // 输入tensor的行
-TILING_DATA_FIELD_DEF(uint64_t, row);                     // 输入tensor的列，即reduce的轴
-TILING_DATA_FIELD_DEF(uint64_t, blockDim);                // 实际使用的core数量
-TILING_DATA_FIELD_DEF(uint64_t, blockFormer);             // 整核处理的row大小
-TILING_DATA_FIELD_DEF(uint64_t, blockTail);               // 尾核处理的row大小
-TILING_DATA_FIELD_DEF(uint64_t, ubFormer);                // ub整循环处理的row大小
-TILING_DATA_FIELD_DEF(uint64_t, ubLoopOfFormerBlock);     // 整核处理的ub循环次数
-TILING_DATA_FIELD_DEF(uint64_t, ubLoopOfTailBlock);       // 尾核处理的ub循环次数
-TILING_DATA_FIELD_DEF(uint64_t, ubTailOfFormerBlock);     // 整核ub尾循环处理的row大小
-TILING_DATA_FIELD_DEF(uint64_t, ubTailOfTailBlock);       // 尾核ub尾循环处理的row大小
-TILING_DATA_FIELD_DEF(uint64_t, bFormer);                 // ubFormer借轴大小，ubFormer->16*bFormer
-TILING_DATA_FIELD_DEF(uint64_t, dichotomizeAddDiffSize);  // row与小于row的最近二次幂的差值
+TILING_DATA_FIELD_DEF(uint64_t, col); // Implementation note.
+TILING_DATA_FIELD_DEF(uint64_t, row); // Implementation note.
+TILING_DATA_FIELD_DEF(uint64_t, blockDim); // Implementation note.
+TILING_DATA_FIELD_DEF(uint64_t, blockFormer); // Implementation note.
+TILING_DATA_FIELD_DEF(uint64_t, blockTail); // Implementation note.
+TILING_DATA_FIELD_DEF(uint64_t, ubFormer); // Implementation note.
+TILING_DATA_FIELD_DEF(uint64_t, ubLoopOfFormerBlock); // Implementation note.
+TILING_DATA_FIELD_DEF(uint64_t, ubLoopOfTailBlock); // Implementation note.
+TILING_DATA_FIELD_DEF(uint64_t, ubTailOfFormerBlock); // Implementation note.
+TILING_DATA_FIELD_DEF(uint64_t, ubTailOfTailBlock); // Implementation note.
+TILING_DATA_FIELD_DEF(uint64_t, bFormer); // Implementation note.
+TILING_DATA_FIELD_DEF(uint64_t, dichotomizeAddDiffSize); // Implementation note.
 TILING_DATA_FIELD_DEF(float, eps);
 TILING_DATA_FIELD_DEF(float, coefficient);
 TILING_DATA_FIELD_DEF(uint32_t, nullptrGamma);

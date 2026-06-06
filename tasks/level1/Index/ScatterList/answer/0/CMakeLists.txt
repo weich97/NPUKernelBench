@@ -5,7 +5,7 @@ add_ops_compile_options(
                 -Werror
 )
 
-# 自动生成的aclnn
+// Implementation note.
 target_sources(op_host_aclnn PRIVATE
         op_host/scatter_list_def.cpp
 )
@@ -40,7 +40,7 @@ target_include_directories(opsproto PRIVATE
 )
 
 
-# 手动实现的aclnn
+// Implementation note.
 # target_sources(op_host_aclnnInner PRIVATE
 #         op_host/scatter_list_def.cpp
 # )

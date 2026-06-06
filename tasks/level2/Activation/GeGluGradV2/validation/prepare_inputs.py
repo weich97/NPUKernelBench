@@ -1,19 +1,19 @@
 # prepare_inputs.py
 import torch
-import ast  # 更安全地处理字符串转列表
+import ast  # Implementation note.
 import torch.nn.functional as F
 
 def get_inputs(param, device=None):
     """
-    生成 GeGLUGradV2 算子的输入张量。
+    Reference implementation detail.
 
     Args:
-        param (dict): 参数配置，如输入形状和数据类型
-        device (torch.device): 输入张量所在设备
+        Reference implementation detail.
+        Reference implementation detail.
 
     Returns:
-        tuple: 包含输入张量 (dy, x, gelu_param_tensor, dim, approximate, activateLeft)
-        # Note: gelu_param_tensor 是为了匹配 Model.forward 的 gelu_output 参数
+        Reference implementation detail.
+        Reference implementation detail.
     """
     shape_str = param.get('input_shape', '[1, 2]')
     shape = ast.literal_eval(shape_str)
@@ -23,7 +23,7 @@ def get_inputs(param, device=None):
 
     dim = int(param.get('dim', -1))
 
-    # approximate 现在直接返回整数
+    # Implementation note.
     approximate = int(param.get('approximate', 0))
 
     activateLeft = bool(param.get('activateLeft', True))
@@ -31,14 +31,14 @@ def get_inputs(param, device=None):
     dy = torch.rand(shape, device=device, dtype=dtype)
 
     x_shape = list(shape)
-    # 调整 x_shape 以匹配 GeGLU 的输入（最后一维通常是两倍）
-    # 假设 dim 是最后一个维度，如果不是，需要更复杂的逻辑来处理中间维度
+    # Implementation note.
+    # Implementation note.
     if dim == -1:
         x_shape[-1] = x_shape[-1] * 2
     elif dim < len(x_shape):
         x_shape[dim] = x_shape[dim] * 2
     else:
-        # 如果 dim 超出范围，这可能是个错误，或者需要特别处理
+        # Implementation note.
         raise ValueError(f"Invalid dim: {dim} for shape {shape}")
 
     # Create x tensor with requires_grad=True from the start
@@ -49,12 +49,12 @@ def get_inputs(param, device=None):
 
 def get_init_inputs(param, device=None):
     """
-    GeGluGradV2 没有模型初始化参数，返回空列表。
+    Reference implementation detail.
 
     Args:
-        param (dict): 参数配置
+        Reference implementation detail.
 
     Returns:
-        list: 空列表
+        Reference implementation detail.
     """
     return []

@@ -152,7 +152,7 @@ private:
 
     __aicore__ inline void CopyInGammaBeta(LocalTensor<Tweight> &gammaTensor, LocalTensor<Tweight> &betaTensor)
     {
-        // 搬入inputGamma和inputBeta并cast
+        // Implementation note.
         DataCopyExtParams copyParams;
         DataCopyPadExtParams<Tweight> padParams;
         copyParams.blockCount = 1;
@@ -198,10 +198,10 @@ private:
     __aicore__ inline void DoTranspose(LocalTensor<T_TRANS> &dstTensor, LocalTensor<T_TRANS> &srcTensor)
     {
         /*
-        tiling限制repeat不大于255
-        支持float16,float32
+        // Implementation note.
+        // Implementation note.
         */
-        // 每行数据对齐后的size
+        // Implementation note.
         __ubuf__ T_TRANS *srcAddr = (__ubuf__ T_TRANS *)srcTensor.GetPhyAddr();
         __ubuf__ T_TRANS *dstAddr = (__ubuf__ T_TRANS *)dstTensor.GetPhyAddr();
         __ubuf__ T_TRANS *srcLocalList[TRANSPOSE_C0_SIZE];
@@ -233,9 +233,9 @@ private:
     __aicore__ inline void DoReshape(LocalTensor<T_RESHAPE> &dstTensor, LocalTensor<T_RESHAPE> &srcTensor)
     {
         /*
-        支持fp32，fp16
+        // Implementation note.
         */
-        // 一个repeat处理（128 / IN_NUM_PER_BLOCK）行数据
+        // Implementation note.
         uint32_t repeatTimes = row / BLOCK_NUM_PER_REP;
         uint32_t remainRepeat = row % BLOCK_NUM_PER_REP;
         uint32_t mask = 0;
@@ -310,8 +310,8 @@ private:
     __aicore__ inline void DoReduce(LocalTensor<float> &dstTensor, LocalTensor<float> &srcTensor)
     {
         /*
-        srcTensor为reduce之前的Tensor: row * rowLineElements
-        dstTensor为存放reduce结果的tensor: rowLineElements
+        // Implementation note.
+        // Implementation note.
         */
         uint64_t nowRows = row;
         if (nowRows == 1) {
@@ -319,7 +319,7 @@ private:
             pipe_barrier(PIPE_V);
             return;
         }
-        // row为非二次幂，先将二次幂差值行加到前面
+        // Implementation note.
         if (dichotomizeAddDiffSize != 0) {
             Add(srcTensor,
                 srcTensor,
@@ -342,9 +342,9 @@ private:
     __aicore__ inline void DoSub(LocalTensor<float> &dstTensor, LocalTensor<float> &src1Tensor)
     {
         /*
-        dst复用src0，大小为row * rowLineElements
-        src1大小为rowLineElements
-        做inline broadcast的sub计算
+        // Implementation note.
+        // Implementation note.
+        // Implementation note.
         */
         if (((rowLineElements / ELEM_PER_REP_FP32) < row) && (rowLineElements < (MAX_REP_NUM * BLOCK_NUM_PER_REP))) {
             for (uint32_t i = 0; i < (rowLineElements / ELEM_PER_REP_FP32); i++) {
@@ -384,8 +384,8 @@ private:
         LocalTensor<float> &dstTensor, LocalTensor<float> &src0Tensor, LocalTensor<float> &src1Tensor)
     {
         /*
-        src0Tensor为置1的一个block的tensor
-        src1Tensor和dstTensor大小为rowLineElements
+        // Implementation note.
+        // Implementation note.
         */
         uint64_t repeatTimes = rowLineElements / ELEM_PER_REP_FP32;
         uint64_t repeatRemain = rowLineElements % ELEM_PER_REP_FP32;
@@ -410,9 +410,9 @@ private:
     __aicore__ inline void DoMul(LocalTensor<float> &dstTensor, LocalTensor<float> &src1Tensor)
     {
         /*
-        dst复用src0，大小为row * rowLineElements
-        src1大小为rowLineElements
-        做inline broadcast的mul计算
+        // Implementation note.
+        // Implementation note.
+        // Implementation note.
         */
         if (((rowLineElements / ELEM_PER_REP_FP32) < row) && (rowLineElements < (MAX_REP_NUM * BLOCK_NUM_PER_REP))) {
             for (uint32_t i = 0; i < (rowLineElements / ELEM_PER_REP_FP32); i++) {
@@ -476,9 +476,9 @@ private:
     __aicore__ inline void DoPostReshape(LocalTensor<T_POST_RESHAPE> &dstTensor, LocalTensor<T_POST_RESHAPE> &srcTensor)
     {
         /*
-        支持fp32，fp16
+        // Implementation note.
         */
-        // 一个repeat处理（128 / IN_NUM_PER_BLOCK）行数据
+        // Implementation note.
         uint32_t repeatTimes = row / BLOCK_NUM_PER_REP;
         uint32_t remainRepeat = row % BLOCK_NUM_PER_REP;
         uint32_t mask = 0;
@@ -554,11 +554,11 @@ private:
     __aicore__ inline void DoPostTranspose(LocalTensor<T_POST_TRANS> &dstTensor, LocalTensor<T_POST_TRANS> &srcTensor)
     {
         /*
-        tiling限制repeat不大于255
-        支持float16,float32
-        反向的转置过程，会使行对齐为16的倍数
+        // Implementation note.
+        // Implementation note.
+        // Implementation note.
         */
-        // 每行数据对齐后的size
+        // Implementation note.
         uint32_t lineAlignSize = 0;
         lineAlignSize = (bFormerFactor * row + TRANSPOSE_C0_SIZE - 1) / TRANSPOSE_C0_SIZE * TRANSPOSE_C0_SIZE;
         __ubuf__ T_POST_TRANS *srcAddr = (__ubuf__ T_POST_TRANS *)srcTensor.GetPhyAddr();
@@ -601,8 +601,8 @@ private:
     __aicore__ inline void DoMeanOrRstdTranspose(LocalTensor<float> &dstTensor, LocalTensor<float> &srcTensor)
     {
         /*
-        tiling限制repeat不大于255
-        只支持fp32
+        // Implementation note.
+        // Implementation note.
         */
         __ubuf__ float *srcAddr = (__ubuf__ float *)srcTensor.GetPhyAddr();
         __ubuf__ float *dstAddr = (__ubuf__ float *)dstTensor.GetPhyAddr();
@@ -616,7 +616,7 @@ private:
             transDataParams.srcRepStride = 0;
             transDataParams.dstRepStride = 0;
         }
-        // fp32数据需要处理上下两部分
+        // Implementation note.
         for (uint32_t i = 0; i < (FLOAT_SIZE / HALF_SIZE); i++) {
             for (uint32_t j = 0; j < TRANSPOSE_C0_SIZE; j++) {
                 srcLocalList[j] = srcAddr + FP32_TRANSPOSE_DST_SIZE * i + TRANSPOSE_C0_SIZE * j;
@@ -636,12 +636,12 @@ private:
     __aicore__ inline void CopyOutMeanOrRstd(GlobalTensor<float> outGm, LocalTensor<float> &srcTensor)
     {
         /*
-        使用DataCopyPad搬运
+        // Implementation note.
         */
         uint32_t curFactor = bFormerFactor;
         uint64_t ubOffset = 0;
         uint64_t gmOffset = 0;
-        // 每行数据对齐后的size
+        // Implementation note.
         uint32_t lineAlignSize = 0;
         lineAlignSize = (bFormerFactor + TRANSPOSE_C0_SIZE - 1) / TRANSPOSE_C0_SIZE * TRANSPOSE_C0_SIZE;
 
@@ -663,9 +663,9 @@ private:
                 }
             }
             DataCopyPad(outGm[meanGmOffset + gmOffset], srcTensor[ubOffset], intriParams);
-            // gm偏移连续，每次偏curFactor
+            // Implementation note.
             gmOffset += curFactor;
-            // ub偏移对齐，每次固定lineAlignSize
+            // Implementation note.
             ubOffset += lineAlignSize;
         }
     }
@@ -675,7 +675,7 @@ private:
         uint32_t curFactor = bFormerFactor;
         uint64_t ubOffset = 0;
         uint64_t gmOffset = 0;
-        // 每行数据对齐后的size
+        // Implementation note.
         uint32_t lineAlignSize = 0;
         lineAlignSize = (bFormerFactor * row + TRANSPOSE_C0_SIZE - 1) / TRANSPOSE_C0_SIZE * TRANSPOSE_C0_SIZE;
 
@@ -697,9 +697,9 @@ private:
                 }
             }
             DataCopyPad(yGm[xGmOffset + gmOffset], srcTensor[ubOffset], intriParams);
-            // gm偏移连续，每次偏curFactor * row
+            // Implementation note.
             gmOffset += curFactor * row;
-            // ub偏移对齐，每次固定lineAlignSize
+            // Implementation note.
             ubOffset += lineAlignSize;
         }
     }
@@ -741,7 +741,7 @@ private:
         }
 
         LocalTensor<float> mulTempTensor = tmpBuf.Get<float>();
-        // xLocalFp32需要驻留
+        // Implementation note.
         Muls(mulTempTensor, xLocalFp32, coefficient, calcXElements);
         pipe_barrier(PIPE_V);
         LocalTensor<float> outTempTensor = outQueueRstd.AllocTensor<float>();
@@ -757,7 +757,7 @@ private:
         CopyOutMeanOrRstd(meanGm, outMeanTensor);
         outQueueMean.FreeTensor(outMeanTensor);
 
-        // do mul2, xLocalFp32需要驻留
+        // Implementation note.
         LocalTensor<float> mul2TempTensor = tmpBuf.Get<float>();
         Mul(mul2TempTensor, xLocalFp32, xLocalFp32, calcXElements);
         pipe_barrier(PIPE_V);
@@ -873,19 +873,19 @@ private:
     // in ub loop col size
     uint64_t colLength = 0;
 
-    // x搬入时整块的借轴因子
+    // Implementation note.
     uint32_t bFormerFactor = 0;
-    // x搬入时一行整块的对齐长度
+    // Implementation note.
     uint32_t rFormerAxisAlign = 0;
-    // x搬入时尾块的借轴因子
+    // Implementation note.
     uint32_t bTailFactor = 0;
-    // x搬入时一行尾块的对齐长度
+    // Implementation note.
     uint32_t rTailAxisAlign = 0;
-    // 整块搬入的循环次数
+    // Implementation note.
     uint32_t formerLoops = 0;
-    // 重排后x基本块的元素个数
+    // Implementation note.
     uint64_t calcXElements;
-    // 重排后x做row Reduce后的元素个数
+    // Implementation note.
     uint64_t rowLineElements;
 
     LocalTensor<float> gammaFp32;

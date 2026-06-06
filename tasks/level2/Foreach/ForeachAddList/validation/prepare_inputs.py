@@ -14,7 +14,7 @@ def get_inputs(param, device=None):
         x1.append(torch.randn(shape, device=device, dtype=dtype))
         x2.append(torch.randn(shape, device=device, dtype=dtype))
 
-    # 把 scalars_list 变成 1-D Tensor，长度=列表数
+    # Implementation note.
     alpha = torch.tensor(scalar, device=device, dtype=compute_dtype)
 
     return x1, x2, alpha 

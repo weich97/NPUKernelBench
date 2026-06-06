@@ -21,7 +21,7 @@ const uint32_t BUFFER_NUM = 2;
 static ge::graphStatus TilingFunc(gert::TilingContext* context)
 {
     MulsTilingData tiling;
-    // 获取硬件信息（UB 内存大小、核心数、SOC版本）
+    // Implementation note.
     uint64_t ubLength = 0;
     uint64_t bigCoreDataNum = 0;
     uint64_t bigCoreLoopNum = 0;

@@ -85,9 +85,9 @@ inline bool SetTotalShape(gert::Shape &inShape, gert::TilingContext *context, In
         printf("SetTotalShape Unsupported inDim %d\n", inDim);
         return false;
     }
-    //总维度
+    // Implementation note.
     int32_t splitDim = inDim < 0 ? dimNum + inDim : inDim;  // inDim default -1
-    //将多维数组转换二维数组
+    // Implementation note.
     for (int32_t i = 0; i < splitDim; i++) {
         shapeBefore *= inShape.GetDim(i);
     }
@@ -115,7 +115,7 @@ inline bool CalculateMaxUbSizePerRow(gert::TilingContext *context, const Inplace
     }
     uint32_t ubAvail = compileInfo.dataNumSingleUb / alignedColLen;
     if (ubAvail == 0) {
-        // collen超过ub可用空间大小，需要循环处理colLen
+        // Implementation note.
         tilingParam.optBaseColLen = AlignDown<uint32_t>(compileInfo.dataNumSingleUb, compileInfo.block_num);
         // LargeShape
         ubAvail = ONE;
@@ -131,7 +131,7 @@ inline bool CalculateMaxUbSizePerRow(gert::TilingContext *context, const Inplace
     return true;
 }
 
-// 计算每核处理的总行数和实际使用的核数
+// Implementation note.
 void CalTilingData(gert::TilingContext *context, InplaceAttnSoftmaxCompileInfo &compileInfo,
     InplaceAttnSoftmaxTilingParam &tilingParam, InplaceAttnSoftmaxTilingData &tilingData)
 {
@@ -140,7 +140,7 @@ void CalTilingData(gert::TilingContext *context, InplaceAttnSoftmaxCompileInfo &
     tilingParam.coreNumUsed = std::max(std::min(compileInfo.totalCore, rowLen), ONE);
     tilingParam.headCoreNum = rowLen % tilingParam.coreNumUsed;
 
-    // rowLenPerHeadCore 指的是 一共有多少个row -> 每个核心处理的row数 上取整
+    // Implementation note.
     tilingParam.rowLenPerHeadCore = (rowLen + tilingParam.coreNumUsed - 1) / tilingParam.coreNumUsed;
     tilingParam.rowLenPerTailCore = rowLen / tilingParam.coreNumUsed;
 

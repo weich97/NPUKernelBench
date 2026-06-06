@@ -47,7 +47,7 @@ static const int64_t REDUCTION_NONE_NUM = 0;
 static const int64_t REDUCTION_MEAN_NUM = 1;
 static const int64_t REDUCTION_SUM_NUM = 2;
 
-// 根据API定义，需要列出所能支持的所有dtype
+// Implementation note.
 static const std::initializer_list<op::DataType> ASCEND910_DTYPE_DTYPE_SUPPORT_LIST = {op::DataType::DT_FLOAT,
                                                                                        op::DataType::DT_FLOAT16};
 
@@ -61,7 +61,7 @@ static inline bool CheckDtypeValid(const aclTensor* gradOutput, const aclTensor*
   OP_CHECK_DTYPE_NOT_SAME(gradOutput, self, return false);
   OP_CHECK_DTYPE_NOT_SAME(target, self, return false);
   OP_CHECK_DTYPE_NOT_SUPPORT(self, supportList, return false);
-  // 检查out的数据类型是否在支持列表内
+  // Implementation note.
   OP_CHECK_DTYPE_NOT_SUPPORT(out, supportList, return false);
   return true;
 }
@@ -90,16 +90,16 @@ static bool CheckShape(const aclTensor* gradOutput, const aclTensor* self, const
 
 static inline aclnnStatus CheckParams(const aclTensor* gradOutput, const aclTensor* self, const aclTensor* target,
                                       int64_t reduction, const aclTensor* out) {
-  // 1. 检查参数是否为空指针
+  // Implementation note.
   CHECK_RET(CheckNotNull4Tensor(gradOutput, self, target, out), ACLNN_ERR_PARAM_NULLPTR);
 
-  // 2. 检查输入的数据类型是否在API支持的数据类型范围之内，需要根据api定义校验
+  // Implementation note.
   CHECK_RET(CheckDtypeValid(gradOutput, self, target, out), ACLNN_ERR_PARAM_INVALID);
 
-  // 3. 检查reduction是否符合规则
+  // Implementation note.
   CHECK_RET(CheckReduction(reduction), ACLNN_ERR_PARAM_INVALID);
 
-  // 4. 检查输出shape
+  // Implementation note.
   CHECK_RET(CheckShape(gradOutput, self, target, out), ACLNN_ERR_PARAM_INVALID);
 
   return ACLNN_SUCCESS;
@@ -111,49 +111,49 @@ aclnnStatus aclnnMseLossBackwardGetWorkspaceSize(const aclTensor* gradOutput, co
   OP_CHECK_COMM_INPUT(workspaceSize, executor);
   
   L2_DFX_PHASE_1(aclnnMseLossBackward, DFX_IN(gradOutput, self, target, reduction), DFX_OUT(out));
-  // 固定写法，创建OpExecutor
+  // Implementation note.
   auto uniqueExecutor = CREATE_EXECUTOR();
   CHECK_RET(uniqueExecutor.get() != nullptr, ACLNN_ERR_INNER_CREATE_EXECUTOR);
 
-  // 固定写法，参数检查
+  // Implementation note.
   auto ret = CheckParams(gradOutput, self, target, reduction, out);
   CHECK_RET(ret == ACLNN_SUCCESS, ret);
 
   if (self->IsEmpty()) {
-    // 根据实际支持情况补充
+    // Implementation note.
     *workspaceSize = 0;
     uniqueExecutor.ReleaseTo(executor);
     return ACLNN_SUCCESS;
   }
 
-  // 固定写法，将输入gradOutput转换成连续的tensor
+  // Implementation note.
   auto gradOutputContiguous = l0op::Contiguous(gradOutput, uniqueExecutor.get());
   CHECK_RET(gradOutputContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 固定写法，将输入self转换成连续的tensor
+  // Implementation note.
   auto selfContiguous = l0op::Contiguous(self, uniqueExecutor.get());
   CHECK_RET(selfContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 固定写法，将输入target转换成连续的tensor
+  // Implementation note.
   auto targetContiguous = l0op::Contiguous(target, uniqueExecutor.get());
   CHECK_RET(targetContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 进行计算
+  // Implementation note.
   auto grad = l0op::MseLossGradV2(gradOutputContiguous, selfContiguous, targetContiguous,
                                 REDUCTION_STR[reduction], uniqueExecutor.get());
   CHECK_RET(grad != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 固定写法，将计算结果转换成输出out的数据类型
+  // Implementation note.
   auto castOut = l0op::Cast(grad, out->GetDataType(), uniqueExecutor.get());
   CHECK_RET(castOut != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 固定写法，将计算结果拷贝到输出out上，out可能是非连续的tensor
+  // Implementation note.
   auto viewCopyResult = l0op::ViewCopy(castOut, out, uniqueExecutor.get());
   CHECK_RET(viewCopyResult != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 固定写法，获取计算过程中需要使用的workspace大小
+  // Implementation note.
   *workspaceSize = uniqueExecutor->GetWorkspaceSize();
-  // 需要把 uniqueExecutor持有executor转移给executor
+  // Implementation note.
   uniqueExecutor.ReleaseTo(executor);
   return ACLNN_SUCCESS;
 }
@@ -161,7 +161,7 @@ aclnnStatus aclnnMseLossBackwardGetWorkspaceSize(const aclTensor* gradOutput, co
 aclnnStatus aclnnMseLossBackward(void* workspace, uint64_t workspaceSize, aclOpExecutor* executor,
                                  aclrtStream stream) {
   L2_DFX_PHASE_2(aclnnMseLossBackward);
-  // 固定写法，调用框架能力，完成计算
+  // Implementation note.
   return CommonOpExecutorRun(workspace, workspaceSize, executor, stream);
 }
 

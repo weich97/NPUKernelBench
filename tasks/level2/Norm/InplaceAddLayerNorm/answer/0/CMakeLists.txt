@@ -41,7 +41,7 @@ target_include_directories(opsproto PRIVATE
         ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/msprof
 )
 
-# install kernel侧源码和aclnn头文件
+// Implementation note.
 install(DIRECTORY op_kernel/
         DESTINATION ${ASCEND_IMPL_OUT_DIR}/dynamic
         FILES_MATCHING PATTERN "*.cpp")

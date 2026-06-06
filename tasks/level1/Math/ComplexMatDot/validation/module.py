@@ -9,27 +9,27 @@ import kernel_gen_ops
 
 class Model(nn.Module):
     """
-    实现ComplexMatDot算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, matx: torch.Tensor, maty: torch.Tensor, m: int, n: int) -> torch.Tensor:
         """
-        实现ComplexMatDot算子功能。
+        Reference implementation detail.
 
         Args:
-            matx: 第一个输入复数矩阵
-            maty: 第二个输入复数矩阵
-            m: 矩阵行数
-            n: 矩阵列数
+            Reference implementation detail.
+            Reference implementation detail.
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            两个输入复数矩阵逐点乘后的结果矩阵
+            Reference implementation detail.
         """
         return matx * maty
 

@@ -20,10 +20,10 @@
 #include "graph/utils/type_utils.h"
 #include "register/op_def_registry.h"
 #include "tiling/platform/platform_ascendc.h"
-// Length 所占字节
-// DataNum 个数
-// BlockNum 块数
-// LoopNum 循环次数
+// Implementation note.
+// Implementation note.
+// Implementation note.
+// Implementation note.
 namespace optiling {
 const uint32_t BLOCK_SIZE = 32;
 const uint32_t BUFFER_NUM = 1;

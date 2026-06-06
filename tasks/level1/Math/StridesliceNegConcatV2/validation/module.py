@@ -12,11 +12,11 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        # # 获取中间通道位置
+        # Implementation note.
         input = input.to(torch.float16)
         mid_col = input.shape[-1] // 2
 
-        # 拷贝输入并进行操作
+        # Implementation note.
         output = input.clone()
         output[:, :, :, mid_col:] = -input[:, :, :, mid_col:]
         return output

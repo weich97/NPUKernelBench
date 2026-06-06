@@ -1,58 +1,47 @@
 # aclnnUnalignAdd
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-`Unalign_add`实现了两个数据相加，返回相加结果的功能(非对齐)。
+### Operator Semantics
+`aclnnUnalignAdd` is an Ascend NPU benchmark operator in the `level1` `Math` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.unalign_add()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
 
 $$
 z = x + y
 $$
 
-## 接口定义
+## Interface Definition
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.unalign_add()` 函数形式提供：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def unalign_add(x, y):
-    """
-    实现自定义非对齐加法操作（unalign_add）。
-
-    参数:
-        x (Tensor): 输入张量1，Device侧张量，数据格式支持 ND。
-        y (Tensor): 输入张量2，Device侧张量，数据格式支持 ND。
-
-    返回:
-        Tensor: 输出张量，为 x 与 y 的非2整数次幂对齐。
-
-    注意:
-        - 输入张量必须至少为1维；
-        - 通常用于处理输入数据非2整数次幂对齐的情况；
-        - 输出张量 shape 与广播后的 shape 一致；
-        - 支持 float16数据类型。
-    """
+    """Execute `aclnnUnalignAdd` on Ascend NPU tensors."""
 
 ```
 
-## 使用案例
+### Inputs
+- `x`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `y`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-
-# 创建两个张量
-x = torch.randn(8, 2048, dtype=torch.float32)
-y = torch.randn(8, 2048, dtype=torch.float32)    
-
-# 执行非对齐加法操作
 result = kernel_gen_ops.unalign_add(x, y)
 ```
-## 约束与限制
 
-- 张量数据格式支持ND。
+## Constraints and Notes
 
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

@@ -1,50 +1,48 @@
 # aclnnRmsNorm
 
-## 功能描述
-### 算子功能
-对输入张量执行均方根归一化（RMS Norm）操作。
+## Functional Description
 
-### 计算公式
+### Operator Semantics
+`aclnnRmsNorm` is an Ascend NPU benchmark operator in the `level2` `Norm` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.rms_norm()`.
+
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
+
 $$
 y = {{x}\over\sqrt {Mean(x^2)+eps}} * \gamma
 $$
 
-## 接口定义
+## Interface Definition
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.rms_norm()` 函数形式提供：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def rms_norm(x, gamma, epsilon):
-    """
-    对输入张量执行均方根归一化（RMS Norm）操作。
+    """Execute `aclnnRmsNorm` on Ascend NPU tensors."""
 
-    参数:
-        x (Tensor): 输入Device侧张量。
-        gamma (Tensor): 缩放参数张量，与x需要norm的维度的维度值相同，用于RMS归一化。
-        epsilon (double): 公式中的输入eps，添加到分母中的值，以确保数值稳定。
-
-    返回:
-        List[Tensor]: 一个新的Device侧张量，表示输入张量RMS归一化的结果。
-    """
 ```
-## 使用案例
+
+### Inputs
+- `x`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `gamma`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `epsilon`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量和参数
-x = torch.tensor([[1.0, -2.0], [3.0, 4.0]], dtype=torch.float)
-gamma = torch.tensor([1.0, 1.0], dtype=torch.float)
-epsilon = 1e-6
-
-# 使用 rms_norm 对输入张量执行均方根归一化（RMS Norm）操作
-y = kernel_gen_ops.rms_norm(x, gamma, epsilon)
+result = kernel_gen_ops.rms_norm(x, gamma, epsilon)
 ```
 
-## 约束与限制
-- **功能维度**
-  * x, gamma支持：FLOAT32、FLOAT16、BFLOAT16。
-  * 数据格式支持：ND。
-  * 张量形状维度不高于8维。
+## Constraints and Notes
+
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

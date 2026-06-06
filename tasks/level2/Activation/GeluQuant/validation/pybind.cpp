@@ -8,7 +8,7 @@ std::vector<at::Tensor> gelu_quant_wrapper(
     const std::string& approximate,
     const std::string& quant_mode)
 {
-    // 构建输出 tensor 和 outScale
+    // Implementation note.
     at::Tensor y = at::zeros_like(x, x.options().dtype(torch::kInt8));
     auto out_scale_shape = x.sizes().vec();
     if (!out_scale_shape.empty()) out_scale_shape.back() = 1;

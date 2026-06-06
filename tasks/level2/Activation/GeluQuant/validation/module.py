@@ -102,13 +102,13 @@ class Model(nn.Module):
         scale = scale.float()
         offset = offset.float()
 
-        # 1. GELU 实现，支持 approximate
+        # Implementation note.
         if approximate == "none":
             gelu = gelu_compute_erf(x)
         else:
             gelu = gelu_compute_tanh(x)
 
-        # 2. scale 和 offset 支持 broadcast
+        # Implementation note.
         if scale.dim() == 1:
             scale = scale.view(*([1] * (x.dim() - 1)), -1)
         if offset is not None and offset.dim() == 1:
@@ -120,7 +120,7 @@ class Model(nn.Module):
             return [quant]
         else:
             mul_res = gelu * scale
-            max_abs = torch.amax(mul_res.abs(), dim=-1, keepdim=True)  # 最后一维求最大值
+            max_abs = torch.amax(mul_res.abs(), dim=-1, keepdim=True)  # Implementation note.
             tmp_out_scale = 127.0 / (max_abs + 1e-6)
             out_scale = (1.0 / tmp_out_scale)
 

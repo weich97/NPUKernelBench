@@ -1,58 +1,46 @@
 # aclnnEye
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-创建一个二维矩阵 m×n，对角元素全为1，其它元素都为0。
+### Operator Semantics
+`aclnnEye` is an Ascend NPU benchmark operator in the `level1` `TensorCreation` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.eye()`.
 
-## 接口定义
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.eye()` 函数形式提供：
+### Mathematical Definition
+The exact element-wise, reduction, indexing, tensor-construction, or in-place semantics are defined by the corresponding `validation/module.py` reference path and benchmark input generator. Implementations must match that reference behavior for all generated test cases.
 
+## Interface Definition
+
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def eye(x, num_rows, num_columns=None, batch_shape=None, dtype=torch.float32):
-    """
-    实现自定义单位矩阵（或对角矩阵）生成操作。
-
-    参数:
-        x: 生成张量的形状, 初始值为zero，大小为 [batch_shape, n, m]。
-        n (int): 行数（必选）。生成的张量将有 n 行。
-        m (int): 列数（必选）。生成的张量将有 m 列。
-        batch_shape: 形状，广播到指定形状。
-        dtype (torch.dtype, 可选): 返回张量的数据类型，默认 `torch.float32`。
-
-    返回:
-        Tensor: 输出张量，其对角线为 1，其余元素为 0。数据类型和设备根据参数指定。
-
-    注意:
-        - 本操作不依赖于输入张量，直接构造二维矩阵；
-        - 支持浮点和整型数据类型；
-        - 若 `m` 为 None，则返回 `n x n` 的方阵。
-    """
+    """Execute `aclnnEye` on Ascend NPU tensors."""
 
 ```
 
-## 使用案例
+### Inputs
+- `x`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `num_rows`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `num_columns`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `batch_shape`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `dtype`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
 
-```
-import torch
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
+
+```python
 import kernel_gen_ops
 
-# 创建输入张量
-x = torch.zeros(4, 8, 2048, dtype=torch.float32)  # 高维ND张量
-
-num_rows = 8
-num_columns = 2048
-batch_shape = 4
-dtype = float32
-
-# 使用 eye 执行计算
 result = kernel_gen_ops.eye(x, num_rows, num_columns, batch_shape, dtype)
 ```
-## 约束与限制
 
-- 张量数据格式支持ND。
+## Constraints and Notes
 
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

@@ -147,7 +147,7 @@ private:
         LocalTensor <inType> outLocal = outQueueOUT.DeQue <inType>();
         uint32_t offset = progress * this->tileLengthPtr;
         if (progress == this->tileNum - 1 && this->tailLen != 0) {
-            DataCopy(this->outGm[offset], outLocal, this->tileLengthPtr); // 先搬运对齐的32个元素
+            DataCopy(this->outGm[offset], outLocal, this->tileLengthPtr); // Implementation note.
             for(uint32_t index = this->tailStart; index < this->tailLen; index ++) {
                 this->outGm.SetValue(index + offset, outLocal.GetValue(index));
             }

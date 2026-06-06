@@ -9,25 +9,25 @@ import kernel_gen_ops
 
 class Model(nn.Module):
     """
-    实现ForeachSubScalar算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, x: List[torch.Tensor], alpha: torch.Tensor) -> List[torch.Tensor]:
         """
-        实现ForeachSubScalar算子功能。
+        Reference implementation detail.
 
         Args:
-            x: 输入张量列表
-            alpha: 标量张量
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            输入张量列表减去标量后的结果张量列表
+            Reference implementation detail.
         """
         return [tensor - alpha for tensor in x]
 

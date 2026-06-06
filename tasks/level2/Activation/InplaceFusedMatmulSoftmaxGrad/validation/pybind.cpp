@@ -2,7 +2,7 @@
 #include <torch/library.h>
 #include "pytorch_npu_helper.hpp"
 
-//用cann_8.1.RC1可以通过所有测试；用8.0.RC3.20会报出"no template named 'Broadcast' in namespace 'AscendC'; did you mean 'BroadCast'?"错
+// Implementation note.
 
 /**
  * register forward implementation for NPU device

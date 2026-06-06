@@ -33,11 +33,11 @@ private:
 
     __aicore__ inline void InitAndSetBuffer(GM_ADDR input_gm,GM_ADDR workspace_gm)
     {
-        // gm数据
+        // Implementation note.
         xGm.SetGlobalBuffer((__gm__ inType *)input_gm,this->tilingData_.rowLen * this->tilingData_.colLen);
         this->pPipe->InitBuffer(inQueueA, BUFFER_NUM, this->tileLength * sizeof(inType));
         this->pPipe->InitBuffer(outQueueA, BUFFER_NUM, this->tileLength * sizeof(inType));
-        // 若tilingKey为101, 201，则需要给精度转换留空间
+        // Implementation note.
         if constexpr(isCast) {
             this->pPipe->InitBuffer(sharedBTempBuf, this->tileLength * sizeof(float));
             tmpCLocal = sharedBTempBuf.Get<float>();
@@ -49,7 +49,7 @@ private:
         for (uint32_t ridx = 0; ridx < this->rowLoop; ridx++) {
             this->basicRowLenCal =
                 static_cast<uint32_t>((ridx == this->rowLoop - 1) ? (this->rowLenPerCore - (this->rowLoop - 1) * this->basicRowLen)
-                                                            : this->basicRowLen);  // 每核处理的最后一个行循环单独处理
+                                                            : this->basicRowLen); // Implementation note.
             ProcessCoreMultiUbMultiAlign(ridx);
         }
     }

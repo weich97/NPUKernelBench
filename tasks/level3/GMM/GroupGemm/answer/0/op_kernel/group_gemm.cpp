@@ -3669,7 +3669,7 @@ extern "C" __global__ __aicore__ void group_gemm(GM_ADDR a, GM_ADDR b, GM_ADDR c
     using EpilogueTileCopy = Epilogue::Tile::TileCopy<ArchTag, CType, XType, DType>;
     using EpilogueBlock = Epilogue::Block::BlockEpilogue<EpilogueBlockDispatchPolicy, CType, XType, DType, TileElemWiseAddGemm, TileElemWiseMulsGemm, TileElemWistCastD, EpilogueTileCopy>;
     using GroupGemmKernel = Gemm::Kernel::KernelGroupGemm<GemmBlock, EpilogueBlock>;
-    typename GroupGemmKernel::Params params{problemCount, a, b, gmWorkspace, gmWA, gmWB, c, c}; // 这里得修改 gmX保存A * B
+    typename GroupGemmKernel::Params params{problemCount, a, b, gmWorkspace, gmWA, gmWB, c, c}; // Implementation note.
 
     for (uint32_t i = 0; i < problemCount; ++i) {
         uint32_t m = tiling_data.mList[i];

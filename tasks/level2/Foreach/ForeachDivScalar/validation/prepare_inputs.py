@@ -9,14 +9,14 @@ def get_inputs(param, device=None):
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
 
-    # 创建随机张量列表
+    # Implementation note.
     x = []
     for shape in shape_list:
         if dtype == torch.int32:
-            # 整数类型使用randint
+            # Implementation note.
             tensor = torch.randint(-100, 100, shape, device=device, dtype=dtype)
         else:
-            # 浮点类型使用randn
+            # Implementation note.
             tensor = torch.randn(shape, device=device, dtype=dtype)
 
         x.append(tensor)

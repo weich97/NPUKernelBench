@@ -3485,30 +3485,30 @@ private:
     size_t numLastDimAlignedMixDtype;
 };
 
-// 核函数入口
+// Implementation note.
 extern "C" __global__ __aicore__ void add_layer_norm(GM_ADDR x1, GM_ADDR x2, GM_ADDR gamma, GM_ADDR beta, GM_ADDR bias,
     GM_ADDR y, GM_ADDR mean, GM_ADDR rstd, GM_ADDR x, GM_ADDR workspace, GM_ADDR tiling) {
-    // 参数说明：
-    //   x1 (aclTensor*，输入)：AddLayerNorm中加法计算的输入，参与 x1 + x2 + bias 计算并进行层归一化，Device 侧的 aclTensor，
-    //                          支持 1-8 维，数据格式为 ND，数据类型支持 FLOAT32/FLOAT16 (昇腾310P)，另加 BFLOAT16 (昇腾910B/910_93)。
-    //   x2 (aclTensor*，输入)：AddLayerNorm中加法计算的输入，参与 x1 + x2 + bias 计算，Device 侧的 aclTensor，shape 与 x1 一致，
-    //                          数据格式为 ND，数据类型支持 FLOAT32/FLOAT16 (昇腾310P)，另加 BFLOAT16 (昇腾910B/910_93)。
-    //   gamma (aclTensor*，输入)：LayerNorm中的 gamma 参数，Device 侧的 aclTensor，支持 1-8 维，与 x1 需要归一化的维度值相同，
-    //                             数据格式为 ND，数据类型支持 FLOAT32/FLOAT16 (昇腾310P)，另加 BFLOAT16 (昇腾910B/910_93)。
-    //   beta (aclTensor*，输入)：LayerNorm中的 beta 参数，Device 侧的 aclTensor，支持 1-8 维，与 x1 需要归一化的维度值相同，
-    //                            数据格式为 ND，数据类型支持 FLOAT32/FLOAT16 (昇腾310P)，另加 BFLOAT16 (昇腾910B/910_93)。
-    //   bias (aclTensor*，输入)：可选输入，加法计算的偏置，参与 x1 + x2 + bias 计算，Device 侧的 aclTensor，shape 可与 gamma/beta 或 x1/x2 一致，
-    //                            支持 1-8 维，数据格式为 ND，数据类型支持 FLOAT32/FLOAT16 (昇腾310P)，另加 BFLOAT16 (昇腾910B/910_93)。
-    //   y (aclTensor*，输出)：LayerNorm计算结果输出，Device 侧的 aclTensor，shape 与 x1/x2 一致，数据格式为 ND，
-    //                         数据类型支持 FLOAT32/FLOAT16 (昇腾310P)，另加 BFLOAT16 (昇腾910B/910_93)。
-    //   mean (aclTensor*，输出)：LayerNorm中 (x1 + x2 + bias) 的均值，Device 侧的 aclTensor，数据类型为 FLOAT32，shape 与 x1 满足 broadcast 关系，
-    //                           数据格式为 ND，无效于昇腾310P。计算逻辑：mean = np.mean(x1 + x2 + bias)。
-    //   rstd (aclTensor*，输出)：LayerNorm中 rstd (1/sqrt(var + epsilon)) 结果，Device 侧的 aclTensor，数据类型为 FLOAT32，shape 与 x1 满足 broadcast 关系，
-    //                           数据格式为 ND，无效于昇腾310P。计算逻辑：rstd = np.power((np.var(x1 + x2 + bias) + epsilon), (-0.5))。
-    //   x (aclTensor*，输出)：可选输出 (x1 + x2 + bias) 结果，Device 侧的 aclTensor，shape 与 x1/x2 一致，数据格式为 ND，
-    //                         数据类型支持 FLOAT32/FLOAT16 (昇腾310P)，另加 BFLOAT16 (昇腾910B/910_93)。
-    //   workspace：Device 侧的工作空间地址。
-    //   tiling：tiling 结构体在 Device 侧的首地址。
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
     TPipe pipe;
     GET_TILING_DATA(tiling_data, tiling);
 

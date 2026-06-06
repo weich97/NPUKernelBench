@@ -8,17 +8,17 @@
 
 at::Tensor custom_pybind_api(at::Tensor &x1, at::Tensor &x2, double t1, double t2, double t3)
 {
-    // 计算输出形状: [x1的batch维, x2的剩余维]
+    // Implementation note.
     std::vector<int64_t> output_shape;
-    output_shape.push_back(x1.size(0)); // batch维
+    output_shape.push_back(x1.size(0)); // Implementation note.
     for (int i = 1; i < x2.dim(); i++) {
-        output_shape.push_back(x2.size(i)); // x2的剩余维
+        output_shape.push_back(x2.size(i)); // Implementation note.
     }
 
-    // 分配正确形状的输出内存
+    // Implementation note.
     at::Tensor result = torch::empty(output_shape, x1.options());
 
-    // 调用ACLNN接口执行计算
+    // Implementation note.
     EXEC_NPU_CMD(aclnnCustomOp, x1, x2, t1, t2, t3, result);
     
     return result;

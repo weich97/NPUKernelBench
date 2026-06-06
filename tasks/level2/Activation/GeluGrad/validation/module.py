@@ -10,31 +10,31 @@ import math
 
 class Model(nn.Module):
     """
-    实现GELU梯度算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, dy: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
         """
-        实现GELU梯度算子功能。
+        Reference implementation detail.
 
         Args:
-            dy: 梯度输入张量
-            x: 原始输入张量
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            GELU梯度计算结果
+            Reference implementation detail.
         """
         orig_dtype = x.dtype
         x = x.float()
         dy = dy.float()
         
-        # 使用数学公式直接计算GELU梯度
+        # Implementation note.
         c0 = -0.0713548162726002527220
         c1 = -1.595769121605730711759
         c2 = 0.2140644488178007
@@ -59,18 +59,18 @@ class ModelNew(nn.Module):
 
     def forward(self, dy: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
         """
-        使用自定义kernel实现GELU梯度算子功能。
+        Reference implementation detail.
 
         Args:
-            dy: 梯度输入张量
-            x: 原始输入张量
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            GELU梯度计算结果
+            Reference implementation detail.
         """
         import kernel_gen_ops
-        # 计算GELU前向结果
+        # Implementation note.
         y = torch.nn.functional.gelu(x)
 
-        # 使用自定义算子计算GELU梯度
+        # Implementation note.
         return kernel_gen_ops.gelu_grad(dy, x, y)

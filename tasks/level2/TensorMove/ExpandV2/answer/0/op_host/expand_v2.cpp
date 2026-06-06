@@ -15,7 +15,7 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     uint32_t coreNum = ascendcPlatform.GetCoreNum();
     uint64_t expandSize = 1;
 
-    uint64_t totalLength = context->GetInputShape(0)->GetOriginShape().GetShapeSize(); // 元素个数
+    uint64_t totalLength = context->GetInputShape(0)->GetOriginShape().GetShapeSize(); // Implementation note.
     auto dimNum = context->GetInputShape(0)->GetOriginShape().GetDimNum();
     auto newShapeDimNum = context->GetAttrs()->GetListInt(0)->GetSize();
     const uint64_t dimDelta = newShapeDimNum - dimNum;
@@ -29,15 +29,15 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     }
 
     auto dtype = context->GetInputDesc(0)->GetDataType();
-    const uint64_t dtypeSize = 8; // x是int64
-    const uint64_t maxTileLength = MAX_TILE_SIZE / dtypeSize; // 用B在计算
+    const uint64_t dtypeSize = 8; // Implementation note.
+    const uint64_t maxTileLength = MAX_TILE_SIZE / dtypeSize; // Implementation note.
 
     uint64_t tileLength = totalLength <= maxTileLength ? totalLength : maxTileLength;
     uint64_t tileNum = totalLength / maxTileLength;
     uint64_t miniTileLength = totalLength % maxTileLength;
     printf("totalLength %ld maxTileLength %ld \n", totalLength, maxTileLength);
 
-    // 文档：https://wiki.huawei.com/domains/64642/wiki/95725/WIKI202503196296522
+    // Implementation note.
     tiling.set_expandSize(expandSize);
     tiling.set_blockLength(totalLength);
     tiling.set_tileLength(tileLength);

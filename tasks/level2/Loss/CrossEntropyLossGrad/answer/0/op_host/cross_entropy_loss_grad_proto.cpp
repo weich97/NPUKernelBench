@@ -74,7 +74,7 @@ static graphStatus InferShape4CrossEntropyLossGrad(gert::InferShapeContext* cont
   gert::Shape* xGradShape = context->GetOutputShape(OUTPUT_X_GRAD_IDX);
   OPS_CHECK_NULL_WITH_CONTEXT(context, xGradShape);
 
-  if (IsUnknownRank(logProbShape)) { // [-2]输入
+  if (IsUnknownRank(logProbShape)) { // Implementation note.
     OP_LOGD(context->GetNodeName(), "Input shape is -2, set output shape to (-2)");
     return SetUnknownRank(xGradShape);
   } else {

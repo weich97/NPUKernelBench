@@ -15,35 +15,35 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     MulSigmoidMulAddCustomTilingData tiling;
     const gert::StorageShape* x1_shape = context->GetInputShape(0);
 
-    /* 计算输入数据总长度 */
+    // Implementation note.
     uint32_t totalLen = x1_shape->GetStorageShape().GetShapeSize();
     uint32_t maxTileLen = 4096;
 
-    /* 先计算分块的大小和block大小 */
+    // Implementation note.
     uint32_t totalTileNum = CeilDivision(totalLen, maxTileLen);
 
-    /* 获取系统vector数目, 如果当前TileNum小于等于核数，则只在部分核上分配任务 */
+    // Implementation note.
     auto ascendcPlatform = platform_ascendc::PlatformAscendC(context->GetPlatformInfo());
     auto aivNum = ascendcPlatform.GetCoreNumAiv();
     auto blockDim = (totalTileNum < aivNum) ? totalTileNum : aivNum;
 
-    /* Tiling分块切分，分块不可整除，最后1个分块较小，存在2种分块大小 */
+    // Implementation note.
     uint32_t completeTileNum, partTileNum;
     uint32_t completeTileLen, partTileLen;
 
     completeTileNum= totalLen / maxTileLen;     
     completeTileLen  = maxTileLen;  
     if (0 == (totalLen % maxTileLen)) {
-        /* 分块大小可整除 */
+        // Implementation note.
         partTileNum = 0;
         partTileLen = 0;
     } else {
-        /* 分块大小无法整除 */
+        // Implementation note.
         partTileNum = 1;
         partTileLen = totalLen % maxTileLen;
     }
 
-    /* 将分块分到不同的block上,当不整除时，前面block分配的tile会多1个 */
+    // Implementation note.
     uint32_t frontBlockNum, latterBlockNum;
     uint32_t tileNumInFrontBlock, tileNumInLatterBlock;
     if (0 == (totalTileNum % blockDim)) {
@@ -62,7 +62,7 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
 
     context->SetBlockDim(blockDim);
 
-    /* 设置TilingData */
+    // Implementation note.
     tiling.set_totalLen(totalLen); 
     tiling.set_blockDim(blockDim); 
     tiling.set_completeTileNum(completeTileNum);

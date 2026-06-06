@@ -1,57 +1,48 @@
 # aclnnArange
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-从start起始到end结束按照step的间隔取值，并返回大小为 $\frac{end-start}{step}+1$的1维张量。其中，步长step是张量中相邻两个值的间隔。
+### Operator Semantics
+`aclnnArange` is an Ascend NPU benchmark operator in the `level1` `TensorCreation` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.arange()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
 
 $$
 \text{out}_{i+1} = \text{out}_i + \text{step}
 $$
 
-## 接口定义
+## Interface Definition
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.arange()` 函数形式提供：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def arange(start, end, step=1):
-    """
-    实现自定义arange操作，用于生成一个范围内的序列张量。
-    
-    参数:
-        start: 序列的起始值（包含）。
-        end: 序列的结束值（不包含）。
-        step: 步长，默认为1。不能为0。
-        
-    返回:
-        Tensor: 包含从start到end（不包括end），以step为步长的1维张量。
-    
-    注意:
-        - step 不能为0；
-        - 若 (end - start)/step 不是整数，则会截断；
-        - 支持正向与反向生成序列（step可为负）；
-        - 输出为一维张量。
-    """
+    """Execute `aclnnArange` on Ascend NPU tensors."""
+
 ```
-## 使用案例
+
+### Inputs
+- `start`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `end`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `step`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量
-x = torch.rand(8, 2048, dtype=torch.float)  # 使用正数以避免NaN
-
-# 使用arange执行计算
-result = kernel_gen_ops.arange(start=0, end=10, step=1)
+result = kernel_gen_ops.arange(start, end, step)
 ```
 
+## Constraints and Notes
 
-## 约束与限制
-
-- 张量数据格式支持ND。
-
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

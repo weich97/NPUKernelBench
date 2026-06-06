@@ -14,7 +14,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
 
     def forward(self, y_grad: torch.Tensor, x: torch.Tensor, dim: int = -1) -> torch.Tensor:
-        # 先把 x 转成 float32
+        # Implementation note.
         x = x.to(torch.float32)
         y_grad = y_grad.to(torch.float32)
 

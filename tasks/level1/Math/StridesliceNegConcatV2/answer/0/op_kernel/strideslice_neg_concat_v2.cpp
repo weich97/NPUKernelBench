@@ -22,7 +22,7 @@ public:
 
      __aicore__ inline void Process()
     {
-        // 构造[1;-1]向量
+        // Implementation note.
         LocalTensor<T> mulVecBufLocal = mulVecBuf.Get<T>();
         T scalar1 = 1.0;
         T scalar2 = -1.0;

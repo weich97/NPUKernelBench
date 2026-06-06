@@ -44,7 +44,7 @@ target_include_directories(opsproto PRIVATE
         ${ASCEND_CANN_PACKAGE_PATH}/include/experiment/msprof
 )
 
-# 手动实现的aclnn
+// Implementation note.
 target_sources(op_host_aclnnInner PRIVATE
         op_host/batch_norm_v3_def.cpp
 )
@@ -65,7 +65,7 @@ target_sources(opapi PRIVATE
         op_host/aclnn_batch_norm.cpp
 )
 
-# install kernel侧源码和aclnn头文件
+// Implementation note.
 install(DIRECTORY op_kernel/
         DESTINATION ${ASCEND_IMPL_OUT_DIR}/dynamic
         FILES_MATCHING PATTERN "*.cpp")

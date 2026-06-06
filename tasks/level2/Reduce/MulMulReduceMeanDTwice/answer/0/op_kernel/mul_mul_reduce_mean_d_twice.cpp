@@ -106,7 +106,7 @@ private:
         // second reduceMeanD
         LocalTensor<T>  reduceMeanD_buf1_local = reduceMeanD_buf1.Get<T>();
         Mean<T>(reduceMeanD_buf1_local, mul_result_local, reduce_worklocal_buf_local, meanParams);
-		Adds(reduceMeanD_buf1_local, reduceMeanD_buf1_local, add_y_scalar, 16); // 取前32Byte计算即可, 只需要第一个值
+		Adds(reduceMeanD_buf1_local, reduceMeanD_buf1_local, add_y_scalar, 16); // Implementation note.
 		Rsqrt(reduceMeanD_buf1_local, reduceMeanD_buf1_local, 16);
 		T rsqrt_result = reduceMeanD_buf1_local.GetValue(0);
         Muls(reduceMeanD_buf1_local, gamma_local, rsqrt_result, tile_length);

@@ -9,26 +9,26 @@ import kernel_gen_ops
 
 class Model(nn.Module):
     """
-    简单模型，对输入张量列表中的每个张量与对应标量相乘。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
-        标量乘法操作不需要额外参数。
+        Reference implementation detail.
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, inputs: List[torch.Tensor], scalar_list) -> List[torch.Tensor]:
         """
-        计算每个输入张量与对应标量的乘积。
+        Reference implementation detail.
 
         Args:
-            inputs: 输入张量列表，可以是任意形状。
-            scalar_list: 标量列表，用于与输入张量相乘。
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            与输入张量具有相同形状的输出张量列表，每个输出是输入张量与对应标量的乘积。
+            Reference implementation detail.
         """
         return [a * x for a, x in zip(scalar_list, inputs)]
 

@@ -73,7 +73,7 @@ static ge::graphStatus InferShape4FeedsRepeat(gert::InferShapeContext* context) 
         return ge::GRAPH_FAILED);
     OPS_CHECK_NULL_WITH_CONTEXT(context, attrs);
     
-    if (IsUnknownRank(y_shape)) { // [-2]输入
+    if (IsUnknownRank(y_shape)) { // Implementation note.
         OP_LOGD(context->GetNodeName(), "Input shape is -2, set output shape to -2");
         return SetUnknownRank(y_shape);
     }

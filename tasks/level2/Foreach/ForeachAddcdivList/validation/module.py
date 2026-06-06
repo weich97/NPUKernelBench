@@ -9,27 +9,27 @@ import kernel_gen_ops
 
 class Model(nn.Module):
     """
-    实现ForeachAddcdivList算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, x1: List[torch.Tensor], x2: List[torch.Tensor], x3: List[torch.Tensor], scalars: torch.Tensor) -> List[torch.Tensor]:
         """
-        实现ForeachAddcdivList算子功能。
+        Reference implementation detail.
 
         Args:
-            x1: 第一个输入张量列表
-            x2: 第二个输入张量列表
-            x3: 第三个输入张量列表
-            scalars: 标量张量
+            Reference implementation detail.
+            Reference implementation detail.
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            经过逐元素加、乘、除操作后的结果张量列表
+            Reference implementation detail.
         """
         return [x + (y / z) * s for x, y, z, s in zip(x1, x2, x3, scalars)]
 

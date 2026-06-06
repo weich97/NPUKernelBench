@@ -27,7 +27,7 @@ target_sources(op_host_aclnn PRIVATE
         op_host/is_inf_def.cpp
 )
 
-# 手动实现的aclnn
+# Manually implemented aclnn path.
 #target_sources(op_host_aclnnInner PRIVATE
 #        op_host/histogram_v2_def.cpp
 #)

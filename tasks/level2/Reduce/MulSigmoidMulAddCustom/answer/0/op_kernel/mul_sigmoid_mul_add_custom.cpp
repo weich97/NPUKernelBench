@@ -21,7 +21,7 @@ public:
         this->partTileLen = tiling.partTileLen;
         this->totalTileNum = tiling.totalTileNum;
 
-        /* 前面block分配tile小，后面block分配tile多 */
+        // Implementation note.
         if (blockIdx < tiling.frontBlockNum) {
             this->startTileIdx = blockIdx * tiling.tileNumInFrontBlock;
             this->tileNumInBlock = tiling.tileNumInFrontBlock;
@@ -31,7 +31,7 @@ public:
         }
         this->endTileIdx = this->startTileIdx + this->tileNumInBlock - 1;
 
-        /* 不是最后一个Tile */
+        // Implementation note.
         this->startPosInBlock = this->startTileIdx * tiling.completeTileLen;
         if (this->endTileIdx < tiling.completeTileNum) {                
             this->blockLen = this->tileNumInBlock * tiling.completeTileLen;
@@ -39,15 +39,15 @@ public:
             this->blockLen = (this->tileNumInBlock - 1) * tiling.completeTileLen + tiling.partTileLen;
         }
 
-        /* SetGlobalBuffer接口中，bufferSize单位为sizeof(T)，不需要再乘以sizeof(T) */
+        // Implementation note.
         inputGlobal.SetGlobalBuffer((__gm__ T*)input + this->startPosInBlock, this->blockLen);
         outputGlobal.SetGlobalBuffer((__gm__ T*)output + this->startPosInBlock * this->out_put_len, this->blockLen * this->out_put_len);
 
-        /*  分配内存块的个数。double buffer功能通过该参数开启：num设置为1，表示不开启double buffer；num设置为2，表示开启double buffer。*/
+        // Implementation note.
         pipe.InitBuffer(inQueueInput, 2, this->completeTileLen * sizeof(T));
         pipe.InitBuffer(outQueueOutput, 2, this->completeTileLen * sizeof(T) * this->out_put_len);
 
-        /* T_Buf，每次使用2块buf，2PP */
+        // Implementation note.
         pipe.InitBuffer(calcDataBuf, 2 * 2 * this->completeTileLen * sizeof(T));
     }
 
@@ -64,7 +64,7 @@ public:
 private:
     __aicore__ inline void CopyIn(int32_t tileIdx, int32_t tileLen)
     {
-        /* 输入数据1拷贝，DataCopy中calCout单位为sizeof(T)，所以配置calCout时，不需要乘以sizeof(T) */
+        // Implementation note.
         LocalTensor<T> inputLocal = inQueueInput.AllocTensor<T>();
         DataCopy(inputLocal, inputGlobal[tileIdx * tileLen], tileLen);
         inQueueInput.EnQue(inputLocal);
@@ -79,24 +79,24 @@ private:
 
     __aicore__ inline void Compute(int32_t tileIdx, int32_t tileLen)
     {       
-        /* 输入输出 */
+        // Implementation note.
         LocalTensor<T> inputLocal = inQueueInput.DeQue<T>();
         LocalTensor<T> outputLocal = outQueueOutput.AllocTensor<T>();
 
-        /* 申请2块BUFFER循环使用 */
+        // Implementation note.
         LocalTensor<T> calBuffer1 = calcDataBuf.Get<T>(tileLen);
         LocalTensor<T> calBuffer2 = calcDataBuf.GetWithOffset<T>(tileLen, tileLen);
 
-        /* Step1:Mul计算,输出到buffer1 */        
+        // Implementation note.
         AscendC::Muls(calBuffer1, inputLocal, this->mulScalar1, tileLen);
 
-        /* Step2:sigmoid计算,输出到buffer2 */       
+        // Implementation note.
         AscendC::Sigmoid(calBuffer2, calBuffer1, tileLen);
 
-        /* Step3:Mul计算,输出到buffer1 */
+        // Implementation note.
         AscendC::Muls(calBuffer1, calBuffer2, this->mulScalar2, tileLen);
 
-        /* Step4:add计算,输出到buffer1 */
+        // Implementation note.
         AscendC::Adds(outputLocal, calBuffer1, this->addScalar3, tileLen);
         inQueueInput.FreeTensor(inputLocal);
         outQueueOutput.EnQue<T>(outputLocal);
@@ -105,9 +105,9 @@ private:
 private:
     TPipe pipe;
 
-    /* 队列的深度表示该队列可以连续进行入队/出队的次数，在代码运行时，对同一个队列有n次连续的EnQue（中间没有DeQue），那么该队列的
-    深度就需要设置为n。注意，这里的队列深度和double buffer无关，队列机制用于实现流水线并行，double buffer在此基础上进一步提高流水线的利用率。即使队列
-    的深度为1，仍可以开启double buffer。队列的深度设置为1时，编译器对这种场景做了特殊优化，性能通常更好，推荐设置为1。 */
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
     TQue<QuePosition::VECIN, 1> inQueueInput;
     TQue<QuePosition::VECOUT, 1> outQueueOutput;
 
@@ -135,7 +135,7 @@ private:
     T mulScalar2;
     T addScalar3;
 
-    /* 测试输出，将中间步骤数据打印出来 */
+    // Implementation note.
     uint32_t out_put_len = 1;
 };
 }

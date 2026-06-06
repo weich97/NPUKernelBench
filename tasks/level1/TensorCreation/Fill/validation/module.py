@@ -9,25 +9,25 @@ import kernel_gen_ops
 
 class Model(nn.Module):
     """
-    实现Fill算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, dims: List[int], value: torch.Tensor) -> torch.Tensor:
         """
-        实现Fill算子功能。
+        Reference implementation detail.
 
         Args:
-            dims: 用于指定输出张量的形状
-            value: 用于填充张量的标量值
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            用指定标量值填充的张量
+            Reference implementation detail.
         """
         return torch.full(dims, value.item(), dtype=value.dtype)
 

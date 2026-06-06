@@ -62,7 +62,7 @@ public:
         const int32_t &calCount);
     __aicore__ inline void ComputeReduceMax(const LocalTensor<float> &tempRes, int32_t calCount, float &maxValue);
 
-    // 变量区
+    // Implementation note.
     uint32_t usedCoreNum_;
     int64_t curCoreProcessNum_;
     int64_t normalCoreProcessNum_;

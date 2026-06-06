@@ -23,9 +23,9 @@ class Model(nn.Module):
         input_dtype = input_predictions.dtype
 
         # Convert predictions to float32 for internal calculation (common for stability)
-        # 这一步可能会导致问题，因为最终 ZLoss 的输出需要匹配 input_dtype
-        # 最好在NPU侧完成相应的类型转换，或者确保所有中间计算都使用兼容的类型
-        # 在这里，我们先让 predictions_fp32 继续使用，但会在 ZLoss 相关输出时进行类型转换
+        # Implementation note.
+        # Implementation note.
+        # Implementation note.
         predictions_fp32 = input_predictions.to(torch.float32) 
 
         # Handle weight: if None, create ones

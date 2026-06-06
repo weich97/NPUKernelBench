@@ -9,25 +9,25 @@ import math
 
 class Model(nn.Module):
     """
-    实现MaskSelectV3算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, input_tensor: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         """
-        实现MaskSelectV3算子功能。
+        Reference implementation detail.
 
         Args:
-            input_tensor: 输入张量
-            mask: 布尔掩码张量
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            根据掩码选择元素后的一维张量
+            Reference implementation detail.
         """
 
         output = torch.masked_select(input_tensor, mask)

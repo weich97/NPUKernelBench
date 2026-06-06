@@ -31,7 +31,7 @@ ge::graphStatus GetCompileInfo(gert::TilingContext *context, InplaceAttnSoftmaxC
 {
     auto platformInfo = context->GetPlatformInfo();
     auto ascendcPlatform = platform_ascendc::PlatformAscendC(platformInfo);
-    uint32_t totalCoreNum = ascendcPlatform.GetCoreNumAiv();  // 总核数
+    uint32_t totalCoreNum = ascendcPlatform.GetCoreNumAiv(); // Implementation note.
     uint64_t ubSizePlatForm;
     ascendcPlatform.GetCoreMemSize(platform_ascendc::CoreMemType::UB, ubSizePlatForm);
     uint32_t ubSize = static_cast<uint32_t>(ubSizePlatForm);
@@ -48,20 +48,20 @@ ge::graphStatus GetCompileInfo(gert::TilingContext *context, InplaceAttnSoftmaxC
 ge::graphStatus GetTillingData(gert::TilingContext *context, InplaceAttnSoftmaxCompileInfo &compileInfo,
     InplaceAttnSoftmaxTilingParam &tilingParam, InplaceAttnSoftmaxTilingData &tilingData)
 {
-    // 1. 参数校验
+    // Implementation note.
     if (CheckOpParams(context) != ge::GRAPH_SUCCESS) {
         return ge::GRAPH_FAILED;
     }
     auto xDtype = context->GetInputDesc(0)->GetDataType();
-    // 2. 计算rowlen和collen
+    // Implementation note.
     auto inputShape = context->GetInputTensor(INPUT_X_INDEX)->GetStorageShape();
     if (!SetTotalShape(inputShape, context, tilingData)) {
         printf("Get total shape failed!");
         return ge::GRAPH_FAILED;
     }
-    //3、多维张量合成两轴
+    // Implementation note.
     uint32_t rowLen = tilingData.get_rowLen();
-    //4、设置key、单个ub可容纳的数据量
+    // Implementation note.
     if (xDtype == ge::DT_FLOAT16) {
         tilingData.set_tilingKey(static_cast<uint32_t>(InplaceAttnSoftmaxTilingKey::TILINGKEY_FP16));
         compileInfo.inputDataByte = x_dTypeLen[xDtype];
@@ -97,11 +97,11 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
         return ge::GRAPH_FAILED;
     }
 
-    // 读取属性和dtype来计算tilingKey
+    // Implementation note.
     GetTillingData(context, compileInfo, tilingParam, tilingData);
     SetTilingDataForInplaceAttnSoftmax(context, tilingData);
 
-    //调用softmax接口
+    // Implementation note.
     auto xDtype = context->GetInputDesc(0)->GetDataType();
     ge::Shape srcShape;
     if(tilingData.get_basicRowLenHeadCore() > tilingData.get_basicRowLenTailCore()){
@@ -119,9 +119,9 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
     auto ascendcPlatform = platform_ascendc::PlatformAscendC(context->GetPlatformInfo());
     uint32_t sysWorkspaceSize = ascendcPlatform.GetLibApiWorkSpaceSize();
     size_t *currentWorkspace = context->GetWorkspaceSizes(
-        1);  // 通过框架获取workspace的指针，GetworkspaceSizes入参为所需workspace的块数。当前限制使用一块。
+        1); // Implementation note.
     currentWorkspace[0] =
-        tilingData.get_realCoreNum() * tilingData.get_colLen() + sysWorkspaceSize;  // 设置总的workspace的数值大小，总的workspace空间由框架来申请并管理。
+        tilingData.get_realCoreNum() * tilingData.get_colLen() + sysWorkspaceSize; // Implementation note.
     std::cout << "*******************START*******************" << std::endl;
     std::cout << "coreNum = " << tilingData.get_realCoreNum() << std::endl;
     std::cout << "rowLen = " << tilingData.get_rowLen() << std::endl;

@@ -1,50 +1,46 @@
 # aclnnSpence
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-实现了Spence函数（二重对数函数，dilogarithm）计算。
+### Operator Semantics
+`aclnnSpence` is an Ascend NPU benchmark operator in the `level1` `Math` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.spence()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
 
 $$
   y = \text{Spence}(x) = -\int_{1}^{x} \frac{\ln(t)}{1-t} dt
 $$
 
-## 接口定义
+## Interface Definition
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.spence()` 函数形式提供：
-
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def spence(x):
-    """
-    实现 Spence 函数（狄尔对数函数，Dilogarithm, 记作 Li₂(x)）。
+    """Execute `aclnnSpence` on Ascend NPU tensors."""
 
-    参数:
-        x (Tensor): 输入张量，Device 侧的张量，数据格式支持 ND。
-    
-    返回:
-        Tensor: 输出张量，每个元素为对应输入元素应用 Spence 函数的结果。数据类型与输入一致，形状保持不变。
-
-    注意:
-        - 支持高维 ND Tensor，按元素处理。
 ```
 
-## 使用案例
+### Inputs
+- `x`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
-
-# 创建输入张量
-x = torch.rand(2048, dtype=torch.float32)
 
 result = kernel_gen_ops.spence(x)
 ```
-## 约束与限制
 
-- 张量数据格式支持ND。
+## Constraints and Notes
 
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

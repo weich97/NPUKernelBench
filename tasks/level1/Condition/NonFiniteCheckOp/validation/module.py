@@ -8,7 +8,7 @@ class Model(nn.Module):
         super().__init__()
 
     def forward(self, xs: list[torch.Tensor]) -> torch.Tensor:
-        # 对每个张量单独判断是否有 NaN/Inf
+        # Check each tensor independently for NaN or Inf values.
         flags = [float(torch.isnan(x).any() or torch.isinf(x).any()) for x in xs]
         return torch.tensor(sum(flags) > 0, dtype=torch.float32)
 

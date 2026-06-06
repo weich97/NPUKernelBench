@@ -55,26 +55,26 @@ public:
     TCubeTiling cubeTilingData_;
     
     /* variable */
-    AscendC::GlobalTensor<dataType> softmaxOutputGm_;   // 输入A，兼输出
-    AscendC::GlobalTensor<dataType> gradOutputGm_;      // 输入B
-    AscendC::GlobalTensor<dataType> valuesGm_;          // 输入C
-    AscendC::GlobalTensor<float> gradSoftmaxGm_;     // 中间值D: D = matmul(B, transpose(C));
-    AscendC::GlobalTensor<dataType> gradXGm_;           // 输出E，后续改输出到A上
-    AscendC::LocalTensor<float> softmaxTmpUb1_;                  // big shape 非bf16场景临时UB空间
-    AscendC::LocalTensor<float> softmaxTmpUb2_;                  // big shape 非bf16场景临时UB空间
-    AscendC::LocalTensor<float> softmaxOutputUB32Temp;           // bf16 场景临时UB空间
-    AscendC::LocalTensor<float> outGradX32Temp;                  // bf16 场景临时UB空间
+    AscendC::GlobalTensor<dataType> softmaxOutputGm_; // Implementation note.
+    AscendC::GlobalTensor<dataType> gradOutputGm_; // Implementation note.
+    AscendC::GlobalTensor<dataType> valuesGm_; // Implementation note.
+    AscendC::GlobalTensor<float> gradSoftmaxGm_; // Implementation note.
+    AscendC::GlobalTensor<dataType> gradXGm_; // Implementation note.
+    AscendC::LocalTensor<float> softmaxTmpUb1_; // Implementation note.
+    AscendC::LocalTensor<float> softmaxTmpUb2_; // Implementation note.
+    AscendC::LocalTensor<float> softmaxOutputUB32Temp; // Implementation note.
+    AscendC::LocalTensor<float> outGradX32Temp; // Implementation note.
 
     uint32_t blockIdx_{0};
     uint32_t rowLen_{0};
 
-    TQue<QuePosition::VECIN, BUFFER_NUM> inQueueSoftmaxOutput_; // 输入A
-    TQue<QuePosition::VECIN, BUFFER_NUM> inQueueGradSoftmax_;   // 中间值D: D = matmul(B, transpose(C));
-    TQue<QuePosition::VECOUT, BUFFER_NUM> outQueueGradX_;       // 输出E
-    TBuf<TPosition::VECCALC> SoftmaxOutput32Temp_; // 输入A中间值
-    TBuf<TPosition::VECCALC> outGradX32Temp_;  //输出中间值
-    TBuf<TPosition::VECCALC> sharedTempBuf1_;                    //  vector计算值中间值
-    TBuf<TPosition::VECCALC> sharedTempBuf2_;                    //  vector计算值中间值
+    TQue<QuePosition::VECIN, BUFFER_NUM> inQueueSoftmaxOutput_; // Implementation note.
+    TQue<QuePosition::VECIN, BUFFER_NUM> inQueueGradSoftmax_; // Implementation note.
+    TQue<QuePosition::VECOUT, BUFFER_NUM> outQueueGradX_; // Implementation note.
+    TBuf<TPosition::VECCALC> SoftmaxOutput32Temp_; // Implementation note.
+    TBuf<TPosition::VECCALC> outGradX32Temp_; // Implementation note.
+    TBuf<TPosition::VECCALC> sharedTempBuf1_; // Implementation note.
+    TBuf<TPosition::VECCALC> sharedTempBuf2_; // Implementation note.
 };
 }  // namespace InplaceFusedMatmulSoftmaxGradOpt
 #endif  // INPLACE_FUSED_MATMUL_SOFTMAX_GRAD_BASE_H

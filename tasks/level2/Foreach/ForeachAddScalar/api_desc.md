@@ -1,17 +1,15 @@
 # aclnnForeachAddScalar
 
-## 支持的数据类型  
-| 张量        | 数据类型                              |
-|-------------|----------------------------------------|
-| `x`         | `float16`, `float32`, `bfloat16`, `int32` |
-| `scalar`    | - 与 `x` 同 dtype（`float16/float32/int32`）<br>- 当 `x` 为 `bfloat16` 时，`scalar` 可为 `float32` |
+## Functional Description
 
-## 功能描述
+### Operator Semantics
+`aclnnForeachAddScalar` is an Ascend NPU benchmark operator in the `level2` `Foreach` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.foreach_add_scalar()`.
 
-### 算子功能
-将 Host 侧标量 `scalar` 加到 Device 侧张量列表 `x` 中的 **每个元素**，返回新的张量列表；原列表保持不变。
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-### 计算公式
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
+
 $$
 x = [x_0, x_1, \dots, x_{n-1}]
 $$
@@ -20,47 +18,33 @@ $$
 y_i = x_i + \text{scalar},\quad i = 0,1,\dots,n-1
 $$
 
-## 接口定义
+## Interface Definition
 
-### Python 接口
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
+
 ```python
-def foreach_add_scalar(
-    x: List[torch.Tensor],
-    scalar: torch.Tensor
-) -> List[torch.Tensor]:
-    """
-    逐元素加标量。
+def foreach_add_scalar(*args, **kwargs):
+    """Execute `aclnnForeachAddScalar` on Ascend NPU tensors."""
 
-    参数
-    ----
-    x : List[torch.Tensor]
-        Device 侧张量列表；所有张量 dtype 相同，支持 float16/float32/bfloat16/int32；
-        shape 维度 ≤ 8，数据格式 ND，支持非连续。
-    scalar : torch.Tensor
-        Host 侧 **0-D 张量**（标量）；dtype 与 x 的对应关系见“支持的数据类型”表。
-
-    返回
-    ----
-    List[torch.Tensor]
-        新张量列表，dtype、shape、数据格式均与输入列表对应张量相同。
-    """
 ```
 
-## 使用案例
+### Inputs
+- Operator arguments are supplied by the benchmark input generator and follow the reference validation signature.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 示例：float32 输入
-x_list = [
-    torch.randn(2, 3, dtype=torch.float32, device='npu'),
-    torch.randn(4, dtype=torch.float32, device='npu')
-]
-scalar = torch.tensor(2.5, dtype=torch.float32)   # Host 侧标量
-
-y_list = kernel_gen_ops.foreach_add_scalar(x_list, scalar)
+result = kernel_gen_ops.foreach_add_scalar(...)
 ```
 
-## 约束与限制
-无
+## Constraints and Notes
+
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

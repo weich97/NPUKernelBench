@@ -145,7 +145,7 @@ namespace IsInfNS {
         LocalTensor<uint8_t> result = outputQueue.AllocTensor<uint8_t>();
         cacheTensor = cacheTensorBuff.Get<int16_t>();
 
-        // 和sign_mask做按位与操作
+  // Alignment and tail-handling logic.
         Duplicate(cacheTensor, (int16_t)MASK, dataLength);
         And(ubX, ubX, cacheTensor, dataLength);
 

@@ -4,7 +4,7 @@ import torch
 
 def get_inputs(param, device=None):
     """
-    根据 DataFrame 行中的参数生成模型的输入张量和标量列表。
+    Reference implementation detail.
     """
     shape_list = eval(param.get('input_shape', '[[1]]'))
     scalar_list_values = eval(param.get('scalar_list', '[1.0]'))
@@ -14,10 +14,10 @@ def get_inputs(param, device=None):
     inputs = []
     for shape in shape_list:
         if dtype == torch.int32:
-            # 整数类型使用 randint
+            # Implementation note.
             x = torch.randint(-100, 100, shape, device=device, dtype=dtype)
         else:
-            # 浮点类型使用 randn
+            # Implementation note.
             x = torch.randn(shape, device=device, dtype=dtype)
         inputs.append(x)
 

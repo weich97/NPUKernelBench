@@ -217,7 +217,7 @@ static void GetFp32TilingData(GeGluV2TilingData& tilingData, TilingParam& tiling
   if (tilingParam.ny == 1) {
     static const int64_t FP32_BUFFER_SIZE_VREDUCE_TANH = 6144;
     static const int64_t FP32_BUFFER_SIZE_VREDUCE_ERF = 4912;
-    // 根据ub大小、存活空间个数计算，32B对齐
+    // Implementation note.
     tilingParam.bufSize = tilingParam.approximate == 1 ? FP32_BUFFER_SIZE_VREDUCE_TANH : 
                                                          FP32_BUFFER_SIZE_VREDUCE_ERF;
     GetTilingDataSmall(tilingData, tilingParam, true);

@@ -48,25 +48,25 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context) {
     }
     uint32_t ubPartNum = 5;
     if (dataType == ge::DT_INT8 || dataType == ge::DT_UINT8) {
-        ubLength = ubLength - 1024 * 8 - 256 * 6;//8k 预留空间 1k 计算对齐256字节 
+        ubLength = ubLength - 1024 * 8 - 256 * 6;  // Alignment and tail-handling logic.
         ubPartNum = NUM_1;
         context->SetTilingKey(0);
     }
     else if (dataType == ge::DT_FLOAT) {
-        ubLength = ubLength - 1024 * 8 - 256 * 7;//8k 预留空间 1k 计算对齐256字节 
+        ubLength = ubLength - 1024 * 8 - 256 * 7;  // Alignment and tail-handling logic.
         context->SetTilingKey(1);
     }
     else if (dataType == ge::DT_FLOAT16) {
-        ubLength = ubLength - 1024 * 8 - 256 * 6;//8k 预留空间 1k 计算对齐256字节 
+        ubLength = ubLength - 1024 * 8 - 256 * 6;  // Alignment and tail-handling logic.
     }
     else if (dataType == ge::DT_BF16) {
          ubPartNum = NUM_1;
-         ubLength = ubLength - 1024 * 8 - 256 * 10;//8k 预留空间 1k 计算对齐256字节 
+         ubLength = ubLength - 1024 * 8 - 256 * 10;  // Alignment and tail-handling logic.
          context->SetTilingKey(1);
     }
     else if (dataType == ge::DT_INT32) {
         ubPartNum = NUM_2;
-        ubLength = ubLength - 1024 * 8 - 256 * 7;//8k 预留空间 1k 计算对齐256字节 
+        ubLength = ubLength - 1024 * 8 - 256 * 7;  // Alignment and tail-handling logic.
         context->SetTilingKey(1);
     }
     else if (dataType == ge::DT_INT64) {
@@ -99,8 +99,8 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context) {
     // Tail block calculation for small chunks of data
     uint32_t smallCoreTailDataNum = smallCoreDataNum - ubPartDataNum * (smallCoreDataNum / ubPartDataNum);
     smallCoreTailDataNum = smallCoreTailDataNum == 0 ? ubPartDataNum : smallCoreTailDataNum;
-    uint32_t smallprocessDataNumComputes= (((ubPartDataNum * dataTypeLength + 256 - 1) / 256) * 256) / dataTypeLength;//计算函数 256字节对齐
-    uint32_t tailsmallprocessDataNumComputes= (((smallCoreTailDataNum * dataTypeLength + 256 - 1) / 256) * 256) / dataTypeLength;//尾块计算函数 256字节对齐
+    uint32_t smallprocessDataNumComputes= (((ubPartDataNum * dataTypeLength + 256 - 1) / 256) * 256) / dataTypeLength;  // Alignment and tail-handling logic.
+    uint32_t tailsmallprocessDataNumComputes= (((smallCoreTailDataNum * dataTypeLength + 256 - 1) / 256) * 256) / dataTypeLength;  // Alignment and tail-handling logic.
     
     uint32_t isTailBlock = 0;
     if(0 != tailBlockNum)
@@ -111,8 +111,8 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context) {
         bigCoreLoopNum = (everyCoreInputBlockNum % ubPartBlockNum) == 0 ? bigCoreLoopNum : bigCoreLoopNum + 1;
         bigCoreTailDataNum = bigCoreDataNum - ubPartDataNum * (bigCoreDataNum / ubPartDataNum);
         bigCoreTailDataNum = bigCoreTailDataNum == 0 ? ubPartDataNum : bigCoreTailDataNum;
-        bigprocessDataNumComputes= (((ubPartDataNum * dataTypeLength + 256 - 1) / 256) * 256) / dataTypeLength;//计算函数 256字节对齐
-        tailbigprocessDataNumComputes= (((bigCoreTailDataNum * dataTypeLength + 256 - 1) / 256) * 256) / dataTypeLength;//尾块计算函数 256字节对齐
+        bigprocessDataNumComputes= (((ubPartDataNum * dataTypeLength + 256 - 1) / 256) * 256) / dataTypeLength;  // Alignment and tail-handling logic.
+        tailbigprocessDataNumComputes= (((bigCoreTailDataNum * dataTypeLength + 256 - 1) / 256) * 256) / dataTypeLength;  // Alignment and tail-handling logic.
         isTailBlock = 1;
     }
 

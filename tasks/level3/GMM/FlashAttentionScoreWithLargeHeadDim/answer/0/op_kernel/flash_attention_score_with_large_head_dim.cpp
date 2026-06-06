@@ -89,7 +89,7 @@
   constexpr static int32_t repeatMaxBytes = 256;
   constexpr static int32_t repeatMaxSize = repeatMaxBytes / 4; // 4 means sizeof(T)
   
-  // 0级接口的block间隔范围需要满足32B对齐
+  // Implementation note.
   constexpr static int32_t fp32BaseSize = 8;
   
   namespace math {
@@ -270,16 +270,16 @@
      int64_t s2Size;
      int64_t s1OuterSize;
  
-     // sparse 用参�?
+     // Implementation note.
      int64_t s2StartIdx;
      int64_t s2EndIdx;
      int64_t nextS2EndIdx;
  
-     // s2方向的尾块，包含N:1配比
+     // Implementation note.
      int64_t bmm2LastS2RealSize = INVALID_OFFSET;
      int64_t qCoreOffset;
  
-     // 资源分配
+     // Implementation note.
      // TBuf<> maskTBufPing;
      // TBuf<> maskTBufPong;
      TBuf<> pseTBuf;
@@ -295,7 +295,7 @@
      GlobalTensor<float> vec2Res[2];
      GlobalTensor<half> stage1Res[2];
  
-     // 轴的乘积
+     // Implementation note.
      int64_t gS1o;
      int64_t n2GS1o;
      int64_t s1D;
@@ -313,8 +313,8 @@
      int64_t n2GD;
      int64_t gS2;
  
-     // s2base*N之后的长度
-     // cube计算的s2长度
+     // Implementation note.
+     // Implementation note.
      int64_t s2BaseNratioSize;
  
      int64_t s2BaseN2D;
@@ -349,7 +349,7 @@
                                      const FlashAttentionScoreWithLargeHeadDimTilingData *__restrict tiling,
                                      TPipe *tPipe)
  {
-     this->InitInput(query, key, value, softmaxMax, softmaxSum, attentionOut, workspace, tiling, tPipe); // gm设置
+     this->InitInput(query, key, value, softmaxMax, softmaxSum, attentionOut, workspace, tiling, tPipe); // Implementation note.
  
      this->ComputeConstexpr();
      this->InitBuffer();
@@ -388,16 +388,16 @@
      int64_t vector1OffsetPing = 0;
      int64_t vector1OffsetPong = mmNRatioOffset;
  
-     // 每个核在gm上都占用这么大的workspace
+     // Implementation note.
      int64_t totalOffset = mmNRatioOffset * bmm1AndVec1Ratio + mm2Offset * GM_DOUBLE_BUFFER;
      if (dSizeAlign16 > 64) {
          totalOffset = mmNRatioOffset * bmm1AndVec1Ratio + mm2Offset * 2 * GM_DOUBLE_BUFFER;
      }
  
-     // workspace上找到当前core要使用的地址空间
+     // Implementation note.
      this->mm1Res[0].SetGlobalBuffer((__gm__ float *)(workspace + this->blockIdx * totalOffset));
      this->mm1Res[1].SetGlobalBuffer((__gm__ float *)(workspace + this->blockIdx * totalOffset + mmNRatioOffset));
-     // vec1阶段输出复用cube1输出bmm1Result的地址空间
+     // Implementation note.
      this->stage1Res[0].SetGlobalBuffer(
          (__gm__ half *)(workspace + this->blockIdx * totalOffset + vector1OffsetPing));
      this->stage1Res[1].SetGlobalBuffer(
@@ -409,7 +409,7 @@
      this->mm2Res[1].SetGlobalBuffer(
          (__gm__ float *)(workspace + this->blockIdx * totalOffset + mmNRatioOffset * bmm1AndVec1Ratio + mm2Offset));
  
-     // vec2阶段，D轴>64时，占用2倍mmOffset空间
+     // Implementation note.
      if (dSizeAlign16 > 64) {
          this->vec2Res[0].SetGlobalBuffer(
              (__gm__ float *)(workspace + this->blockIdx * totalOffset + mmNRatioOffset * bmm1AndVec1Ratio + mm2Offset * 2));
@@ -426,9 +426,9 @@
      uint64_t stage2Size = 64 * 128;
      // uint64_t maskTBufPongSize = 16 * 1024;
  
-     // 可选输入的buffer空间，保持和stage1处理的size一致
-     // this->pipe->InitBuffer(this->maskTBufPing, stage1AttenSize); // 可以给attenmask 9k
-     // this->pipe->InitBuffer(this->maskTBufPong, maskTBufPongSize); // 可以给dropoutmask 16k
+     // Implementation note.
+     // Implementation note.
+     // Implementation note.
      this->pipe->InitBuffer(this->pseTBuf, 16384); // pse 16k
  
      this->pipe->InitBuffer(this->stage1PingBuf, stage2Size * sizeof(float)); // t.a 32k
@@ -445,7 +445,7 @@
  
  __aicore__ inline void FlashAttentionScoreWithLargeHeadDimS1s2Bn2gs1::ComputeConstexpr()
  {
-     // 计算轴的乘积
+     // Implementation note.
      this->s1D = this->tilingData->inputParams.s1Size * dSize;
      this->s2D = this->tilingData->inputParams.s2Size * dSize;
      this->gD = this->tilingData->inputParams.gSize * dSize;
@@ -463,7 +463,7 @@
      this->n2GS1 = this->tilingData->inputParams.n2Size * this->gS1;
      this->n2GS1D = this->tilingData->inputParams.n2Size * this->gS1D;
  
-     // 计算切分轴的乘积
+     // Implementation note.
      this->s2BaseN2D = this->s2BaseSize * this->n2D;
      this->s2BaseNratioSize = this->s2BaseSize * this->tilingData->coreParams.nRatio;
      this->s1BaseN2GD = this->s1BaseSize * this->n2GD;
@@ -475,13 +475,13 @@
  
  __aicore__ inline void FlashAttentionScoreWithLargeHeadDimS1s2Bn2gs1::Process()
  {
-     // 确定核内切分起点
+     // Implementation note.
      int64_t multiCoreInnerOffset = this->blockIdx * this->tilingData->multiCoreParams.splitFactorSize;
      int64_t multiCoreInnerLimit = multiCoreInnerOffset + this->tilingData->multiCoreParams.splitFactorSize;
      if (this->tilingData->multiCoreParams.totalSize < multiCoreInnerLimit) {
          multiCoreInnerLimit = this->tilingData->multiCoreParams.totalSize;
      }
-     // 计算sparse场景下s1的循环范�?
+     // Implementation note.
      SplitExtraInfo extraInfo[3];
      int64_t taskId = 0;
      event_t eventIdMte3ToMte2 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::MTE3_MTE2));
@@ -509,7 +509,7 @@
          }
          for (int64_t s2LoopCount = 0; s2LoopCount <= s2LoopLimit; s2LoopCount++) {
              if (taskId >= 1 && notLast) {
-                 // 对应extraInfo[(i+2)%3]
+                 // Implementation note.
                  WaitBmm1Result(extraInfo[(taskId + 2) % 3]);
              }
  
@@ -525,7 +525,7 @@
              }
  
              if (taskId > 1) {
-                 // 对应extraInfo[(i+1)%3]
+                 // Implementation note.
                  WaitBmm2Result();
              }
  
@@ -544,7 +544,7 @@
  
  __aicore__ inline void FlashAttentionScoreWithLargeHeadDimS1s2Bn2gs1::ComputeAxisIdx(int64_t multiCoreInnerIdx)
  {
-     // 计算轴的idx
+     // Implementation note.
      this->boIdx = multiCoreInnerIdx / this->n2GS1o;
      this->n2oIdx = multiCoreInnerIdx % this->n2GS1o / this->gS1o;
      this->goIdx = multiCoreInnerIdx % this->gS1o / this->tilingData->coreParams.s1OuterSize;
@@ -619,9 +619,9 @@
  __aicore__ inline void FlashAttentionScoreWithLargeHeadDimS1s2Bn2gs1::Bmm1SetTensorA(SplitExtraInfo &extraInfo,
                                                                          matmul::Matmul<a1Type, b1Type, T2, bias1Type, MM_CFG> &bmm1)
  {
-     // 计算gm上的offset
+     // Implementation note.
      int64_t bOffset = extraInfo.boIdx * this->n2GS1D;
-     // s1需要考虑inner轴的影响
+     // Implementation note.
      int64_t s1Offset = extraInfo.s1oIdx * this->s1BaseN2GD;
      int64_t n2Offset = extraInfo.n2oIdx * this->gD;
      int64_t gOffset = extraInfo.goIdx * dSize;
@@ -634,7 +634,7 @@
                                                                          matmul::Matmul<a1Type, b1Type, T2, bias1Type, MM_CFG>
                                                                          &bmm1)
  {
-     // 计算gm上的offset
+     // Implementation note.
      int64_t bOffset = extraInfo.boIdx * this->n2S2D;
      int64_t n2Offset = extraInfo.s2StartIdx * this->n2D + extraInfo.s2LoopCount * this->s2BaseNratioN2D;
      int64_t s2Offset = extraInfo.n2oIdx * dSize;
@@ -665,7 +665,7 @@
          }
          this->GetBmm1Result(extraInfo, stage1PongTensor, loopIdx);
  
-         // mul需要等bmm结果搬完
+         // Implementation note.
          SetFlag<HardEvent::MTE2_V>(eventIdMte2ToV);
          WaitFlag<HardEvent::MTE2_V>(eventIdMte2ToV);
          pipe_barrier(PIPE_V);
@@ -848,7 +848,7 @@
  
  __aicore__ inline void FlashAttentionScoreWithLargeHeadDimS1s2Bn2gs1::ProcessVec2(SplitExtraInfo &extraInfo)
  {
-     // 获取缓存bmm2的计算结�?
+     // Implementation note.
      LocalTensor<float> bmm2ResUb = this->stage2TBuf.template Get<float>();
      LocalTensor<float> stage2BufTensor = this->commonTBuf.template Get<float>();
      int64_t vec2LoopLimit = CeilDiv(extraInfo.s1RealSize, extraInfo.vec2S1BaseSize);
@@ -879,7 +879,7 @@
              dataCopyPadParams.rightPadding = this->dSizeAlign16 - this->dSize;
              dataCopyPadParams.paddingValue = 0;
              if (dataCopyPadParams.rightPadding > blockSize) {
-                 // 8对齐场景，内部vector需�?6对齐，我们在data copy的时候需要手动补0
+                 // Implementation note.
                  dataCopyPadParams.rightPadding -= blockSize;
                  dataCopyParams.dstStride = 1;
                  Duplicate<float>(stage2BufTensor[dAlign8], 0, blockSize, extraInfo.vec2S1RealSize, 0,
@@ -940,8 +940,8 @@
      repeatParams.src1RepStride = dSizeAlign16 / blockSize;
      repeatParams.dstRepStride = dSizeAlign16 / blockSize;
  
-     // s1长度可能会超�?55限制，修改成双重循环
-     // 根据一次最多计算的byte数量，对bmm2Res分组mul
+     // Implementation note.
+     // Implementation note.
      int32_t loop = dSizeAlign16 / repeatMaxSize;
      int32_t remain = dSizeAlign16 % repeatMaxSize;
      for (int i = 0; i < loop; i++) {
@@ -970,7 +970,7 @@
      LocalTensor<float> sumUb = softmaxSumBuf[extraInfo.multiCoreInnerIdxMod2].Get<float>();
  
      int32_t calcSize = sumUb.GetSize();
-     // 用optionalInputQueue的queue
+     // Implementation note.
      pipe_barrier(PIPE_V);
      for (int i = 0; i < loop; i++) {
          Div(bmm2ResUb[i * repeatMaxSize], bmm2ResUb[i * repeatMaxSize],

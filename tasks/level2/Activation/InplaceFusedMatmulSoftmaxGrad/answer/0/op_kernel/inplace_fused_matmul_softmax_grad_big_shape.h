@@ -25,7 +25,7 @@ public:
                             ? this->baseTilingData_.rowLenPerHeadCore
                             : this->baseTilingData_.rowLenPerTailCore;
 
-        // gm数据
+        // Implementation note.
         this->softmaxOutputGm_.SetGlobalBuffer((__gm__ dataType *)softmaxOutput,
             this->baseTilingData_.b * this->baseTilingData_.m * this->baseTilingData_.n);
         this->gradOutputGm_.SetGlobalBuffer(

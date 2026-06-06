@@ -1,55 +1,44 @@
 # aclnnFeedsRepeat
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-对于输入 `feeds`，根据输入 `feeds_repeat_times`，将对应的 `feeds` 的第 0 维上的数据复制对应的次数，并将输出 `y` 的第 0 维补零到 `output_feeds_size` 的数值。
+### Operator Semantics
+`aclnnFeedsRepeat` is an Ascend NPU benchmark operator in the `level2` `TensorMove` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.feeds_repeat()`.
 
-### 示例
-对于 `feeds = {(a, b), (c, d), (e, f)}`，`feeds_repeat_times = {x, y, z}`，则对应在输出里将 `(a, b)` 复制 `x` 次，`(c, d)` 复制 `y` 次，`(e, f)` 复制 `z` 次，若 `output_feeds_size = w + x + y + z`，则在最后再补充 `w` 个对齐的 `(0, 0)`；假设 `feeds_repeat_times = {0, 1, 2}`，`output_feeds_size = 4`，则对应 `out = {(c, d), (e, f), (e, f), (0, 0)}`。
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-## 接口定义
+### Mathematical Definition
+The exact element-wise, reduction, indexing, tensor-construction, or in-place semantics are defined by the corresponding `validation/module.py` reference path and benchmark input generator. Implementations must match that reference behavior for all generated test cases.
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.feeds_repeat()` 函数形式提供：
+## Interface Definition
+
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def feeds_repeat(feeds, feeds_repeat_times, output_feeds_size):
-    """
-    实现FeedsRepeat自定义操作。
-    
-    参数:
-        feeds (Tensor): 输入张量，Device侧的张量，数据格式支持ND。
-        feeds_repeat_times (Tensor): 输入张量，Device侧的张量，数据格式支持ND。
-        output_feeds_size (int): 输出的feeds大小
-        
-    返回:
-        Tensor: 计算结果张量，数据类型与feeds一致，数据格式支持ND。
-    
-    注意:
-        张量数据格式支持ND
-    """
+    """Execute `aclnnFeedsRepeat` on Ascend NPU tensors."""
+
 ```
 
-## 使用案例
+### Inputs
+- `feeds`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `feeds_repeat_times`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `output_feeds_size`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量
-feeds = torch.randn(2, 3, dtype=torch.float16)
-feeds_repeat_times = torch.tensor([100, 200], dtype=torch.int32)
-output_feeds_size = 500
-
-# 使用feeds_repeat执行计算
 result = kernel_gen_ops.feeds_repeat(feeds, feeds_repeat_times, output_feeds_size)
 ```
 
-## 约束与限制
+## Constraints and Notes
 
-- feeds，out的数据格式只支持ND，两者的数据类型一致；
-- feeds_repeat_times的数据格式只支持ND，一维tensor，长度（元素个数）必须和feeds的第0维数值相等；
-- output_feeds_size为必选属性，数值需大于等于feeds_repeat_times的元素总和；
-- 不支持空tensor，feeds_repeat_times的数据规模（Byte大小）不能超过48KB。
-    
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

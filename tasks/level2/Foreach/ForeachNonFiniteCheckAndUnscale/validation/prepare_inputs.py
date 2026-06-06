@@ -5,8 +5,8 @@ from typing import List, Tuple
 
 def get_inputs(param, device=None) -> Tuple[List[torch.Tensor], torch.Tensor, torch.Tensor]:
     """
-    返回：
-        scaled_grads : List[Tensor]  ← 一层列表
+    Reference implementation detail.
+        Reference implementation detail.
         found_inf    : Tensor(0/1, float)
         in_scale     : Tensor(scale, float)
     """

@@ -70,25 +70,25 @@ static uint32_t CalcSmallDBufferSize(uint32_t colValAlign, uint64_t dtypeKey)
 {
     /*
     +----------------+----------+-------------+---------------+------------+-------------+
-    |                | row      | col         | sizeof()      | buffer num | 备注        |
+    // Implementation note.
     +----------------+----------+-------------+---------------+------------+-------------+
-    | inQueueDY      | ubFactor | colValAlign | sizeof(T)     | 2(1)       | BF16开DB    |
+    // Implementation note.
     +----------------+----------+-------------+---------------+------------+-------------+
-    | inQueueX       | ubFactor | colValAlign | sizeof(T)     | 2(1)       | BF16开DB    |
+    // Implementation note.
     +----------------+----------+-------------+---------------+------------+-------------+
-    | inQueueRstd    | ubFactor | 1           | sizeof(float) | 2(1)       | BF16开DB    |
+    // Implementation note.
     +----------------+----------+-------------+---------------+------------+-------------+
     | inQueueGamma   | 1        | colValAlign | sizeof(T)     | 1          |             |
     +----------------+----------+-------------+---------------+------------+-------------+
-    | outQueueDX     | ubFactor | colValAlign | sizeof(T)     | 2(1)       | BF16开DB    |
+    // Implementation note.
     +----------------+----------+-------------+---------------+------------+-------------+
     | outQueueDgamma | 1        | colValAlign | sizeof(float) | 1          |             |
     +----------------+----------+-------------+---------------+------------+-------------+
     | ndBufFp32Buf   | ubFactor | colValAlign | sizeof(float) | 1          |             |
     +----------------+----------+-------------+---------------+------------+-------------+
-    | ndBufFp32Buf   | ubFactor | colValAlign | sizeof(float) | 1          | B16场景申请 |
+    // Implementation note.
     +----------------+----------+-------------+---------------+------------+-------------+
-    | ndBufFp32Buf   | ubFactor | colValAlign | sizeof(float) | 1          | B16场景申请 |
+    // Implementation note.
     +----------------+----------+-------------+---------------+------------+-------------+
     | nFp32Buf       | ubFactor | 1           | sizeof(float) | 1          |             |
     +----------------+----------+-------------+---------------+------------+-------------+

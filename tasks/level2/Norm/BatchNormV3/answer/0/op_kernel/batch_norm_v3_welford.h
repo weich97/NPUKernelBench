@@ -75,13 +75,13 @@ public:
         this->pipe_->InitBuffer(tmpBuf0, r0UbFactor * FLOAT_SIZE);
         this->pipe_->InitBuffer(tmpBuf3, aUbFactor * FLOAT_SIZE);
         this->pipe_->InitBuffer(tmpBuf4, aUbFactor * FLOAT_SIZE);
-        // 输入que
+        // Implementation note.
         this->pipe_->InitBuffer(xQueue, DOUBLE_BUFFER, r0UbFactor * FLOAT_SIZE);
         this->pipe_->InitBuffer(runningMeanInQueue, 1, aUbFactor * FLOAT_SIZE);
         this->pipe_->InitBuffer(runningVarInQueue, 1, aUbFactor * FLOAT_SIZE);
         this->pipe_->InitBuffer(weightQueue, 1, aUbFactor * FLOAT_SIZE);
         this->pipe_->InitBuffer(biasQueue, 1, aUbFactor * FLOAT_SIZE);
-        // 输出que
+        // Implementation note.
         this->pipe_->InitBuffer(yQueue, DOUBLE_BUFFER, r0UbFactor * FLOAT_SIZE);
         this->pipe_->InitBuffer(runningMeanOutQueue, 1, aUbFactor * FLOAT_SIZE);
         this->pipe_->InitBuffer(runningVarOutQueue, 1, aUbFactor * FLOAT_SIZE);
@@ -105,7 +105,7 @@ public:
             CalcMeanVar();
             yQueue.FreeTensor(m2Tensor);
             CopyOutSaveMeanVar(saveMeanTensor, saveVarTensor, aProcNum, aUbLoopNowStartIdx);
-            // 计算runningmean
+            // Implementation note.
             runningMeanInTensor = runningMeanInQueue.AllocTensor<float>();
             runningVarInTensor = runningVarInQueue.AllocTensor<float>();
             runningMeanOutTensor = runningMeanOutQueue.AllocTensor<float>();
@@ -127,7 +127,7 @@ public:
             CopyOutRunningMeanVar(runningMeanOutTensor, runningVarOutTensor, aProcNum, aUbLoopNowStartIdx);
             runningMeanOutQueue.FreeTensor(runningMeanOutTensor);
             runningVarOutQueue.FreeTensor(runningVarOutTensor);
-            // 计算y
+            // Implementation note.
             CopyInWeightBiasAndCast(weightTensor, biasTensor, aProcNum, aUbLoopNowStartIdx);
             CalcYAndCopyOut();
             saveMeanQueue.FreeTensor(saveMeanTensor);
@@ -146,7 +146,7 @@ public:
             Duplicate<float>(m2Tensor, float(0.0), r0UbFactor);
             PipeBarrier<PIPE_V>();
             if constexpr (SPLIT_MODE == R0_SPLIT_NOT_ALIGN_MODE) {
-                // R0切分整块
+                // Implementation note.
                 for (int64_t r1LoopIdx = 0; r1LoopIdx < patternR1; r1LoopIdx++) {
                     for (int64_t r0LoopIdx = 0; r0LoopIdx < r0UbLoop - 1; r0LoopIdx++) {
                         xGmOffset = r1LoopIdx * patternA * patternR0 + (aUbLoopNowStartIdx + aNum) * patternR0 +
@@ -156,7 +156,7 @@ public:
                         WelfordParallelUpdate(count, meanTensor, m2Tensor, xTensor, deltaTensor, r0UbFactor);
                     }
                 }
-                // R0切分尾块
+                // Implementation note.
                 for (int64_t r1LoopIdx = 0; r1LoopIdx < patternR1; r1LoopIdx++) {
                     xGmOffset = r1LoopIdx * patternA * patternR0 + (aUbLoopNowStartIdx + aNum) * patternR0 +
                                 (r0UbLoop - 1) * r0UbFactor;
@@ -169,7 +169,7 @@ public:
                 saveMeanTensor.SetValue(aNum, finalMean);
                 saveVarTensor.SetValue(aNum, finalVar);
             } else if constexpr (SPLIT_MODE == R1_SPLIT_NOT_ALIGN_MODE) {
-                // R1循环整块
+                // Implementation note.
                 r0ProcNum = procNR0 * patternR0Align;
                 for (int64_t nR0LoopIdx = 0; nR0LoopIdx < nR0Loop - 1; nR0LoopIdx++) {
                     xGmOffset = nR0LoopIdx * procNR0 * patternA * patternR0 + (aUbLoopNowStartIdx + aNum) * patternR0;
@@ -177,7 +177,7 @@ public:
                     CopyInNR0AndCast(xTensor, procNR0, xGmOffset);
                     WelfordParallelUpdate(count, meanTensor, m2Tensor, xTensor, deltaTensor, r0ProcNum);
                 }
-                // R1循环尾块
+                // Implementation note.
                 r0ProcNum = lastLoopNR0 * patternR0Align;
                 xGmOffset = (nR0Loop - 1) * procNR0 * patternA * patternR0 + (aUbLoopNowStartIdx + aNum) * patternR0;
                 xTensor = xQueue.AllocTensor<float>();
@@ -188,7 +188,7 @@ public:
                 saveMeanTensor.SetValue(aNum, finalMean);
                 saveVarTensor.SetValue(aNum, finalVar);
             } else if constexpr (SPLIT_MODE == R0_SPLIT_ALIGN_MODE) {
-                // 对齐场景：r0UbTail = r0UbFactor，或者r0UbLoop==1,始终使用r0UbTail
+                // Implementation note.
                 for (int64_t r1LoopIdx = 0; r1LoopIdx < patternR1; r1LoopIdx++) {
                     for (int64_t r0LoopIdx = 0; r0LoopIdx < r0UbLoop; r0LoopIdx++) {
                         xGmOffset = r1LoopIdx * patternA * patternR0 + (aUbLoopNowStartIdx + aNum) * patternR0 +
@@ -616,7 +616,7 @@ private:
 
     __aicore__ inline void FullAichotomizeAdd(LocalTensor<float> &calcTensor, int64_t sumNum, float &sumValue)
     {
-        // sumNum为非二次幂，先将二次幂差值行加到前面
+        // Implementation note.
         if (dichotomizeAddDiffSize != 0) {
             Add(calcTensor, calcTensor, calcTensor[sumNum - dichotomizeAddDiffSize], dichotomizeAddDiffSize);
             PipeBarrier<PIPE_V>();

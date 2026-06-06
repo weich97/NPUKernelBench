@@ -23,12 +23,12 @@ extern "C" __global__ __aicore__ void cross_entropy_loss_grad(GM_ADDR grad_loss,
                                                               GM_ADDR x_grad, GM_ADDR workspace, GM_ADDR tiling) {
   GET_TILING_DATA(tilingData, tiling);
   GM_ADDR usrWorkspace = AscendC::GetUserWorkspace(workspace);
-  // 10: bf16, 不存在weight
-  // 11: bf16, 存在weight
-  // 20: fp16, 不存在weight
-  // 21: fp16, 存在weight
-  // 30: fp32, 不存在weight
-  // 31: fp32, 存在weight
+  // Implementation note.
+  // Implementation note.
+  // Implementation note.
+  // Implementation note.
+  // Implementation note.
+  // Implementation note.
   if (TILING_KEY_IS(10)) {
     CrossEntropyLossGradWeightNone<bfloat16_t> CrossEntropyLossGradWeightNoneOp;
     CrossEntropyLossGradWeightNoneOp.Init(grad_loss, log_prob, target, weight, grad_zloss, lse_for_zloss, x_grad, workspace, tilingData);

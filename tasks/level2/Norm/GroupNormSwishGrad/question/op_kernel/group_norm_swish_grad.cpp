@@ -2,7 +2,7 @@
 
 using namespace AscendC;
 
-// 核函数入口
+// Implementation note.
 extern "C" __global__ __aicore__ void group_norm_swish_grad(
     GM_ADDR dy,
     GM_ADDR mean,

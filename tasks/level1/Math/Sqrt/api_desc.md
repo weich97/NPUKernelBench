@@ -1,54 +1,46 @@
 # aclnnSqrt
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-`aclnnSqrt` 实现了对输入数据逐元素开平方，返回开平方结果的功能。
+### Operator Semantics
+`aclnnSqrt` is an Ascend NPU benchmark operator in the `level1` `Math` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.sqrt()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
 
 $$
 z = \sqrt{x}
 $$
 
-## 接口定义
+## Interface Definition
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.sqrt()` 函数形式提供：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def sqrt(x):
-    """
-    实现自定义开平方操作。
-    
-    参数:
-        x (Tensor): 输入张量，Device侧的张量，数据格式支持ND。
-        
-    返回:
-        Tensor: 计算结果张量，数据类型与输入一致，数据格式支持ND。
-    
-    注意:
-        - 张量数据格式支持ND
-        - 输入x中所有元素必须大于等于0，否则结果为NaN
-    """
+    """Execute `aclnnSqrt` on Ascend NPU tensors."""
+
 ```
 
-## 使用案例
+### Inputs
+- `x`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量
-x = torch.rand(8, 2048, dtype=torch.float)  # 使用正数以避免NaN
-
-# 使用sqrt_custom执行计算
 result = kernel_gen_ops.sqrt(x)
 ```
 
+## Constraints and Notes
 
-## 约束与限制
-
-- 张量数据格式支持ND。
-
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

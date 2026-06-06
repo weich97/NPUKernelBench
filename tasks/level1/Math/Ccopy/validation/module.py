@@ -14,15 +14,15 @@ class Model(nn.Module):
         self.incx = incx
         self.incy = incy
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # 构造输入和输出的索引
+        # Implementation note.
         x_indices = torch.arange(self.n, device=x.device) * self.incx
         y_indices = torch.arange(self.n, device=x.device) * self.incy
 
-        # 创建空的输出张量，大小需覆盖最大索引
+        # Implementation note.
         out_size = y_indices.max().item() + 1
         out = torch.zeros(out_size, dtype=x.dtype, device=x.device)
 
-        # 执行复制
+        # Implementation note.
         x_flat = x.flatten()
         out[y_indices] = x_flat[x_indices]
         return out

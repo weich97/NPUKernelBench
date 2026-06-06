@@ -7,24 +7,24 @@ import kernel_gen_ops
 
 class Model(nn.Module):
     """
-    实现Tanh算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        实现Tanh算子功能。
+        Reference implementation detail.
 
         Args:
-            x: 输入张量
+            Reference implementation detail.
 
         Returns:
-            输入张量经过双曲正切函数计算后的结果张量
+            Reference implementation detail.
         """
         return torch.tanh(x)
 

@@ -9,7 +9,7 @@ def get_inputs(param, device=None):
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
 
-    shape = tuple(int(x) for x in shape)  # 转成 int 的 tuple
+    shape = tuple(int(x) for x in shape)  # Implementation note.
 
     input1 = torch.abs(torch.randn(shape, device=device, dtype=dtype) * 10 + 0.01)
 

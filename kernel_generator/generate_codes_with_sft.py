@@ -22,7 +22,7 @@ class AscendCodeGenWithSft(AscendCodeGen):
         self.gen_codes_sys_prompt: Optional[str] = None
         self.gen_codes_user_prompt: Optional[str] = None
 
-        # Define required file paths
+        # Define required file paths.
         self.test_case_data = find_case_data(
             self.task_obj.get_file_path_from_definition("validation/test_cases.csv"),
             self.task_obj.case_id if config.static_shape_mode else None,
@@ -37,7 +37,7 @@ class AscendCodeGenWithSft(AscendCodeGen):
                 self.task_obj.get_file_path_from_definition(f"question/op_host/{self.task_obj.kernel_name}.cpp"),
             ]
 
-        # Load API description and test case data
+        # Load API description and test case data.
         self.api_description = safe_read_file(
             self.task_obj.get_file_path_from_definition("api_desc.md")
         )
@@ -84,27 +84,28 @@ REGISTER_TILING_DATA_CLASS({self.task_obj.op_name}, TilingData)
 ```
 
 """)
+
     def enhance_api_description(self) -> str:
         """
         Enhance API description by adding data type support information.
 
         Returns:
-            Enhanced API description string
+            Enhanced API description string.
         """
         if self.test_case_data is None or self.test_case_data.empty or 'dtype' not in self.test_case_data or not config.static_shape_mode:
             return self.api_description
 
-        dtype_info = f"\n## 支持的数据类型\n- {self.test_case_data['dtype']}\n\n"
-        enhanced_description = self.api_description.replace(
-            "## 功能描述", dtype_info + "## 功能描述"
-        )
-        return enhanced_description
+        dtype_info = f"\n## Supported Data Types\n- {self.test_case_data['dtype']}\n\n"
+        markers = ["## Functional Description", "## Function Description", "## Operator Function"]
+        for marker in markers:
+            if marker in self.api_description:
+                return self.api_description.replace(marker, dtype_info + marker, 1)
+        return dtype_info + self.api_description
 
     def build_code_generation_prompts(self) -> None:
         """
         Build system and user prompts for Ascend C code generation.
         """
-        # Load template files
         template_contents = [safe_read_file(file_path) for file_path in self.required_files]
         if config.kernel_only_mode:
             example_content = KERNEL_ONLY_EXAMPLE_CODE
@@ -114,42 +115,44 @@ REGISTER_TILING_DATA_CLASS({self.task_obj.op_name}, TilingData)
             code_requirement = FULL_CODE_REQUIREMENT
 
         user_prompt = textwrap.dedent(f"""
-你是一个精通Ascend C编程的专家。你的任务是根据提供的文档内容生成符合特定任务需求的Ascend C代码。
+You are an expert in Ascend C programming. Your task is to generate Ascend C code that satisfies the provided operator specification and task-specific constraints.
 
-【任务背景】
-我将提供3个关键文件，描述了待实现算子的信息，请仔细阅读每一个：
-1. api_desc.md - 待实现算子的接口描述和公式定义相关内容，包含了算子的功能要求和数学表达式
-2. test_cases.csv - 其设定了待实现算子需要重点考虑的datatype和shape信息，用于更合适的tiling设计和性能优化
-3. hardware.txt - 其给出了运行待实现算子的硬件型号规格信息
+[Task Context]
+You will receive three key inputs that describe the operator to be implemented. Read each input carefully:
+1. api_desc.md: the operator interface description, formula definition, functional requirements, and mathematical semantics.
+2. test_cases.csv: the data type and shape information that must be prioritized when designing tiling parameters and optimizing performance.
+3. hardware.txt: the target hardware specification for the generated operator.
 
-【输出格式要求】
-- 同时输出思维过程和答案，思维链进行合理的分析推导，答案部分必须严格按照提供的模板格式输出
-- 不要修改已有的函数名、类定义、模板参数、命名空间等
-- 确保答案部分的代码在XML标签内，每个文件对应一个标签块
-- 确保检查算子参考示例写法正确注册了tiling结构，并根据输入shape信息，设计tiling参数及数值
+[Output Format Requirements]
+- Provide both reasoning and the final answer. The reasoning should explain the implementation strategy, and the answer must strictly follow the output template.
+- Do not modify existing function names, class definitions, template parameters, namespaces, or protected template interfaces.
+- Ensure that the answer code is enclosed in the required XML-style tags; each file must correspond to its own tag block or template section.
+- Verify that the implementation follows the reference example for tiling-data registration and uses the input shape information to determine concrete tiling parameters.
 
-【代码实现要点】
-实现代码时，请确保：
+[Implementation Requirements]
+When implementing the code, ensure that:
 {code_requirement}
 
 {example_content}
 
-接下来我将提供待实现算子所需文件信息，请参考这些信息按照要求完成所有指定文件的实现。
-【输入文件】
-下面是第一个文件："api_desc.md"，是待实现算子的接口描述和公式定义：
+The following sections provide the files required for the target operator. Use them to complete every requested output file.
+
+[Input File 1: api_desc.md]
+This file defines the operator interface, formula, semantics, and constraints:
 {self.enhance_api_description()}
 
-下面是第二个文件："test_cases.csv"，其设定了待实现算子需要重点考虑的典型shape以及DataType信息，用于设计最优tiling策略：
+[Input File 2: test_cases.csv]
+This file specifies the representative shape and data type that should guide the tiling strategy:
 {self.test_case_data}
 
-下面是第三个文件："hardware.txt"，其给出的是硬件信息，待实现算子将要在该硬件上运行：
-【
+[Input File 3: hardware.txt]
+The target operator will run on the following hardware:
 # [Platform Info configuration begin]
 #**************************************************************************************
 #
 [version]
 SoC_version=Ascend910_9392
-Short_SoC_version=Ascend910_93   [注：Ascend910_93为NPU型号名]
+Short_SoC_version=Ascend910_93   [Note: Ascend910_93 is the NPU model name]
 
 [SoCInfo]
 ai_core_cnt=24
@@ -158,19 +161,18 @@ vector_core_cnt=48
 
 [AICoreSpec]
 ub_size=196608
-】
 
-【输出模板】
-你需要输出的文件模板如下，请对其进行填补：
+[Output Template]
+Fill in the following template exactly:
 {self.generate_answer_template(*template_contents)}
 
-【最终任务】
-请分析所有提供的信息，特别关注：
- - 算子描述中的功能要求、公式定义和实现细节
- - 测试用例中提供的datatype和shape等信息
- - 输入准备代码中的参数构造和使用方法
+[Final Task]
+Analyze all provided information, with particular attention to:
+ - functional requirements, formulas, and implementation details in the operator description;
+ - data type and shape information in the test cases;
+ - parameter construction and usage patterns in the input-preparation code.
 
-请提供完整的思维过程和符合要求的代码答案。"
+Provide a complete reasoning process and a code answer that satisfies the required format.
         """)
 
         self.gen_codes_user_prompt = user_prompt
@@ -184,7 +186,7 @@ ub_size=196608
         Process code generation based on configuration.
 
         Returns:
-            Generated or loaded content
+            Generated or loaded content.
         """
         try:
             if TestStage.CODE_GEN in config.active_stages:
@@ -207,12 +209,10 @@ ub_size=196608
                         self.logger.error(error_msg)
                     raise RuntimeError(error_msg)
 
-                # Combine reasoning and generated content
                 final_content = f"{reasoning_content}\n{generated_content}"
                 self.task_obj.gen_content = final_content
                 self.task_obj.parse_gen_content()
 
-                # Save generation data
                 generation_data = {
                     "gen_codes_sys_prompt": self.gen_codes_sys_prompt,
                     "gen_codes_user_prompt": self.gen_codes_user_prompt,

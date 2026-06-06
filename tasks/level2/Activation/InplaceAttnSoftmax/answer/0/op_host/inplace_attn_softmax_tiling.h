@@ -7,15 +7,15 @@
 
 namespace optiling {
 BEGIN_TILING_DATA_DEF(InplaceAttnSoftmaxTilingData)
-  TILING_DATA_FIELD_DEF(uint32_t, rowLen);               // 行数
-  TILING_DATA_FIELD_DEF(uint32_t, colLen);               // 列数, 输入x的一半
-  TILING_DATA_FIELD_DEF(uint32_t, rowLenPerHeadCore);    // 头核处理行数
-  TILING_DATA_FIELD_DEF(uint32_t, rowLenPerTailCore);    // 尾核处理行数
-  TILING_DATA_FIELD_DEF(uint32_t, basicRowLenHeadCore);  // 头核每次计算的行数 类似于TILE_LENGTH
-  TILING_DATA_FIELD_DEF(uint32_t, basicRowLenTailCore);  // 尾核每次计算的行数
-  TILING_DATA_FIELD_DEF(uint32_t, basicColLen);          // 每次计算的列数
-  TILING_DATA_FIELD_DEF(uint32_t, headCoreNum);          // 使用的head核数
-  TILING_DATA_FIELD_DEF(uint32_t, realCoreNum);          // 实际使用的核数
+  TILING_DATA_FIELD_DEF(uint32_t, rowLen); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint32_t, colLen); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint32_t, rowLenPerHeadCore); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint32_t, rowLenPerTailCore); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint32_t, basicRowLenHeadCore); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint32_t, basicRowLenTailCore); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint32_t, basicColLen); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint32_t, headCoreNum); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint32_t, realCoreNum); // Implementation note.
   TILING_DATA_FIELD_DEF(uint32_t, tilingKey);
   TILING_DATA_FIELD_DEF_STRUCT(SoftMaxTiling, softmaxTilingData);
 END_TILING_DATA_DEF;
@@ -25,8 +25,8 @@ struct InplaceAttnSoftmaxCompileInfo {
     uint32_t totalCore = 1;
     uint32_t ubSize = 0;
     uint32_t inputDataByte = 2;
-    uint32_t dataNumSingleUb = 1;  // UB空间可处理的最大数据量
-    uint32_t block_num = 1;        // 32B对齐使用
+    uint32_t dataNumSingleUb = 1; // Implementation note.
+    uint32_t block_num = 1; // Implementation note.
     
 };                                
 

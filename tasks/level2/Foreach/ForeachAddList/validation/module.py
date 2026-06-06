@@ -19,7 +19,7 @@ class Model(nn.Module):
         Foreach: out[i] = x1[i] + x2[i] * alpha
         """
         out = []
-        for a, b in zip(x1, x2):   # 这里 zip 仅走列表维度，不逐元素
+        for a, b in zip(x1, x2):  # Implementation note.
             if b.dtype == torch.bfloat16:
                 res = (a.to(torch.float32) + b.to(torch.float32) * alpha).to(torch.bfloat16)
             else:

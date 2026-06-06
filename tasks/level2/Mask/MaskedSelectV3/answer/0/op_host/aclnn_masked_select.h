@@ -24,33 +24,33 @@ extern "C" {
 #endif
 
 /**
- * @brief aclnnMaskedSelectV3的第一段接口，根据具体的计算流程，计算workspace大小。
+ * Implementation note.
  * @domain aclnn_ops_infer
  *
- * 算子功能：根据一个布尔掩码张量（mask）中的值选择输入张量（self）中的元素作为输出,形成一个新的一维张量。
+ * Implementation note.
  *
- * @param [in] self: npu device侧的aclTensor，数据类型支持FLOAT、FLOAT16、DOUBLE、INT32、INT64、INT16、INT8、UINT8、BOOL
- * shape需要与mask满足[broadcast关系]()。支持[非连续的Tensor]()，数据格式支持ND.
+ * Implementation note.
+ * Implementation note.
  * @param [in] mask: npu
- * device侧的aclTensor，仅支持bool或uint8，如果为uint8，其值必须为0或1，shape需要与self满足[broadcast关系]()。
- * 支持非连续的Tensor，数据格式支持ND。
- * @param [out] workspaceSize: 返回用户需要在npu device侧申请的workspace大小。
- * @param [out] executor: 返回op执行器，包含算子计算流程。
- * @return aclnnStatus: 返回状态码。
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
  */
 ACLNN_API aclnnStatus aclnnMaskedSelectV3GetWorkspaceSize(const aclTensor* self, const aclTensor* mask, aclTensor* out,
                                                         uint64_t* workspaceSize, aclOpExecutor** executor);
 /**
- * @brief aclnnMaskedSelectV3的第二段接口，用于执行计算。
+ * Implementation note.
  *
- * 算子功能：对输入的 Tensor self， 根据mask进行按位掩码的选择操作，选择mask掩码中非零位置对应的元素，形成一个新的
- * Tensor，并返回。 实现说明： api计算的基本路径：
+ * Implementation note.
+ * Implementation note.
  *
- * @param [in] workspace: 在npu device侧申请的workspace内存起址。
- * @param [in] workspaceSize: 在npu device侧申请的workspace大小，由第一段接口aclnnAddGetWorkspaceSize获取。
- * @param [in] stream: acl stream流。
- * @param [in] executor: op执行器，包含了算子计算流程。
- * @return aclnnStatus: 返回状态码。
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
  */
 ACLNN_API aclnnStatus aclnnMaskedSelectV3(void* workspace, uint64_t workspaceSize, aclOpExecutor* executor,
                                         aclrtStream stream);

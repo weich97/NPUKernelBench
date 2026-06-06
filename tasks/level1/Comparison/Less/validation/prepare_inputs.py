@@ -11,11 +11,11 @@ def get_inputs(param, device=None):
     dtype = getattr(torch, dtype_str)
 
     if dtype == torch.int32:
-        # 整数类型使用randint
+        # Manually implemented aclnn path.
         x1 = torch.randint(-100, 100, shape_x1, device=device, dtype=dtype)
         x2 = torch.randint(-100, 100, shape_x2, device=device, dtype=dtype)
     else:
-        # 浮点类型使用randn
+        # Manually implemented aclnn path.
         x1 = torch.randn(shape_x1, device=device, dtype=dtype)
         x2 = torch.randn(shape_x2, device=device, dtype=dtype)
 

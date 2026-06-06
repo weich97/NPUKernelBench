@@ -9,7 +9,7 @@ def get_inputs(param, device=None):
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
 
-    # 创建随机张量列表
+    # Implementation note.
     x = []
     for shape in shape_list:
         x0 = torch.rand(shape, device=device, dtype=dtype)

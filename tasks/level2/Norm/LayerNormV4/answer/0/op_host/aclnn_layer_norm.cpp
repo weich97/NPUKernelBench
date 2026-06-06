@@ -49,7 +49,7 @@ constexpr int64_t V4_TRANSPOSE_310P_REDUCE_AXIS_MAX = 40;
 constexpr int64_t V4_TRANSPOSE_310P_REDUCE_AXIS_MIN = 20;
 constexpr int64_t LN_DIM_ONE = 1;
 
-// 根据API定义，需要列出所能支持的所有dtype
+// Implementation note.
 static const std::initializer_list<DataType> ASCEND910_DTYPE_DTYPE_SUPPORT_LIST = {
     DataType::DT_FLOAT16, DataType::DT_FLOAT};
 
@@ -146,11 +146,11 @@ static bool CheckShape(const aclTensor *input, const aclIntArray *normalizedShap
     const aclTensor *biasOptional, const aclTensor *out, const aclTensor *meanOutOptional,
     const aclTensor *rstdOutOptional)
 {
-    // 1.检查入参维度是否小于8维
+    // Implementation note.
     if (!CheckLen(input, normalizedShape, weightOptional, biasOptional, out, meanOutOptional, rstdOutOptional)) {
         return false;
     }
-    // 2.检查normalizedShape的长度是否大于等于1
+    // Implementation note.
     if (normalizedShape->Size() < LEAST_NORMALIZED_SHAPE_LEN) {
         OP_LOGE(ACLNN_ERR_PARAM_INVALID,
             "Expected aclnnLayerNorm normalizedShape len [%zu] to be greater than [%zu] but check failed.",
@@ -158,22 +158,22 @@ static bool CheckShape(const aclTensor *input, const aclIntArray *normalizedShap
             LEAST_NORMALIZED_SHAPE_LEN);
         return false;
     }
-    // 3.检查input维度是否不小于normalizedShape的长度
+    // Implementation note.
     OP_CHECK_MIN_DIM(input, normalizedShape->Size(), return false);
-    // 4.校验weight存在时与normalizedShape长度是否相同
+    // Implementation note.
     if (weightOptional) {
         OP_CHECK_WRONG_DIMENSION(weightOptional, normalizedShape->Size(), return false);
     }
-    // 5.校验bias存在时与normalizedShape长度是否相同
+    // Implementation note.
     if (biasOptional) {
         OP_CHECK_WRONG_DIMENSION(biasOptional, normalizedShape->Size(), return false);
     }
 
-    // 6.检查输入与normalizedShape间的关系
+    // Implementation note.
     auto inputShape = input->GetViewShape();
     const size_t beginAxis = inputShape.GetDimNum() - normalizedShape->Size();
     for (size_t index = 0; index < normalizedShape->Size(); index++) {
-        // 6.1 校验input与normalizedShape间shape是否满足右对齐相等
+        // Implementation note.
         int64_t normDim = *(normalizedShape->GetData() + index);
         int64_t inputDim = inputShape.GetDim(index + beginAxis);
         if (normDim != inputDim) {
@@ -185,7 +185,7 @@ static bool CheckShape(const aclTensor *input, const aclIntArray *normalizedShap
                 inputDim);
             return false;
         }
-        // 6.2 校验weight存在时与normalizedShape是否相等
+        // Implementation note.
         if (weightOptional) {
             int64_t weightDim = weightOptional->GetViewShape().GetDim(index);
             if (normDim != weightDim) {
@@ -199,7 +199,7 @@ static bool CheckShape(const aclTensor *input, const aclIntArray *normalizedShap
                 return false;
             }
         }
-        // 6.3 校验bias存在时与normalizedShape是否相等
+        // Implementation note.
         if (biasOptional) {
             int64_t biasDim = biasOptional->GetViewShape().GetDim(index);
             if (normDim != biasDim) {
@@ -214,7 +214,7 @@ static bool CheckShape(const aclTensor *input, const aclIntArray *normalizedShap
         }
     }
 
-    // 7.校验三个输出的shape
+    // Implementation note.
     OP_CHECK_SHAPE_NOT_EQUAL(input, out, return false);
     return true;
 }
@@ -260,14 +260,14 @@ static aclnnStatus CheckParamsWithImplMode(const aclTensor *input, const aclIntA
     const aclTensor *weightOptional, const aclTensor *biasOptional, const aclTensor *out,
     const aclTensor *meanOutOptional, const aclTensor *rstdOutOptional, int32_t implMode)
 {
-    // 1. 检查输入的数据类型是否在API支持的数据类型范围之内
+    // Implementation note.
     CHECK_RET(CheckInputDtype(input, weightOptional, biasOptional), ACLNN_ERR_PARAM_INVALID);
-    // 2. 检查输出的数据类型是否在API支持的数据类型范围之内
+    // Implementation note.
     CHECK_RET(CheckOutputDtype(out, meanOutOptional, rstdOutOptional), ACLNN_ERR_PARAM_INVALID);
-    // 3. 检查input, weight，bias与normalizedShape间的shape关系
+    // Implementation note.
     CHECK_RET(CheckShape(input, normalizedShape, weightOptional, biasOptional, out, meanOutOptional, rstdOutOptional),
         ACLNN_ERR_PARAM_INVALID);
-    // 4. 检查implMode是否合法
+    // Implementation note.
     CHECK_RET(CheckImplMode(input, weightOptional, biasOptional, implMode), ACLNN_ERR_PARAM_INVALID);
     return ACLNN_SUCCESS;
 }
@@ -281,19 +281,19 @@ aclnnStatus aclnnLayerNormWithImplModeGetWorkspaceSize(const aclTensor *input, c
         DFX_IN(input, normalizedShape, weightOptional, biasOptional, eps, implMode),
         DFX_OUT(out, meanOutOptional, rstdOutOptional));
 
-    // 固定写法，创建OpExecutor
+    // Implementation note.
     auto uniqueExecutor = CREATE_EXECUTOR();
     CHECK_RET(uniqueExecutor.get() != nullptr, ACLNN_ERR_INNER_CREATE_EXECUTOR);
 
-    // 检查参数是否为空指针
+    // Implementation note.
     CHECK_RET(CheckNotNull(input, normalizedShape, out), ACLNN_ERR_PARAM_NULLPTR);
 
-    // 固定写法，参数检查
+    // Implementation note.
     auto ret = CheckParamsWithImplMode(
         input, normalizedShape, weightOptional, biasOptional, out, meanOutOptional, rstdOutOptional, implMode);
     CHECK_RET(ret == ACLNN_SUCCESS, ret);
 
-    // 根据input_shape和normalizedShape的关系获取非reduce轴和reduce轴的shape
+    // Implementation note.
     auto inputShape = input->GetViewShape();
     const size_t inputDim = inputShape.GetDimNum();
     const size_t normDim = normalizedShape->Size();
@@ -307,7 +307,7 @@ aclnnStatus aclnnLayerNormWithImplModeGetWorkspaceSize(const aclTensor *input, c
         N *= inputShape.GetDim(index);
     }
 
-    // 空tensor场景处理，区分reduce轴是否为0
+    // Implementation note.
     if (M == 0) {
         *workspaceSize = 0;
         uniqueExecutor.ReleaseTo(executor);
@@ -327,11 +327,11 @@ aclnnStatus aclnnLayerNormWithImplModeGetWorkspaceSize(const aclTensor *input, c
         uniqueExecutor.ReleaseTo(executor);
         return ACLNN_SUCCESS;
     }
-    // 固定写法，将输入转换成连续的tensor
+    // Implementation note.
     auto inputContiguous = l0op::Contiguous(input, uniqueExecutor.get());
     CHECK_RET(inputContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-    // 构造新的weightContiguous
+    // Implementation note.
     const aclTensor *weightContiguous = nullptr;
     if (weightOptional) {
         weightContiguous = l0op::Contiguous(weightOptional, uniqueExecutor.get());
@@ -344,7 +344,7 @@ aclnnStatus aclnnLayerNormWithImplModeGetWorkspaceSize(const aclTensor *input, c
     }
     CHECK_RET(weightContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-    // 构造新的biasContiguous
+    // Implementation note.
     const aclTensor *biasContiguous = nullptr;
     if (biasOptional) {
         biasContiguous = l0op::Contiguous(biasOptional, uniqueExecutor.get());
@@ -357,7 +357,7 @@ aclnnStatus aclnnLayerNormWithImplModeGetWorkspaceSize(const aclTensor *input, c
     }
     CHECK_RET(biasContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-    // 进行LayerNorm计算，根据规格决定使用LayerNormV4或LayerNormV3算子
+    // Implementation note.
     bool forwardV4Compute = IsV4SocCheck(inputContiguous, weightContiguous, N);
     std::array<aclTensor *, LAYER_NORM_OUT_NUM> layerNormOut = {nullptr, nullptr, nullptr};
     if (forwardV4Compute) {
@@ -373,14 +373,14 @@ aclnnStatus aclnnLayerNormWithImplModeGetWorkspaceSize(const aclTensor *input, c
             uniqueExecutor.get());
     }
 
-    // 处理第一个输出
+    // Implementation note.
     auto outRes = layerNormOut[Y_INDEX];
     CHECK_RET(outRes != nullptr, ACLNN_ERR_INNER_NULLPTR);
     auto outCast = l0op::Cast(outRes, out->GetDataType(), uniqueExecutor.get());
     CHECK_RET(outCast != nullptr, ACLNN_ERR_INNER_NULLPTR);
     auto outViewCopy = l0op::ViewCopy(outCast, out, uniqueExecutor.get());
     CHECK_RET(outViewCopy != nullptr, ACLNN_ERR_INNER_NULLPTR);
-    // 处理第二个输出
+    // Implementation note.
     if (meanOutOptional) {
         auto meanRes = layerNormOut[MEAN_INDEX];
         CHECK_RET(meanRes != nullptr, ACLNN_ERR_INNER_NULLPTR);
@@ -389,7 +389,7 @@ aclnnStatus aclnnLayerNormWithImplModeGetWorkspaceSize(const aclTensor *input, c
         auto meanViewCopy = l0op::ViewCopy(meanCast, meanOutOptional, uniqueExecutor.get());
         CHECK_RET(meanViewCopy != nullptr, ACLNN_ERR_INNER_NULLPTR);
     }
-    // 处理第三个输出
+    // Implementation note.
     if (rstdOutOptional) {
         auto rstdRes = layerNormOut[RSTD_INDEX];
         CHECK_RET(rstdRes != nullptr, ACLNN_ERR_INNER_NULLPTR);
@@ -398,9 +398,9 @@ aclnnStatus aclnnLayerNormWithImplModeGetWorkspaceSize(const aclTensor *input, c
         auto rstdViewCopy = l0op::ViewCopy(rstdCast, rstdOutOptional, uniqueExecutor.get());
         CHECK_RET(rstdViewCopy != nullptr, ACLNN_ERR_INNER_NULLPTR);
     }
-    // 固定写法，获取计算过程中需要使用的workspace大小
+    // Implementation note.
     *workspaceSize = uniqueExecutor->GetWorkspaceSize();
-    uniqueExecutor.ReleaseTo(executor);  // 需要把 uniqueExecutor持有executor转移给executor
+    uniqueExecutor.ReleaseTo(executor); // Implementation note.
     return ACLNN_SUCCESS;
 }
 
@@ -426,14 +426,14 @@ aclnnStatus aclnnLayerNormWithImplMode(
     void *workspace, uint64_t workspaceSize, aclOpExecutor *executor, aclrtStream stream)
 {
     L2_DFX_PHASE_2(aclnnLayerNormWithImplMode);
-    // 固定写法，调用框架能力，完成计算
+    // Implementation note.
     return CommonOpExecutorRun(workspace, workspaceSize, executor, stream);
 }
 
 aclnnStatus aclnnLayerNorm(void *workspace, uint64_t workspaceSize, aclOpExecutor *executor, aclrtStream stream)
 {
     L2_DFX_PHASE_2(aclnnLayerNorm);
-    // 固定写法，调用框架能力，完成计算
+    // Implementation note.
     return CommonOpExecutorRun(workspace, workspaceSize, executor, stream);
 }
 

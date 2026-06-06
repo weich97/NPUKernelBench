@@ -16,7 +16,7 @@ std::vector<at::Tensor> foreach_pow_scalar_and_tensor_wrapper(
     at::TensorList result_list = at::TensorList(result);
     at::TensorList x_list = at::TensorList(x);
 
-    // Host 侧标量
+    // Implementation note.
     auto base_scalar = ConvertTensorToAclScaler(scalar);
     //c10::scalar_base scalar(scalar.item<float>());
 

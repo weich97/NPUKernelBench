@@ -31,7 +31,7 @@ static constexpr int64_t FULL_REDUCE_TEMPLATE_R_LIMIT = 8192;
 namespace optiling {
 static uint32_t FindDichotomizeAddDiffSize(uint32_t parallelN)
 {
-    // 找到parallelN与小于parallelN的最近二次幂的差值 例如：parallelN = 15，结果为15 - 8 = 7
+    // Implementation note.
     if ((parallelN & (parallelN - 1)) != 0) {
         uint32_t temp = parallelN - 1;
         temp |= temp >> 1;
@@ -47,7 +47,7 @@ static uint32_t FindDichotomizeAddDiffSize(uint32_t parallelN)
 
 static uint32_t FindCofFactor(uint32_t n)
 {
-    // 找到比n大的最邻近的二次幂数, n = 15，结果为16
+    // Implementation note.
     if ((n & (n - 1)) != 0) {
         uint32_t temp = n - 1;
         temp |= temp >> 1;
@@ -64,16 +64,16 @@ static uint32_t FindCofFactor(uint32_t n)
 int64_t BatchNormV3FullReduceTiling::DoUbTiling(const int64_t blockFactor, int64_t &aUbSize, int64_t &rUbSize)
 {
     /*
-    A_UB_NUM和rUbNum表示kernel侧按fp16算需要的两种ub的节点个数
-    eleNum为按照ub大小计算出的总共能存放fp16元素的个数
-    初始aUbFactor计算方式：切分方式在A上做ub切分，需要计算出最多一次能计算几个A
-    计算一个A需要搬入一个完整的R即patternR1*patternR0,eleNum / rUbNum  / patternR1 / patternR0为最大aUbFactor
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
     */
     int64_t eleNum = FloorDiv(commonParams.ubSizePlatForm, HALF_SIZE);
     int64_t rUbNum = (commonParams.xDtype == ge::DT_FLOAT) ? Y_FLOAT_R_UB_NUM : Y_HALF_R_UB_NUM;
     int64_t aUbFactor = std::min(blockFactor, eleNum / rUbNum / (commonParams.patternR1 * commonParams.patternR0));
     while (aUbFactor > 0) {
-        // 需要16对齐, 使得fp16 Block对齐，方便原地cast处理
+        // Implementation note.
         aUbSize = CeilAlign(aUbFactor, B16_BLOCK_ALIGN_NUM);
         if (commonParams.patternR0 == 1) {
             rUbSize = CeilAlign(

@@ -134,7 +134,7 @@ static void InitSplitInfo(gert::TilingContext* context, CrossEntropyLossGradTili
   ascendcPlatform.GetCoreMemSize(platform_ascendc::CoreMemType::UB, maxUbSize);
   coreNum = ascendcPlatform.GetCoreNumAiv();
 
-  // 分核
+  // Implementation note.
   uint64_t rowVal = ceLossGradTiling.get_rowVal();
   uint64_t frontCoreNum = GetDivRem(rowVal, coreNum) != 0 ? GetDivRem(rowVal, coreNum) : coreNum;
   uint64_t tailCoreNum = rowVal <= coreNum ? 0 : coreNum - frontCoreNum;
@@ -153,7 +153,7 @@ static ge::graphStatus CELossGradCoreSplitInfo(gert::TilingContext* context, Cro
                                                uint64_t dtypeSize, uint64_t reductionKey) {
   uint64_t colVal = ceLossGradTiling.get_colVal();
   uint64_t frontRowNum = ceLossGradTiling.get_frontRowNum();
-  uint64_t colLoopNum = 0;  // ub一次可以处理最大数据量
+  uint64_t colLoopNum = 0; // Implementation note.
   uint64_t alignColLoopNum = 0;
   uint64_t targetSize = GetCeilAlign(frontRowNum * INT64_DTYPE_SIZE, BLOCK_SIZE);
   uint64_t targetCastSize = GetCeilAlign(frontRowNum * FP32_INT32_DTYPE_SIZE, BLOCK_SIZE);
@@ -166,9 +166,9 @@ static ge::graphStatus CELossGradCoreSplitInfo(gert::TilingContext* context, Cro
   uint64_t tBuf3Size = 0;
 
   auto weightTensor = context->GetOptionalInputTensor(INPUT_WEIGHT_IDX);
-  if (weightTensor == nullptr) {  // weight为None
+  if (weightTensor == nullptr) { // Implementation note.
     OP_LOGD(context->GetNodeName(), "[CrossEntropyLossGrad] In this case weight is None.");
-  } else {  // weight非None
+  } else { // Implementation note.
     OP_LOGD(context->GetNodeName(), "[CrossEntropyLossGrad] In this case weight is not None.");
     targetWeightSize = GetCeilAlign(frontRowNum * FP32_INT32_DTYPE_SIZE, BLOCK_SIZE);
   }
@@ -202,7 +202,7 @@ static ge::graphStatus CELossGradCoreSplitInfo(gert::TilingContext* context, Cro
       colLoopNum = GetDiv((maxUbSize - targetSize - targetCastSize - ignoreSize - maskSize - targetWeightSize), FP16_BF16_SPLIT);
     }
     if (colLoopNum < colVal) {
-      // 512B对齐 ub一次可以处理最大对齐数据量
+      // Implementation note.
       alignColLoopNum = GetAlign(colLoopNum, (ALIGN_SIZE / FP16_BF16_DTYPE_SIZE));
     } else {
       alignColLoopNum = GetAlign(colVal, (ALIGN_SIZE / FP16_BF16_DTYPE_SIZE));
@@ -314,10 +314,10 @@ static ge::graphStatus Tiling4CrossEntropyLossGrad(gert::TilingContext* context)
   OP_LOGD(context->GetNodeName(), ">>> [CrossEntropyLossGradTiling] tilingKey: %ld", tilingKey);
   context->SetTilingKey(tilingKey);
 
-  // 核间切分
+  // Implementation note.
   InitSplitInfo(context, ceLossGradTiling);
   OP_LOGD(context->GetNodeName(), "CrossEntropyLossGradTiling InitSplitInfo finished");
-  // 核内切分
+  // Implementation note.
   CELossGradCoreSplitInfo(context, ceLossGradTiling, dtypeSize, reductionKey);
   OP_LOGD(context->GetNodeName(), "CrossEntropyLossGradTiling CELossGradCoreSplitInfo finished");
 

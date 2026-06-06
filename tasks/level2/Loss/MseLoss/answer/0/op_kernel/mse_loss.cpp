@@ -16,11 +16,11 @@ namespace Ascend
                                     uint32_t lastTileLength) {
             ASSERT(AscendC::GetBlockNum() != 0 && "block dim can not be zero!");
 
-            // 该算子有两种策略：NONE模式与其他模式
-            // NONE模式(mode=3)： 只需要将对应的xi与yi进行(xi - yi) ^ 2计算即可
-            // 其他模式(mode=1,2)： 首先需要计算(xi - yi) ^ 2，此后进行一个规约计算(sum/mean)
-            // 考虑到空间限制的问题，采取的策略是将每一次tiling计算(xi - yi) ^ 2后就进行一次规约操作，并将该结果存入一个变量里（在tempBuf里）
-            // 最后在tiling结束后对这些数量为reduce_num的数据再进行最后一次规约操作得到最终结果
+            // Implementation note.
+            // Implementation note.
+            // Implementation note.
+            // Implementation note.
+            // Implementation note.
             this->mode = static_cast<int>(mode);
             this->totalLength = static_cast<int32_t>(totalLength);
             this->totalLength_f32 = static_cast<float>(this->totalLength);
@@ -77,7 +77,7 @@ namespace Ascend
             }
             else if (this->mode == MODE_ONE || this->mode == MODE_TWO) {
                 for (int32_t i = 0; i < loopCount; i++) {
-                    // MODE_ONE和MODE_TWO的CopyIn_Strategy与MODE_THREE相同
+                    // Implementation note.
                     CopyIn_Strategy(i);
                     Compute_Strategy_2(i);
                 }
@@ -104,12 +104,12 @@ namespace Ascend
             if (BUFFER_NUM == 1) {
                 if (progress == this->tileNum - 1) {
                     if (progress == 0) {
-                        //如果只有一包，则搬运的起始地址为0，tileLength为实际分块的数据量
+                        // Implementation note.
                         AscendC::DataCopy(inLocal[0], xGm[0], this->tileLength);
                         AscendC::DataCopy(inLocal[this->tileLength], yGm[0], this->tileLength);
                     }
                     else {
-                        //将最后一个分块的起始地址向前移动tileLength-lastTileLength
+                        // Implementation note.
                         AscendC::DataCopy(
                             inLocal[0],
                             xGm[(progress - 1) * this->tileLength + this->lastTileLength],
@@ -128,13 +128,13 @@ namespace Ascend
                 }
             }
             if (BUFFER_NUM == 2) {
-                //开启double
-                //buffer时，由于将输入数据分成了相等的2部分，分块大小为不开启double
-                //buffer的一半， 所以需要对最后两个分块数据的起始地址做处理
+                // Implementation note.
+                // Implementation note.
+                // Implementation note.
                 if ((progress == (this->tileNum * BUFFER_NUM - 2)) ||
                     (progress == (this->tileNum * BUFFER_NUM - 1))) {
-                    //分块大小变为tileLength的一半
-                    //倒数第2个分块数据的起始地址向前移动（tileLength-lastTileLength)，最后一个分块的起始地址以此为基础进行移动
+                    // Implementation note.
+                    // Implementation note.
                     const int secondLastTileStartIndex = (progress - 2) * (this->tileLength) + this->lastTileLength;
                     AscendC::DataCopy(
                         inLocal[0],
@@ -176,11 +176,11 @@ namespace Ascend
             if (BUFFER_NUM == 1) {
                 if (progress == this->tileNum - 1) {
                     if (progress == 0) {
-                        //如果只有一包，则搬运的起始地址为0，tileLength为实际分块的数据量
+                        // Implementation note.
                         AscendC::DataCopy(outGm[0], outLocal, this->tileLength);
                     }
                     else {
-                        //将最后一个分块的起始地址向前移动tileLength-lastTileLength
+                        // Implementation note.
                         AscendC::DataCopy(
                             outGm[(progress - 1) * this->tileLength + this->lastTileLength],
                             outLocal, this->tileLength);
@@ -191,13 +191,13 @@ namespace Ascend
                 }
             }
             if (BUFFER_NUM == 2) {
-                //开启double
-                //buffer时，由于将输入数据分成了相等的2部分，分块大小为不开启double
-                //buffer的一半， 所以需要对最后两个分块数据的起始地址做处理
+                // Implementation note.
+                // Implementation note.
+                // Implementation note.
                 if ((progress == (this->tileNum * BUFFER_NUM - 2)) ||
                     (progress == (this->tileNum * BUFFER_NUM - 1))) {
-                    //分块大小变为tileLength的一半
-                    //倒数第2个分块数据的起始地址向前移动（tileLength-lastTileLength)，最后一个分块的起始地址以此为基础进行移动
+                    // Implementation note.
+                    // Implementation note.
                     const int outGmStartIndex = (progress - 2) * (this->tileLength) + this->lastTileLength;
                     AscendC::DataCopy(
                         outGm[outGmStartIndex],

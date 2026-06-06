@@ -1,52 +1,47 @@
 # AddCustom
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-实现了两个数据相加，返回相加结果的功能。
+### Operator Semantics
+`AddCustom` is an Ascend NPU benchmark operator in the `level1` `Math` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.add_custom()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-  $$
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
+
+$$
   z = x + y
   $$
 
-## 接口定义
+## Interface Definition
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.add_custom()` 函数形式提供：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def add_custom(x, y):
-    """
-    实现自定义加法操作。
-    
-    参数:
-        x (Tensor): 输入张量，Device侧的张量，数据格式支持ND。
-        y (Tensor): 输入张量，Device侧的张量，数据格式支持ND。
-        
-    返回:
-        Tensor: 计算结果张量，数据类型与输入一致，数据格式支持ND。
-    
-    注意:
-        张量数据格式支持ND
-    """
+    """Execute `AddCustom` on Ascend NPU tensors."""
+
 ```
 
-## 使用案例
+### Inputs
+- `x`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `y`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量
-x = torch.randn(8, 2048, dtype=torch.float16)
-y = torch.randn(8, 2048, dtype=torch.float16)
-
-# 使用add_custom执行计算
 result = kernel_gen_ops.add_custom(x, y)
 ```
 
-## 约束与限制
+## Constraints and Notes
 
-- 输入输出张量数据格式支持ND。
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

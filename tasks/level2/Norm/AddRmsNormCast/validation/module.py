@@ -18,24 +18,24 @@ class Model(nn.Module):
     def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> List[torch.Tensor]:
         """
         Returns:
-            y1: FP32 归一化结果
-            y2: FP16/BF16 归一化结果
-            rstd: 倒数标准差 (FP32)
-            x: 残差加法后的中间结果 (FP16/BF16)
+            Reference implementation detail.
+            Reference implementation detail.
+            Reference implementation detail.
+            Reference implementation detail.
         """
-        # 1. 残差加法 (x = x1 + x2)
+        # Implementation note.
         dtype = x1.dtype
         x1 = x1.to(torch.float32)
         x2 = x2.to(torch.float32)
 
         x = x1 + x2
-        # 2. 计算 RMSNorm
+        # Implementation note.
         variance = torch.mean(x.pow(2), dim=-1, keepdim=True)  # (..., 1)
         rstd = torch.rsqrt(variance + self.epsilon)  # 1 / sqrt(variance + eps)
-        y1 = (x * rstd) * self.gamma  # FP32 结果
+        y1 = (x * rstd) * self.gamma  # Implementation note.
 
-        # 3. 数据类型转换
-        y2 = y1.to(x1.dtype)     # 转回 FP16/BF16        
+        # Implementation note.
+        y2 = y1.to(x1.dtype)  # Implementation note.
         return [y1, y2, rstd, x]
 
 

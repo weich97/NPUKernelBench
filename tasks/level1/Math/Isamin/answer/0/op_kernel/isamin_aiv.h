@@ -31,18 +31,18 @@ constexpr uint32_t BYTE_LEN_4 = 4;
 constexpr uint32_t MAX_VECTOT = 40;
 constexpr uint64_t REDUCE_MAX_RST_MASK = 72340172838076673;  // 2^0+2^8+2^16+2^24+2^32+2^40+2^48+2^56
 
-// 超过32超过一个repeat上限，reduceMaz进入第二个repeat，全置零后可复用该mask,i = 0 到 31,REDUCE_MAX_CORES_RST_MASK += (uint64_t)1<<(i*2);
+// Implementation note.
 constexpr uint64_t REDUCE_MAX_CORES_RST_MASK = 6148914691236517205;  // (i*2)^0+(i*2)^2+(i*2)^4+..+(i*2)^31
 
 constexpr int32_t GM_RESULT_LEN = 2;
 
 constexpr uint32_t MAX_NUM_F32_ELE_EACH_CORE = 23040;
 
-// 如果输入数据很大，UB需多次处理，并且轮次很多，不能等所有轮次都汇总完，这样中间结果太占内存，需要及时对部分中间结果取reduceMin
-// 中间结果按2k规划，即2*1024/32=64次，即单核超过63次,就要取一次reduceMin，将空间占用降为一个block
-// 64-63是因为有一个是历史压缩结果
+// Implementation note.
+// Implementation note.
+// Implementation note.
 constexpr int32_t DEAL_TIMES_EACH_CORE_REDUCE = 63;
-constexpr int32_t DEAL_TIMES_EACH_CORE_REDUCE_REP = 8;  // (63+1)/8=8个repeat
+constexpr int32_t DEAL_TIMES_EACH_CORE_REDUCE_REP = 8; // Implementation note.
 
 template <typename T>
 class Isamin {
@@ -84,7 +84,7 @@ private:
     TBuf<QuePosition::VECCALC> reduceMinDst;
     TBuf<QuePosition::VECCALC> rMinRsts;
 
-    // outDataQueue这个应该1也够，因为单核内所有数据都压缩成一个结果
+    // Implementation note.
     TQue<QuePosition::VECOUT, BUFFER_NUM> outDataQueue;
 
     TQue<QuePosition::VECIN, 1> coresRstInDataQueue;
@@ -149,20 +149,20 @@ __aicore__ inline void Isamin<T>::Init(GM_ADDR x, GM_ADDR y, GM_ADDR usrWorkspac
 
     this->pipe.InitBuffer(this->inDataQueue, BUFFER_NUM, this->dealLenUpBlockEachTime * BYTE_LEN_4);
     this->pipe.InitBuffer(this->reduceMinRsts,
-                          this->reduceMinRstsLen * BYTE_LEN_4);  // 保存多次reduceMin的结果，用于汇总
+                          this->reduceMinRstsLen * BYTE_LEN_4); // Implementation note.
     this->pipe.InitBuffer(this->reduceMinWrk, this->reduceMinRstsLen * BYTE_LEN_4);
     this->pipe.InitBuffer(this->reduceMinDst, this->elementsPerBlock * BYTE_LEN_4);
     this->pipe.InitBuffer(this->rMinRsts, this->elementsPerBlock * BYTE_LEN_4);
     this->pipe.InitBuffer(this->outDataQueue, BUFFER_NUM, this->elementsPerBlock * BYTE_LEN_4);
 
-    // 核间结果在GM（每个核都会给出两个值 value、index）上汇总后，再次处理
-    // 如果needVecCoreNum大于32个核，则核间结果value、index长度超过64，超过一次repeat，由于needVecCoreNum最大为40（80），所以直接预存两个repeat128，多余空间置零
+    // Implementation note.
+    // Implementation note.
     this->coresRstReduceMinLen = this->elementsPerRepeat * 2;
     this->pipe.InitBuffer(this->coresRstInDataQueue, 1, this->coresRstReduceMinLen * BYTE_LEN_4);
     this->pipe.InitBuffer(this->coresRstReduceMinWrk, this->coresRstReduceMinLen * BYTE_LEN_4);
     this->pipe.InitBuffer(this->coresRstOutDataQueue, 1, this->elementsPerBlock * BYTE_LEN_4);
 
-    // 第一个elementsPerBlock汇总一次大轮结果，后续内存用于存每一个小轮循环
+    // Implementation note.
     this->rMinALLRstsTenor = reduceMinRsts.Get<T>();
     this->rMinTmpRstsTenor = this->rMinALLRstsTenor[this->elementsPerBlock];
     this->rMinTmpWrkTenor = reduceMinWrk.Get<T>();
@@ -178,7 +178,7 @@ __aicore__ inline bool Isamin<T>::ParseTilingData(GM_ADDR tiling)
     this->incx = (*(__gm__ uint32_t *)(tilingBuf + 0));
     this->needVecCoreNum = (*(__gm__ uint32_t *)(tilingBuf + 1));
 
-    // mix模式下，每个AICore会启动两个AIVcore,。tiling中根据AIVcoreNum推算的BlockDim可能会多一个
+    // Implementation note.
     if (this->blockIdx + 1 > this->needVecCoreNum) {
         return false;
     }
@@ -204,7 +204,7 @@ __aicore__ inline bool Isamin<T>::ParseTilingData(GM_ADDR tiling)
     this->startElement = this->startOffset;
     this->dealEleEachTime = this->dealLenEachTime;
     this->tailEle = this->tailCount;
-    if (this->dytpeFlag == 1) {  // 如果是复数
+    if (this->dytpeFlag == 1) { // Implementation note.
         this->startElement = this->startOffset / 2;
         this->dealEleEachTime = this->dealEleEachTime / 2;
         this->tailEle = this->tailCount / 2;
@@ -216,7 +216,7 @@ __aicore__ inline bool Isamin<T>::ParseTilingData(GM_ADDR tiling)
 template <typename T>
 __aicore__ inline void Isamin<T>::Process()
 {
-    // 硬同步必须在mix模式下，在该模式下，AIVector会成对出现，blockIdx实际比needVecCoreNum多，直接return空转
+    // Implementation note.
     if (this->blockIdx + 1 > this->needVecCoreNum) {
         SyncAll();
         return;
@@ -226,13 +226,13 @@ __aicore__ inline void Isamin<T>::Process()
     uint32_t calCount = 0;
     uint32_t copyedlCount = 0;
     int32_t leftCount = 0;
-    // 如果dealBigTimestail不为0，说明最后一个大轮不满DEAL_TIMES_EACH_CORE_REDUCE
+    // Implementation note.
     int32_t dealBigTimes = this->dealTimesEachCore / DEAL_TIMES_EACH_CORE_REDUCE;
     int32_t dealBigTimesTail = this->dealTimesEachCore % DEAL_TIMES_EACH_CORE_REDUCE;
 
-    // 小轮
+    // Implementation note.
     for (uint32_t k = 0; k < this->dealTimesEachCore; k++) {
-        // 更新本次要处理的元素数量
+        // Implementation note.
         calCount = this->dealLenEachTime;
         this->isUpdateRptParas = false;
         leftCount = this->eleTotalEachCore - copyedlCount;
@@ -242,7 +242,7 @@ __aicore__ inline void Isamin<T>::Process()
             isUpdateRptParas = true;
         }
 
-        // 尾块全给第一个核了，长度不足一个repeat
+        // Implementation note.
         if (this->blockIdx == 0 && this->tailCount > 0 && k == 0) {
             CopyInAttacheTail(calCount, this->tailCount, copyedlCount);
             calCount += this->tailCount;
@@ -254,11 +254,11 @@ __aicore__ inline void Isamin<T>::Process()
         SingleProcess(calCount, k);
         copyedlCount += calCount;
 
-        // 大轮：即单核超过DEAL_TIMES_EACH_CORE_REDUCE次,就要取一次reduceMin，将空间 rMinTmpRstsTenor 占用降为一个block
+        // Implementation note.
         uint32_t dealedTimes = k + 1;
         if ((dealedTimes % DEAL_TIMES_EACH_CORE_REDUCE == 0 && k > 0) || (k == this->dealTimesEachCore - 1)) {
             reduceMinTmpResult(k);
-            // 如果下一次是进入最后一个大轮，且不满DEAL_TIMES_EACH_CORE_REDUCE,需要清理rMinTmpRstsTenor；但是大轮中最后一次也会走进来，不需要了
+            // Implementation note.
             if ((0 != dealBigTimesTail) && (dealedTimes / DEAL_TIMES_EACH_CORE_REDUCE == dealBigTimes) &&
                 dealedTimes != this->dealTimesEachCore) {
                 Duplicate<T>(this->rMinTmpRstsTenor, FLT_MAX, this->reduceMinRstsLen - this->elementsPerBlock);
@@ -268,7 +268,7 @@ __aicore__ inline void Isamin<T>::Process()
     }
 
     if (this->needVecCoreNum == 1 && this->blockIdx == 0) {
-        // rMinALLRstsTenor是单核中间结果，结构为[value，index],如果只有一个核，不需要核间汇总,直接把这个index当成结果考出去
+        // Implementation note.
         SyncAll();
         getCoreReduResult();
         CopyTmpRstOut();
@@ -299,11 +299,11 @@ __aicore__ inline void Isamin<T>::CopyInAttacheTail(uint32_t calCount, uint32_t 
         DataCopy(inLocalTensor, inTensorsGM[offset], calCount);
     }
 
-    // blockLen长度有限制，
+    // Implementation note.
     uint16_t blockCout = (uint16_t)1;
     uint16_t blockLen = tailCount * BYTE_LEN_4;
     DataCopyParams copyParams{blockCout, blockLen, 0, 0};
-    DataCopyPadParams padParams{true, 0, 0, 0};  // dummy自动补齐32B，paddingValue=0
+    DataCopyPadParams padParams{true, 0, 0, 0}; // Implementation note.
     DataCopyPad(inLocalTensor[calCount], inTensorsGM[offset + calCount], copyParams, padParams);
 
     inDataQueue.EnQue(inLocalTensor);
@@ -314,8 +314,8 @@ __aicore__ inline void Isamin<T>::SingleProcess(const int32_t count, uint32_t k)
 {
     LocalTensor<T> srcLocal = inDataQueue.DeQue<T>();
 
-    // 如果本次是第64次（k=63）,k-1结果已经在376行处理过了，不需要再处理
-    if (k % DEAL_TIMES_EACH_CORE_REDUCE != 0 && k > 0) {  // 上一次
+    // Implementation note.
+    if (k % DEAL_TIMES_EACH_CORE_REDUCE != 0 && k > 0) { // Implementation note.
         GetReduceMinCount(k - 1);
     }
 
@@ -352,7 +352,7 @@ __aicore__ inline void Isamin<T>::SingleProcess(const int32_t count, uint32_t k)
     AscendC::PipeBarrier<PIPE_V>();
 
     int32_t ReduceMinCount = count;
-    // 如果是复数
+    // Implementation note.
     if (this->dytpeFlag == 1) {
         ReduceMinCount = count / 2;
         offset = 0;
@@ -380,7 +380,7 @@ __aicore__ inline void Isamin<T>::SingleProcess(const int32_t count, uint32_t k)
     AscendC::SetMaskNorm();
     AscendC::ResetMask();
 
-    // 如果是第63次（k=62）或者是最后一次,本循环内马上就要进行压缩，此时必须把本次结果取出来参与压缩，不能等下次再处理；
+    // Implementation note.
     if (((k + 1) % DEAL_TIMES_EACH_CORE_REDUCE == 0 && k > 0) || k == this->dealTimesEachCore - 1) {
         GetReduceMinCount(k);
     }
@@ -393,14 +393,14 @@ __aicore__ inline void Isamin<T>::GetReduceMinCount(uint32_t k)
 {
     uint32_t tmpK = k % DEAL_TIMES_EACH_CORE_REDUCE * this->elementsPerBlock;
 
-    // S等V，将这动作提前，放在SingleProcess最后会影响double buffer的MTE2指令的提前发射
+    // Implementation note.
     event_t eventID2 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::V_S));
     SetFlag<HardEvent::V_S>(eventID2);
     WaitFlag<HardEvent::V_S>(eventID2);
 
-    float val = 0;                      // 最值
-    float idx = 0;                      // 最值的索引值，
-    GetReduceMaxMinCount<T>(val, idx);  // 获取上次WholeReudceMin的结果
+    float val = 0; // Implementation note.
+    float idx = 0; // Implementation note.
+    GetReduceMaxMinCount<T>(val, idx); // Implementation note.
 
     this->rMinTmpRstsTenor.SetValue(tmpK, val);
     this->rMinTmpRstsTenor.SetValue(tmpK + 1, idx);
@@ -420,29 +420,29 @@ __aicore__ inline void Isamin<T>::reduceMinTmpResult(uint32_t k)
     SetFlag<HardEvent::V_S>(eventID1);
     WaitFlag<HardEvent::V_S>(eventID1);
 
-    float tmpK = this->rMinDstTenor.GetValue(1);                 // 第二次reduceMin的结果，
+    float tmpK = this->rMinDstTenor.GetValue(1); // Implementation note.
     int32_t maxIdxInRst = *reinterpret_cast<uint32_t *>(&tmpK);  //
 
     float tmpK2 = this->rMinALLRstsTenor.GetValue(maxIdxInRst + 1);
     int32_t maxIdxInOriVec = *reinterpret_cast<uint32_t *>(&tmpK2);
 
-    // rMinALLRstsTenord的结构为  第一个block为历史压缩结果，第二block开始为本轮第一个结果
-    if (maxIdxInRst != 0) {  // 如果不是历史压缩结果最大;
+    // Implementation note.
+    if (maxIdxInRst != 0) { // Implementation note.
         int32_t preOffset = (k / DEAL_TIMES_EACH_CORE_REDUCE) * DEAL_TIMES_EACH_CORE_REDUCE;
         int32_t maxValueIndex = this->startElement +
                                 (preOffset + maxIdxInRst / this->elementsPerBlock - 1) * this->dealEleEachTime +
                                 maxIdxInOriVec;
-        // 如果且有尾块，k=0处理的长度是dealEleEachTime+tailCount,计算偏移时，除了k=0（maxIdxInRst > 8）
-        // 或者k > DEAL_TIMES_EACH_CORE_REDUCE都要加上tailCount
+        // Implementation note.
+        // Implementation note.
         if (this->tailEle != 0 && this->blockIdx == 0 &&
             (maxIdxInRst > this->elementsPerBlock || k > DEAL_TIMES_EACH_CORE_REDUCE)) {
             maxValueIndex += this->tailEle;
         }
-        // 写回头部
+        // Implementation note.
         this->rMinALLRstsTenor.SetValue(0, this->rMinDstTenor.GetValue(0));
         this->rMinALLRstsTenor.SetValue(1, *reinterpret_cast<float *>(&maxValueIndex));
 
-        // V等S，V包括getCoreTmpReduResult中的Copy或者SingleProcess中的Abs(更准确的是下一次的reduceMinTmpResult中的ReduceMin)
+        // Implementation note.
         event_t eventID2 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_V));
         SetFlag<HardEvent::S_V>(eventID2);
         WaitFlag<HardEvent::S_V>(eventID2);
@@ -454,7 +454,7 @@ __aicore__ inline void Isamin<T>::getCoreTmpReduResult()
 {
     LocalTensor<T> outLocalTensor = outDataQueue.AllocTensor<T>();
 
-    // 前8个是压缩的最终结果
+    // Implementation note.
     Copy(outLocalTensor, rMinALLRstsTenor, 8, 1, {1, 1, 8, 8});
 
     outDataQueue.EnQue(outLocalTensor);
@@ -485,7 +485,7 @@ __aicore__ inline void Isamin<T>::copyInCoresTmpRst()
 {
     LocalTensor<T> inLocalTensor = coresRstInDataQueue.AllocTensor<T>();
 
-    Duplicate<T>(inLocalTensor, FLT_MAX, this->coresRstReduceMinLen);  // 多申请了一部分内存置零
+    Duplicate<T>(inLocalTensor, FLT_MAX, this->coresRstReduceMinLen); // Implementation note.
 
     event_t eventID1 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::V_MTE2));
     SetFlag<HardEvent::V_MTE2>(eventID1);
@@ -493,7 +493,7 @@ __aicore__ inline void Isamin<T>::copyInCoresTmpRst()
 
     uint16_t blockLen = this->rstLenAllCoreBytes;
     DataCopyParams copyParams{1, blockLen, 0, 0};
-    DataCopyPadParams padParams{true, 0, 0, 0};  // dummy自动补齐32B，paddingValue=0
+    DataCopyPadParams padParams{true, 0, 0, 0}; // Implementation note.
     DataCopyPad(inLocalTensor, tmpRstWkGM, copyParams, padParams);
 
     coresRstInDataQueue.EnQue(inLocalTensor);
@@ -507,17 +507,17 @@ __aicore__ inline void Isamin<T>::ReduceMinCoresTmpRst()
 
     uint64_t mask[2] = {REDUCE_MAX_CORES_RST_MASK, 0};
 
-    // repeatTime = 2，40个vectorCore 最多80个元素
+    // Implementation note.
     ReduceMin(this->coresRstReduceTmp, srcLocal, this->coresRstReduceTmp, mask, 2, 8, true);
 
     event_t eventID3 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::V_S));
     SetFlag<HardEvent::V_S>(eventID3);
     WaitFlag<HardEvent::V_S>(eventID3);
 
-    float tmpK = this->coresRstReduceTmp.GetValue(1);  // 第二次reduceMin的结果，
+    float tmpK = this->coresRstReduceTmp.GetValue(1); // Implementation note.
     int32_t maxIdxInRst = *reinterpret_cast<uint32_t *>(&tmpK);
-    float tmpK2 = srcLocal.GetValue(maxIdxInRst + 1);  // 去第一次汇总结果中找到真正的index
-    int32_t maxValueIndex = *reinterpret_cast<uint32_t *>(&tmpK2) + 1;  // 再加1（culblas下标从1开始）
+    float tmpK2 = srcLocal.GetValue(maxIdxInRst + 1); // Implementation note.
+    int32_t maxValueIndex = *reinterpret_cast<uint32_t *>(&tmpK2) + 1; // Implementation note.
 
     outLocalTensor.SetValue(0, maxValueIndex);
 
@@ -548,7 +548,7 @@ __aicore__ inline void Isamin<T>::getCoreReduResult()
 
     float tmpK = rMinALLRstsTenor.GetValue(1);
     int32_t maxIdxInRst = *reinterpret_cast<uint32_t *>(&tmpK);  //
-    rMinRstsTenor.SetValue(0, maxIdxInRst + 1);                  // 再加1（culblas下标从1开始）
+    rMinRstsTenor.SetValue(0, maxIdxInRst + 1); // Implementation note.
 
     event_t eventID2 = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::S_V));
     SetFlag<HardEvent::S_V>(eventID2);
@@ -567,7 +567,7 @@ __aicore__ inline void Isamin<T>::CopyTmpRstOut()
     uint16_t blockCout = (uint16_t)1;
     uint16_t blockLen = (uint16_t)1 * BYTE_LEN_4;
     DataCopyParams copyParams = {blockCout, blockLen, 0, 0};
-    // coresRstOutDataQueue单核中间结果，结构为[value，index],如果只有一个核，直接把这个index当成结果考出去
+    // Implementation note.
     DataCopyPad(outTensorsGM, outLocalTensor, copyParams);
 
     coresRstOutDataQueue.FreeTensor(outLocalTensor);

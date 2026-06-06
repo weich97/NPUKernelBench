@@ -62,21 +62,21 @@ namespace optiling
         bigTailDataNum = bigTailDataNum == 0 ? tileDataNum : bigTailDataNum;
 
         tiling.set_smallCoreDataNum(smallCoreDataNum);
-        //一个小核数据个数
+        // Implementation note.
         tiling.set_bigCoreDataNum(bigCoreDataNum);
-        //一个大核数据个数
+        // Implementation note.
         tiling.set_tileDataNum(tileDataNum);
-        //一次搬运的数据个数
+        // Implementation note.
         tiling.set_smallTailDataNum(smallTailDataNum);
-        //小核尾块数据个数
+        // Implementation note.
         tiling.set_bigTailDataNum(bigTailDataNum);
-        //大核尾块数据个数
+        // Implementation note.
         tiling.set_finalSmallTileNum(finalSmallTileNum);
-        //小核搬运次数
+        // Implementation note.
         tiling.set_finalBigTileNum(finalBigTileNum);
-        //大核搬运次数
+        // Implementation note.
         tiling.set_tailBlockNum(tailBlockNum);
-        //大核数
+        // Implementation note.
         context->SetBlockDim(coreNum);
         tiling.SaveToBuffer(context->GetRawTilingData()->GetData(), context->GetRawTilingData()->GetCapacity());
         context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());

@@ -19,17 +19,17 @@ class Model(nn.Module):
         dtype = x1.dtype
         x1 = x1.to(torch.float32)
         x2 = x2.to(torch.float32)
-        # 1. 复用x1的内存存储加法结果 (y = x1 + x2)
-        x1.add_(x2)  # y_out 复用x1的内存
+        # Implementation note.
+        x1.add_(x2)  # Implementation note.
 
-        # 2. 复用x2的内存存储中间变量 (x = x2)
-        x2.copy_(x1)  # 现在x2存储加法结果
+        # Implementation note.
+        x2.copy_(x1)  # Implementation note.
 
-        # 3. 计算RMSNorm
-        rstd = torch.rsqrt(x2.pow(2).mean(dim=-1, keepdim=True) + self.epsilon)  # x2是加法结果
-        x1.mul_(rstd).mul_(self.gamma)  # y_out最终结果存在x1
+        # Implementation note.
+        rstd = torch.rsqrt(x2.pow(2).mean(dim=-1, keepdim=True) + self.epsilon)  # Implementation note.
+        x1.mul_(rstd).mul_(self.gamma)  # Implementation note.
 
-        #    y_out已在x1的内存中，x_add在x2的内存中
+        # Implementation note.
         x1 = x1.to(dtype)
         x2 = x2.to(dtype)
         return [x1, rstd, x2]

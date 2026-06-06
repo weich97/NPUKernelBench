@@ -10,28 +10,28 @@ import math
 
 class Model(nn.Module):
     """
-    实现add算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
         """
-        实现add算子功能。
+        Reference implementation detail.
 
         Args:
-            a: 第一个输入张量
-            b: 第二个输入张量
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            两个输入张量的和
+            Reference implementation detail.
         """
 
-        # 也可以使用torch的add函数
+        # Implementation note.
         output = torch.matmul(a.to(torch.float32), b.to(torch.float32))
         return output
 

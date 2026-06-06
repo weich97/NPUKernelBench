@@ -1,41 +1,42 @@
 # aclnnInplaceAttnSoftmax
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-该InplaceAttnSoftmax算子提供等同torch softmax计算功能。InplaceAttnSoftmax算子的主要功能是缩放输入张量，将结果缩放在[0,1]范围内总和为1，并将结果原地写入输入张量。
+### Operator Semantics
+`aclnnInplaceAttnSoftmax` is an Ascend NPU benchmark operator in the `level2` `Activation` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.inplace_attn_softmax()`.
 
-## 接口定义
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.inplace_attn_softmax()` 函数形式提供：
+### Mathematical Definition
+The exact element-wise, reduction, indexing, tensor-construction, or in-place semantics are defined by the corresponding `validation/module.py` reference path and benchmark input generator. Implementations must match that reference behavior for all generated test cases.
 
+## Interface Definition
+
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def inplace_attn_softmax(x):
-    """
-    参数:
-        x (Tensor): 输入张量，Device侧的张量，数据格式支持ND。
-
-    返回:
-        Tensor: 输出张量，范围[0, 1], 数据类型与输入一致，数据格式支持ND。
-    """
-```
-
-## 使用案例
+    """Execute `aclnnInplaceAttnSoftmax` on Ascend NPU tensors."""
 
 ```
-import torch
+
+### Inputs
+- `x`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
+
+```python
 import kernel_gen_ops
 
-# 创建输入张量
-x = torch.randn(8, 1024, dtype=torch.float32)
-
-# 使用gelu执行计算
 result = kernel_gen_ops.inplace_attn_softmax(x)
 ```
-## 约束与限制
 
-- 张量数据格式支持ND。
+## Constraints and Notes
 
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

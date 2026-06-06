@@ -28,14 +28,14 @@ BEGIN_TILING_DATA_DEF(CrossEntropyLossGradTilingData)
   TILING_DATA_FIELD_DEF(float, labelSmoothing);
   TILING_DATA_FIELD_DEF(int64_t, rowVal);           // N
   TILING_DATA_FIELD_DEF(int64_t, colVal);           // C
-  TILING_DATA_FIELD_DEF(int64_t, frontCoreNum);     // 前面多算一个的核有几个
-  TILING_DATA_FIELD_DEF(int64_t, tailCoreNum);      // 后面的核有几个
-  TILING_DATA_FIELD_DEF(int64_t, usedCoreNum);      // 用了多少核
-  TILING_DATA_FIELD_DEF(int64_t, frontRowNum);      // 前面的核要算几行
-  TILING_DATA_FIELD_DEF(int64_t, tailRowNum);       // 后面的核要算几行
-  TILING_DATA_FIELD_DEF(int64_t, alignColLoopNum);  // 满ub可以处理的最大对齐数据量
-  TILING_DATA_FIELD_DEF(int64_t, colLoop);          // 一行里满ub要循环多少次
-  TILING_DATA_FIELD_DEF(int64_t, colLoopNumTail);   // 一行中最后一次循环，不满ub要处理的数据量
+  TILING_DATA_FIELD_DEF(int64_t, frontCoreNum); // Implementation note.
+  TILING_DATA_FIELD_DEF(int64_t, tailCoreNum); // Implementation note.
+  TILING_DATA_FIELD_DEF(int64_t, usedCoreNum); // Implementation note.
+  TILING_DATA_FIELD_DEF(int64_t, frontRowNum); // Implementation note.
+  TILING_DATA_FIELD_DEF(int64_t, tailRowNum); // Implementation note.
+  TILING_DATA_FIELD_DEF(int64_t, alignColLoopNum); // Implementation note.
+  TILING_DATA_FIELD_DEF(int64_t, colLoop); // Implementation note.
+  TILING_DATA_FIELD_DEF(int64_t, colLoopNumTail); // Implementation note.
   TILING_DATA_FIELD_DEF(int64_t, targetSize);
   TILING_DATA_FIELD_DEF(int64_t, targetCastSize);
   TILING_DATA_FIELD_DEF(int64_t, gradLossSize);

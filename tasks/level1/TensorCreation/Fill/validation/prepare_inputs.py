@@ -9,19 +9,19 @@ def get_inputs(param, device=None):
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
 
-    # 根据dtype处理value的类型
+    # Implementation note.
     value_str = param.get('value', '1.0')
     if dtype_str == 'bool':
-        # bool类型：解析为True/False
+        # Implementation note.
         value_value = (value_str.lower() == 'true')
     elif dtype_str in ['int8', 'int32', 'int64']:
-        # 整数类型：解析为int
+        # Implementation note.
         value_value = int(value_str)
     else:
-        # 浮点类型：解析为float
+        # Implementation note.
         value_value = float(value_str)
 
-    # 创建value张量（dtype与输出一致）
+    # Implementation note.
     value_tensor = torch.tensor(value_value, device=device, dtype=dtype)
 
     return [dims, value_tensor]

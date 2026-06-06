@@ -63,7 +63,7 @@ static ge::graphStatus InferShapeForGeGluV2(gert::InferShapeContext* context) {
     *out_shape_y = *x_shape;
     *out_shape_y_glu = *x_shape;
     
-    // 动态shape场景split_dim_value传入-1不做处理
+    // Implementation note.
     auto split_dim_value = x_shape->GetDim(split_dim);
     if (split_dim_value > 0) {
         out_shape_y->SetDim(split_dim, split_dim_value / SPLIT_NUM);

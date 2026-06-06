@@ -28,31 +28,31 @@ namespace Ascend
                 uint32_t BUFFER_NUM = 1;
                 this->core_id = AscendC::GetBlockIdx();
         
-                this->former_num = tiling.formerCoreNum; // 大块核使用的核数
-                this->former_length = tiling.formerCoreRowLen; // 每个大块核负责的行数
-                this->tail_num = tiling.tailCoreNum; // 小块核使用的核数
-                this->tail_length = tiling.tailCoreRowLen; // 每个小块核负责的行数
+                this->former_num = tiling.formerCoreNum; // Implementation note.
+                this->former_length = tiling.formerCoreRowLen; // Implementation note.
+                this->tail_num = tiling.tailCoreNum; // Implementation note.
+                this->tail_length = tiling.tailCoreRowLen; // Implementation note.
         
-                this->tile_num = tiling.tileNum; // 每个核每次循环的次数，tile_num * tile_length == 8192
-                this->tile_length = tiling.tileLen; // 每个核每次循环的列数，先暂定1024
+                this->tile_num = tiling.tileNum; // Implementation note.
+                this->tile_length = tiling.tileLen; // Implementation note.
                 
                 this->t1 = static_cast<half>(tiling.t1);
                 this->t2 = static_cast<half>(tiling.t2);
                 this->t3 = static_cast<half>(tiling.t3);
                 
-                if (this->core_id < this->former_num * this->tile_num) { // 大块核
+                if (this->core_id < this->former_num * this->tile_num) { // Implementation note.
                     this->start_row_idx = this->core_id / this->tile_num * this->former_length * this->tile_num + this->core_id % this->tile_num;
                     this->end_row_idx = this->start_row_idx + this->former_length;
-                } else { // 小块核
+                } else { // Implementation note.
                     this->start_row_idx = (this->former_num * this->former_length + (this->core_id / this->tile_num - this->former_num) * this->tail_length) * this->tile_num + this->core_id % this->tile_num;
                     this->end_row_idx = this->start_row_idx + this->tail_length;
                 }
-                this->x1_buf_global_.SetGlobalBuffer((__gm__ half*)x1 + this->start_row_idx * this->tile_length); // 每个核负责的行
-                this->out_buf_global_.SetGlobalBuffer((__gm__ half*)out_buf + this->start_row_idx * this->tile_length); // 每个核负责的行
-                this->x2_buf_global_.SetGlobalBuffer((__gm__ half*)x2 + this->core_id %  this->tile_num * this->tile_length); // 每个核负责的行
+                this->x1_buf_global_.SetGlobalBuffer((__gm__ half*)x1 + this->start_row_idx * this->tile_length); // Implementation note.
+                this->out_buf_global_.SetGlobalBuffer((__gm__ half*)out_buf + this->start_row_idx * this->tile_length); // Implementation note.
+                this->x2_buf_global_.SetGlobalBuffer((__gm__ half*)x2 + this->core_id %  this->tile_num * this->tile_length); // Implementation note.
         
-                pipe_.InitBuffer(this->x1_queue, BUFFER_NUM, this->tile_length * sizeof(half)); // 存放x1，每次放tile_length这么长
-                pipe_.InitBuffer(this->x2_buf, this->tile_length * sizeof(half)); // 每次都把x2全部拷贝进来
+                pipe_.InitBuffer(this->x1_queue, BUFFER_NUM, this->tile_length * sizeof(half)); // Implementation note.
+                pipe_.InitBuffer(this->x2_buf, this->tile_length * sizeof(half)); // Implementation note.
                 pipe_.InitBuffer(this->out_queue, BUFFER_NUM, this->tile_length * sizeof(half));
         
                 pipe_.InitBuffer(less_local_buf, this->tile_length * sizeof(uint8_t));
@@ -82,7 +82,7 @@ namespace Ascend
                 AscendC::LocalTensor<half>  x1_local = this->x1_queue.DeQue<half>();
                 AscendC::LocalTensor<half> out_local = this->out_queue.AllocTensor<half>();
         
-                /* 计算过程 */
+                // Implementation note.
                 AscendC::Muls<half>(x1_local, x1_local, this->t1, this->tile_length);
         
                 AscendC::Sigmoid<half, false>(out_local, x1_local, this->tile_length);
@@ -97,7 +97,7 @@ namespace Ascend
                 AscendC::Mul(out_local, out_local, this->x2_local, this->tile_length);
                 AscendC::Muls(out_local, out_local, static_cast<half>(this->t3), this->tile_length);
         
-                /* 计算过程 */
+                // Implementation note.
                 this->out_queue.EnQue(out_local);
                 this->x1_queue.FreeTensor(x1_local);
             }
@@ -121,13 +121,13 @@ namespace Ascend
             AscendC::GlobalTensor<half> out_buf_global_;
             AscendC::LocalTensor<half> x2_local;
             
-            int32_t former_num; // 大块核使用的核数
-            int32_t tail_num; // 小块核使用的核数
-            int32_t former_length; // 大块核每个核负责的行数
-            int32_t tail_length; // 小块核每个核负责的行数
+            int32_t former_num; // Implementation note.
+            int32_t tail_num; // Implementation note.
+            int32_t former_length; // Implementation note.
+            int32_t tail_length; // Implementation note.
         
-            int32_t tile_num; // 每个核每次循环的次数，tile_num * tile_length == 8192
-            int32_t tile_length; // 每个核每次循环的列数，先暂定1024
+            int32_t tile_num; // Implementation note.
+            int32_t tile_length; // Implementation note.
         
             int32_t start_row_idx;
             int32_t end_row_idx;
@@ -135,7 +135,7 @@ namespace Ascend
             int32_t core_id;
             half t1;
             half t2;
-            half t3; // 接收输入的3个标量
+            half t3; // Implementation note.
         
             float16_t half_two = 2.0;
     };

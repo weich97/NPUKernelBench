@@ -14,13 +14,13 @@ using namespace AscendC;
 
 __aicore__ inline int CalcValidBit(uint32_t unsortedProposalNum) {
   if (unsortedProposalNum == 0) {
-    return ONE_BIT; // 仅对前一条队列有效
+    return ONE_BIT; // Implementation note.
   } else if (unsortedProposalNum == 1) {
-    return THREE_BIT; // 仅对前两条队列有效
+    return THREE_BIT; // Implementation note.
   } else if (unsortedProposalNum == 2) {
-    return SEVEN_BIT; // 仅对前三条队列有效
+    return SEVEN_BIT; // Implementation note.
   } else {
-    return FIFTEEN_BIT; // 仅对前四条队列有效
+    return FIFTEEN_BIT; // Implementation note.
   }
 }
 
@@ -122,18 +122,18 @@ private:
 
   __aicore__ inline void EncodeIdxToProposal(uint32_t calcColNum)
   {
-    LocalTensor<T> idxFp16Local = idxBuf.Get<T>(); // 以float16格式读取
+    LocalTensor<T> idxFp16Local = idxBuf.Get<T>(); // Implementation note.
     LocalTensor<T> idxLow16Local = idxLow16Buf.Get<T>();
     LocalTensor<T> idxHigh16Local = idxHigh16Buf.Get<T>();
 
     // normal mode
-    uint32_t mask = 0; // normal模式下mask需要设置为0
-    uint16_t gatherRepeat = static_cast<uint16_t>(DivCeil(calcColNum * 2, (uint32_t)128)); // 处理量翻倍
-    uint64_t rsvdCntLow16 = 0;  //用于保存筛选后保留下来的元素个数
-    uint8_t Low16Pattern = 1; // 每两个元素取第一个元素
+    uint32_t mask = 0; // Implementation note.
+    uint16_t gatherRepeat = static_cast<uint16_t>(DivCeil(calcColNum * 2, (uint32_t)128)); // Implementation note.
+    uint64_t rsvdCntLow16 = 0; // Implementation note.
+    uint8_t Low16Pattern = 1; // Implementation note.
     GatherMask(idxLow16Local, idxFp16Local, Low16Pattern, false, mask, {1, gatherRepeat, 8, 0}, rsvdCntLow16);
-    uint64_t rsvdCntHigh16 = 0; // 用于保存筛选后保留下来的元素个数
-    uint8_t High16Pattern = 2; // 每两个元素取第二个元素
+    uint64_t rsvdCntHigh16 = 0; // Implementation note.
+    uint8_t High16Pattern = 2; // Implementation note.
     GatherMask(idxHigh16Local, idxFp16Local, High16Pattern, false, mask, {1, gatherRepeat, 8, 0}, rsvdCntHigh16);
     pipe_barrier(PIPE_V);
     LocalTensor<T> proposalLocal = proposalBuf.Get<T>();
@@ -148,7 +148,7 @@ private:
   {
     LocalTensor<T> valuesLocal = outQueueValues.AllocTensor<T>();
     LocalTensor<T> proposalOutLocal = proposalOutBuf.Get<T>();
-    ProposalExtract(valuesLocal, proposalOutLocal, DivCeil(calcRowNum * kValue, PROPOSAL_NUM_PER_REP), 4); // 从score位置取出
+    ProposalExtract(valuesLocal, proposalOutLocal, DivCeil(calcRowNum * kValue, PROPOSAL_NUM_PER_REP), 4); // Implementation note.
     pipe_barrier(PIPE_V);
     if (largest == 0) {
       Muls(valuesLocal, valuesLocal, static_cast<T>(-1.0), calcRowNum * kValue);
@@ -160,9 +160,9 @@ private:
   __aicore__ inline void DecodeIdxFromProposal(uint32_t calcRowNum)
   {
     LocalTensor<int32_t> indicesLocal = outQueueIndices.AllocTensor<int32_t>();
-    LocalTensor<int32_t> proposalOutInt32Local = proposalOutBuf.Get<int32_t>(); // 看作是int32的tensor
+    LocalTensor<int32_t> proposalOutInt32Local = proposalOutBuf.Get<int32_t>(); // Implementation note.
     uint64_t rsvdCnt = 0;
-    uint8_t int32Pattern = 3; // 每四个元素取第一个元素
+    uint8_t int32Pattern = 3; // Implementation note.
     uint16_t gatherRepeat = static_cast<uint16_t>(DivCeil(calcRowNum * kValue * 4, 64));
     GatherMask(indicesLocal, proposalOutInt32Local, int32Pattern, false, 0, {1, gatherRepeat, 8, 0}, rsvdCnt);
     pipe_barrier(PIPE_V);
@@ -172,19 +172,19 @@ private:
   __aicore__ inline void CopyIn(uint32_t gmBias, uint32_t calcColNum)
   {
     LocalTensor<T> xLocal = inQueueX.AllocTensor<T>();
-    DataCopy(xLocal, xGm[gmBias], DivCeil(calcColNum, FP16_BLK_SIZE) * FP16_BLK_SIZE); // 向上对齐
+    DataCopy(xLocal, xGm[gmBias], DivCeil(calcColNum, FP16_BLK_SIZE) * FP16_BLK_SIZE); // Implementation note.
     inQueueX.EnQue(xLocal);
   }
 
   __aicore__ inline void MrgSortCustom(uint32_t iInner, uint32_t j, uint32_t proposalRepeat, LocalTensor<T>& proposalLocal)
   {
     LocalTensor<T> proposalTopkLocal = proposalTopkDoubleBuf.Get<T>();
-    uint32_t headCount = (j == 0) ? 1 : 0; // 首次处理1个proposal，后续不处理
-    uint32_t bodyRepeat = (proposalRepeat - headCount) / 3; // 处理bodyRepeat * 3个proposal
+    uint32_t headCount = (j == 0) ? 1 : 0; // Implementation note.
+    uint32_t bodyRepeat = (proposalRepeat - headCount) / 3; // Implementation note.
     uint32_t tailCount = (proposalRepeat - headCount) % 3;
 
     uint16_t proposalNum = 16;
-    uint32_t elementNumPerRep = proposalNum * PROPOSAL_SIZE; // 16个proposals所含元素个数
+    uint32_t elementNumPerRep = proposalNum * PROPOSAL_SIZE; // Implementation note.
 
     if (headCount == 1) {
       struct MrgSortSrcList<T> srcList(proposalLocal, proposalLocal, proposalLocal, proposalLocal);
@@ -200,7 +200,7 @@ private:
                                        proposalLocal[elementNumPerRep * (headCount + 3 * n + 1)],
                                        proposalLocal[elementNumPerRep * (headCount + 3 * n + 2)]);
       uint16_t elementLengths[4] = {static_cast<uint16_t>(kValue), proposalNum, proposalNum, proposalNum};
-      struct MrgSort4Info srcInfo(elementLengths, true, 15, 1); //当k小于16时，可将ifExhaustedSuspension置为true
+      struct MrgSort4Info srcInfo(elementLengths, true, 15, 1); // Implementation note.
       pingpongIdx = pingpongIdx ^ 1; // 1->0, 0->1
       MrgSort4(proposalTopkLocal[pingpongIdx * pingpongAddrBias], srcList, srcInfo);
       pipe_barrier(PIPE_V);
@@ -245,7 +245,7 @@ private:
     }
 
     LocalTensor<T> proposalLocal = proposalBuf.Get<T>();
-    ProposalConcat(proposalLocal, xLocal, proposalRepeat, 4); // 合入score
+    ProposalConcat(proposalLocal, xLocal, proposalRepeat, 4); // Implementation note.
     pipe_barrier(PIPE_V);
     inQueueX.FreeTensor(xLocal);
 

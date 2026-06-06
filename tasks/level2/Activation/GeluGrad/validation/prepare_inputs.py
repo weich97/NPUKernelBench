@@ -9,10 +9,10 @@ def get_inputs(param, device=None):
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
 
-    # 创建dy输入
+    # Implementation note.
     dy = torch.rand(shape, device=device, dtype=dtype)
 
-    # 创建x输入
+    # Implementation note.
     x = torch.rand(shape, device=device, dtype=dtype)
 
     return [dy, x]

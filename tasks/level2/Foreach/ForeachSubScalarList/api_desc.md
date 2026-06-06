@@ -1,11 +1,15 @@
 # aclnnForeachSubScalarList
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-返回一个和输入张量列表同样形状大小的新张量列表，它的每一个张量是输入张量列表的每个张量进行scalar相减运算的结果。
+### Operator Semantics
+`aclnnForeachSubScalarList` is an Ascend NPU benchmark operator in the `level2` `Foreach` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.foreach_sub_scalar_list()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
+
 $$
 x = [x_0, x_1, ... x_{n-1}]\\
 scalar = [scalar_0, scalar_1, ... scalar_{n-1}]\\
@@ -16,45 +20,34 @@ $$
 y_i = x_i - scalar_i (i = 0, 1, ..., n - 1)
 $$
 
-## 接口定义
+## Interface Definition
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.foreach_sub_scalar_list()` 函数形式提供：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def foreach_sub_scalar_list(tensor_list, scalar_list):
-    """
-    实现自定义 ForeachSubScalarList 操作。
-    
-    参数:
-        tensor_list (List[Tensor]): 公式中的`x`，Device侧的aclTensorList，数据类型支持FLOAT、FLOAT16、BFLOAT16、INT32。数据格式支持ND，shape维度不高于8维。支持非连续的Tensor。
-        scalar_list (List[Scalar]): 公式中的`scalars`，Host侧的aclScalarList，数据格式支持ND。支持非连续的Tensor。`scalars`的数据类型仅支持FLOAT和INT64，且与输入参数的数据类型具有一定对应关系：
-    - 当入参`x`的数据类型为FLOAT、FLOAT16、BFLOAT16时，`scalars`的数据类型仅支持FLOAT。
-    - 当入参`x`的数据类型为INT32时，`scalars`的数据类型仅支持INT64。
-        
-    返回:
-        List[Tensor]: 公式中的`y`，Device侧的aclTensorList，数据类型支持FLOAT、FLOAT16、BFLOAT16、INT32，数据格式支持ND，shape维度不高于8维。数据类型、数据格式和shape跟入参`x`的数据类型、数据格式和shape一致。支持非连续的Tensor。
-    """
+    """Execute `aclnnForeachSubScalarList` on Ascend NPU tensors."""
+
 ```
 
-## 使用案例
+### Inputs
+- `tensor_list`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `scalar_list`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量列表
-tensor_list = [
-    torch.tensor([1.0, 2.0, 3.0], dtype=torch.float),
-    torch.tensor([[4.0, 5.0], [6.0, 7.0]], dtype=torch.float)
-]
-
-# 创建标量张量列表
-scalar_list = torch.tensor([1.2, 2.2], dtype=torch.float)
-
-# 使用 foreach_sub_scalar_list 执行计算
 result = kernel_gen_ops.foreach_sub_scalar_list(tensor_list, scalar_list)
 ```
 
-## 约束与限制
-无
+## Constraints and Notes
+
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

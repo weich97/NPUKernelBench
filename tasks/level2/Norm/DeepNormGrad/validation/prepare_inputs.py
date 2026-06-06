@@ -2,7 +2,7 @@ import torch
 
 def get_inputs(param, device=None):
     """
-    根据 DataFrame 行中的参数生成模型的输入张量列表和标量。
+    Reference implementation detail.
     """
     input_shape = eval(param.get('input_shape', '[1]'))
     normalized_shape = eval(param.get('normalized_shape', '[1]'))

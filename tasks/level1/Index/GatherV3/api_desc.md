@@ -1,62 +1,70 @@
 # aclnnGatherV3
 
-## 功能描述
+## Functional Description
 
-### 算子功能：
-从输入Tensor的指定维度dim，按index中的下标序号提取元素，保存到out Tensor中。
-例如，对于输入张量 $self=\begin{bmatrix}1 & 2 & 3 \\ 4 & 5 & 6 \\ 7 & 8 & 9\end{bmatrix}$ 和索引张量 index=[1, 0]，
-self.index_select(0, index)的结果： $y=\begin{bmatrix}4 & 5 & 6 \\ 1 & 2 & 3\end{bmatrix}$;
+### Operator Function
+The `GatherV3` operator extracts elements from an input tensor along a specified axis according to an index tensor, and writes the selected values to the output tensor.
 
-x.index_select(1, index)的结果： $y=\begin{bmatrix}2 & 1\\ 5 & 4\\8 & 7\end{bmatrix}$;
+For example, given:
 
-### 具体计算过程如下:
-以三维张量为例, shape为(3,2,2)的张量 **self** =$\begin{bmatrix}[[1,&2],&[3,&4]], \\ [[5,&6],&[7,&8]], \\ [[9,&10],&[11,&12]]\end{bmatrix}$   **index**=[1, 0], self张量dim=0、1、2对应的下标分别是$l、m、n$,  index是一维
+$$
+self = \begin{bmatrix}1 & 2 & 3 \\ 4 & 5 & 6 \\ 7 & 8 & 9\end{bmatrix}, \quad index = [1, 0]
+$$
 
-dim为0, index_select(0, index)：   I=index[i];  &nbsp;&nbsp;   out$[i][m][n]$ = self$[I][m][n]$
+`self.index_select(0, index)` produces:
 
-dim为1, index_select(1, index)：   J=index[j];  &nbsp;&nbsp;&nbsp;    out$[l][j][n]$ = self$[l][J][n]$
+$$
+\begin{bmatrix}4 & 5 & 6 \\ 1 & 2 & 3\end{bmatrix}
+$$
 
-dim为2, index_select(2, index)：   K=index[k]; &nbsp;  out$[l][m][k]$ = self$[l][m][K]$
+`self.index_select(1, index)` produces:
 
-## 接口定义
+$$
+\begin{bmatrix}2 & 1 \\ 5 & 4 \\ 8 & 7\end{bmatrix}
+$$
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.gather_v3()` 函数形式提供：
+### Computation Rule
+For a three-dimensional tensor `self` with logical indices `(l, m, n)` and an index vector `index`:
+
+- `axis = 0`: `I = index[i]`, then `out[i][m][n] = self[I][m][n]`.
+- `axis = 1`: `J = index[j]`, then `out[l][j][n] = self[l][J][n]`.
+- `axis = 2`: `K = index[k]`, then `out[l][m][k] = self[l][m][K]`.
+
+## Interface Definition
+
+### Python Interface
+The operation is exposed through a PyBind11 wrapper as `kernel_gen_ops.gather_v3()`:
 
 ```python
 def gather_v3(self_tensor, indices, axis):
     """
-    实现自定义GatherV3操作。
-    
-    参数:
-        self_tensor (Tensor): 输入张量，Device侧的张量，数据格式支持ND，数据类型支持float32, float16, bfloat16, int64, int16, int32, int8, uint64, uint16, uint32, uint8, bool。
-        indices (Tensor): 索引张量，Device侧的张量，数据格式支持ND，数据类型支持int32, int64。
-        axis (Tensor): 轴张量，Device侧的张量，数据格式支持ND，数据类型支持int64。
-        
-    返回:
-        Tensor: 计算结果张量，数据类型与self_tensor一致，数据格式支持ND。
-    
-    注意:
-        张量数据格式支持ND
+    Execute a custom GatherV3/index_select operation.
+
+    Args:
+        self_tensor (Tensor): Device-side input tensor in ND format. Supported data types include float32, float16, bfloat16, int64, int16, int32, int8, uint64, uint16, uint32, uint8, and bool.
+        indices (Tensor): Device-side index tensor in ND format. Supported data types are int32 and int64.
+        axis (Tensor): Device-side scalar or tensor specifying the gather axis. Supported data type is int64.
+
+    Returns:
+        Tensor: Gathered output tensor with the same data type as `self_tensor`.
     """
 ```
 
-## 使用案例
+## Example
 
 ```python
 import torch
 import kernel_gen_ops
 
-# 创建输入张量
 self_tensor = torch.randn(4, 2, dtype=torch.float16)
 indices = torch.tensor([1, 0], dtype=torch.int32)
 axis = torch.tensor([1], dtype=torch.int64)
 
-# 使用gather_v3执行计算
 result = kernel_gen_ops.gather_v3(self_tensor, indices, axis)
 ```
 
-## 约束与限制
+## Constraints and Limitations
 
-- 输入输出张量数据格式支持 ND。
-    
+- Input and output tensor data format: ND.
+- `indices` must contain valid positions along the selected axis.
+- The output data type matches `self_tensor`.

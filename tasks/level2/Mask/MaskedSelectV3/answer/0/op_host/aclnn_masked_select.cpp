@@ -34,7 +34,7 @@ using namespace op;
 extern "C" {
 #endif
 
-/* MaskedSelect 算子的完整计算流程如下:
+// Implementation note.
  * self                               mask
  *   |                                  |
  *   \                                  /
@@ -53,7 +53,7 @@ extern "C" {
 
 constexpr size_t MAX_DIM_LEN = 8;
 
-// 根据API定义，需要列出所能支持的所有dtype
+// Implementation note.
 static const std::initializer_list<op::DataType> SELF_DTYPE_SUPPORT_LIST_NOT_SUPPORT_BF16 = {
     op::DataType::DT_FLOAT,   op::DataType::DT_INT32,  op::DataType::DT_INT64,
     op::DataType::DT_FLOAT16, op::DataType::DT_INT16,  op::DataType::DT_INT8,
@@ -85,11 +85,11 @@ static const std::initializer_list<op::DataType> CheckSocVersionIsSupportBf16(vo
 
 static bool CheckDtypeValid(const aclTensor* self, const aclTensor* mask, const aclTensor* out) {
   auto SELF_DTYPE_SUPPORT_LIST = CheckSocVersionIsSupportBf16();
-  // 检查self的数据类型是否在maskedSelect算子的支持列表内
+  // Implementation note.
   OP_CHECK_DTYPE_NOT_SUPPORT(self, SELF_DTYPE_SUPPORT_LIST, return false);
-  // 检查mask的数据类型是否在maskedSelect算子的支持列表内
+  // Implementation note.
   OP_CHECK_DTYPE_NOT_SUPPORT(mask, MASK_DTYPE_SUPPORT_LIST, return false);
-  // 检查out的数据类型是否在maskedSelect算子的支持列表内
+  // Implementation note.
   OP_CHECK_DTYPE_NOT_SUPPORT(out, SELF_DTYPE_SUPPORT_LIST, return false);
 
   return true;
@@ -119,20 +119,20 @@ static bool CheckShape(const aclTensor* self, const aclTensor* mask, const aclTe
 }
 
 inline static aclnnStatus CheckParams(const aclTensor* self, const aclTensor* mask, const aclTensor* y) {
-  // 错误码等DFX方案细化后刷新，错误日志在check接口内打印
-  // 1. 检查参数是否为空指针
+  // Implementation note.
+  // Implementation note.
   CHECK_RET(CheckNotNull(self, mask, y), ACLNN_ERR_PARAM_NULLPTR);
 
-  // 2. 检查输入的数据类型是否在API支持的数据类型范围之内，需要根据api定义校验
+  // Implementation note.
   CHECK_RET(CheckDtypeValid(self, mask, y), ACLNN_ERR_PARAM_INVALID);
 
-  // 3. 检查输入形状是否满足
+  // Implementation note.
   CHECK_RET(CheckShape(self, mask, y), ACLNN_ERR_PARAM_INVALID);
 
   return ACLNN_SUCCESS;
 }
 
-// 根据芯片类型、dtype判断算子是否支持走AiCore
+// Implementation note.
 static bool IsAiCoreSupport(const aclTensor *self) {
   if (GetCurrentPlatformInfo().GetSocVersion() >= SocVersion::ASCEND910B &&
       GetCurrentPlatformInfo().GetSocVersion() <= SocVersion::ASCEND910E) {
@@ -147,34 +147,34 @@ aclnnStatus aclnnMaskedSelectV3GetWorkspaceSize(const aclTensor* self, const acl
   
   L2_DFX_PHASE_1(aclnnMaskedSelectV3, DFX_IN(self, mask), DFX_OUT(out));
 
-  // 固定写法，创建OpExecutor
+  // Implementation note.
   auto uniqueExecutor = CREATE_EXECUTOR();
   CHECK_RET(uniqueExecutor.get() != nullptr, ACLNN_ERR_INNER_CREATE_EXECUTOR);
 
-  // 固定写法，参数检查
+  // Implementation note.
   auto ret = CheckParams(self, mask, out);
   CHECK_RET(ret == ACLNN_SUCCESS, ret);
 
   if (self->IsEmpty() || mask->IsEmpty() || out->IsEmpty()) {
-    // 根据实际支持情况补充
+    // Implementation note.
     *workspaceSize = 0;
     uniqueExecutor.ReleaseTo(executor);
     return ACLNN_SUCCESS;
   }
 
-  // 固定写法，将输入self转换成连续的tensor
+  // Implementation note.
   auto selfContiguous = l0op::Contiguous(self, uniqueExecutor.get());
   CHECK_RET(selfContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 固定写法，将输入mask转换成连续的tensor
+  // Implementation note.
   auto maskContiguous = l0op::Contiguous(mask, uniqueExecutor.get());
   CHECK_RET(maskContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 将输入mask的数据类型转换成bool数据类型
+  // Implementation note.
   auto maskCasted = l0op::Cast(maskContiguous, DataType::DT_BOOL, uniqueExecutor.get());
   CHECK_RET(maskCasted != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 将输入self的数据类型转换成out数据类型
+  // Implementation note.
   auto selfCasted = l0op::Cast(selfContiguous, out->GetDataType(), uniqueExecutor.get());
   CHECK_RET(selfCasted != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
@@ -184,7 +184,7 @@ aclnnStatus aclnnMaskedSelectV3GetWorkspaceSize(const aclTensor* self, const acl
   maskBroadcast = maskCasted;
 
   if(IsAiCoreSupport(self)){
-    // 判断输入shape不相等需要调用BroadcastTo
+    // Implementation note.
     if (self->GetViewShape() != mask->GetViewShape()) {
       op::Shape broadcastShape;
       if (BroadcastInferShape(self->GetViewShape(), mask->GetViewShape(), broadcastShape)) {
@@ -197,19 +197,19 @@ aclnnStatus aclnnMaskedSelectV3GetWorkspaceSize(const aclTensor* self, const acl
         CHECK_RET(maskBroadcast != nullptr, ACLNN_ERR_INNER_NULLPTR);
       }
     }
-    // 调用MaskedSelect算子
+    // Implementation note.
     auto res = l0op::MaskedSelectV3(selfBroadcast, maskBroadcast, out, uniqueExecutor.get());
   }
   
-  // 固定写法，获取计算过程中需要使用的workspace大小
+  // Implementation note.
   *workspaceSize = uniqueExecutor->GetWorkspaceSize();
-  uniqueExecutor.ReleaseTo(executor);  // 需要把 uniqueExecutor持有executor转移给executor
+  uniqueExecutor.ReleaseTo(executor); // Implementation note.
   return ACLNN_SUCCESS;
 }
 
 aclnnStatus aclnnMaskedSelectV3(void* workspace, uint64_t workspaceSize, aclOpExecutor* executor, aclrtStream stream) {
   L2_DFX_PHASE_2(aclnnMaskedSelectV3);
-  // 固定写法，调用框架能力，完成计算
+  // Implementation note.
   return CommonOpExecutorRun(workspace, workspaceSize, executor, stream);
 }
 

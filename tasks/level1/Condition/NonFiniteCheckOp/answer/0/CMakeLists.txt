@@ -27,7 +27,7 @@ target_sources(op_host_aclnn PRIVATE
         op_host/non_finite_check_op_def.cpp
 )
 
-# 手动实现的aclnn
+# Manually implemented aclnn path.
 #target_sources(op_host_aclnnInner PRIVATE
 #        op_host/non_finite_check_op_def.cpp
 #)

@@ -15,7 +15,7 @@
 #include "register/op_def_registry.h"
 #include "tiling/platform/platform_ascendc.h"
 #define OP_LOGE(nodeName, fmt, ...) std::printf(fmt, ##__VA_ARGS__); std::printf("\n")
-constexpr int ABS_TILING_0 = 1; // 直接改变符号 :float16, bfp16, float32
+constexpr int ABS_TILING_0 = 1; // Implementation note.
 constexpr int ABS_TILING_1 = 2; //int32
 constexpr int ABS_TILING_2 = 3; //int64
 constexpr int ABS_TILING_3 = 4; //complex64

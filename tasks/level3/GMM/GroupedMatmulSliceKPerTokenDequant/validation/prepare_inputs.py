@@ -55,22 +55,22 @@ def custom_check_precision(param, outputs, outputs_new):
     outputs = outputs.to(torch.float32)
     outputs_new = outputs_new.to(torch.float32)
 
-    # 根据 compute_num 的值选择相对容忍度 (rtol)
+    # Implementation note.
     rtol = RTOL_GENERAL if compute_num < COMPUTE_NUM_THRESHOLD else RTOL_OVER_THRESHOLD
 
-    # 1. 计算绝对差值
+    # Implementation note.
     abs_diff = torch.abs(outputs - outputs_new)
 
-    # 2. 计算容忍度阈值
+    # Implementation note.
     tolerance = rtol * torch.maximum(torch.tensor(1.0, device=outputs.device), torch.abs(outputs))
 
-    # 3. 找出差异大于容忍度的位置
+    # Implementation note.
     error_mask = abs_diff > tolerance
 
-    # 检查是否有任何元素的差异超过了容忍度
+    # Implementation note.
     is_pass = 1 if not torch.any(error_mask) else 0
 
-    # 计算相对误差时，为防止分母为零，加上一个极小值 epsilon
+    # Implementation note.
     relative_diff = abs_diff / (torch.abs(outputs) + 1e-7)
 
     return is_pass, abs_diff, relative_diff

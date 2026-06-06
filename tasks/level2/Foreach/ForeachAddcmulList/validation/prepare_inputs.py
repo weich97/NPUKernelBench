@@ -9,18 +9,18 @@ def get_inputs(param, device=None):
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
 
-    # 创建随机张量列表
+    # Implementation note.
     x1 = []
     x2 = []
     x3 = []
     for shape in shape_list:
         if dtype == torch.int32:
-            # 整数类型使用randint
+            # Implementation note.
             x = torch.randint(-100, 100, shape, device=device, dtype=dtype)
             y = torch.randint(-100, 100, shape, device=device, dtype=dtype)
             z = torch.randint(-100, 100, shape, device=device, dtype=dtype)
         else:
-            # 浮点类型使用randn
+            # Implementation note.
             x = torch.rand(shape, device=device, dtype=dtype)
             y = torch.rand(shape, device=device, dtype=dtype)
             z = torch.rand(shape, device=device, dtype=dtype)
@@ -69,19 +69,19 @@ def custom_check_precision(param, outputs, outputs_new):
     all_abs_diff, all_rel_diff = [], []
     is_pass = 1
     for out, out_new in zip(outputs, outputs_new):
-        # 计算绝对差值、相对误差
+        # Implementation note.
         abs_diff = torch.abs(out - out_new)
         rel_diff = abs_diff / (torch.abs(out) + 1e-7)
         all_abs_diff.append(abs_diff.view(-1))
         all_rel_diff.append(rel_diff.view(-1))
 
-        # 计算容忍度阈值
+        # Implementation note.
         tolerance = rtol * torch.maximum(torch.tensor(1.0, device=out.device), torch.abs(out))
 
-        # 找出差异大于容忍度的位置
+        # Implementation note.
         error_mask = abs_diff > tolerance
 
-        # 检查是否有任何元素的差异超过了容忍度
+        # Implementation note.
         if torch.any(error_mask):
             is_pass = 0
 

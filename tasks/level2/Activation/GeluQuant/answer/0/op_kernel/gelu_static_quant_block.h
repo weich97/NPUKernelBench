@@ -22,7 +22,7 @@
 
 namespace GeluQuantALL {
 using namespace AscendC;
-// static quant performance template   单个矩形块处理，满核情况下单次处理多尾轴或者非满核时切分尾轴分核
+// Implementation note.
 
 template <typename T1, typename T2> class StaticQuantBlock : public GeluQuantBase {
 public:

@@ -8,7 +8,7 @@ namespace optiling
     const uint32_t BLOCK_SIZE = 32;
     const uint32_t BUFFER_NUM = 2;
 
-    static ge::graphStatus TilingFunc(gert::TilingContext *context) // Tiling函数实现
+    static ge::graphStatus TilingFunc(gert::TilingContext *context) // Implementation note.
     {
         GeluGradTilingData tiling;
         uint64_t ubSize;
@@ -57,21 +57,21 @@ namespace optiling
         }
 
         tiling.set_smallCoreDataNum(smallCoreDataNum);
-        // 一个小核数据个数
+        // Implementation note.
         tiling.set_bigCoreDataNum(bigCoreDataNum);
-        // 一个大核数据个数
+        // Implementation note.
         tiling.set_tileDataNum(tileDataNum);
-        // 一次搬运的数据个数
+        // Implementation note.
         tiling.set_smallTailDataNum(smallTailDataNum);
-        // 小核尾块数据个数
+        // Implementation note.
         tiling.set_bigTailDataNum(bigTailDataNum);
-        // 大核尾块数据个数
+        // Implementation note.
         tiling.set_finalSmallTileNum(finalSmallTileNum);
-        // 小核搬运次数
+        // Implementation note.
         tiling.set_finalBigTileNum(finalBigTileNum);
-        // 大核搬运次数
+        // Implementation note.
         tiling.set_tailBlockNum(tailBlockNum);
-        // 大核数
+        // Implementation note.
         tiling.set_versionNum(versionNum);
 
         context->SetBlockDim(coreNum);

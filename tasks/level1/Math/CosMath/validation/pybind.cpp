@@ -7,10 +7,10 @@
  */
 
 /**
- * 使用说明：
- * 此文件为Cos算子的pybind接口文件，提供了custom_pybind_api函数，用于调用NPU自定义算子进行计算。
- * 输入参数为一个at::Tensor类型的张量，输出为一个at::Tensor类型的张量，该张量是输入张量每个元素的余弦值。
- * 在调用时，首先会分配输出内存，然后调用EXEC_NPU_CMD来执行NPU自定义算子进行计算。
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
  */
 at::Tensor custom_pybind_api(at::Tensor &x)
 {

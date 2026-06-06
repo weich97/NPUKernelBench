@@ -93,7 +93,7 @@ private:
                 Cast(p1, xLocal, RoundMode::CAST_NONE, this->processDataNum);
                 Cast(p2, dyLocal, RoundMode::CAST_NONE, this->processDataNum);
 
-                // 计算
+                // Implementation note.
                 Mul(p3, p1, p1, this->processDataNum);      // x*2
                 Muls(p3, p3, COEFF0, this->processDataNum); // x^2*COEFF0
                 Adds(p3, p3, COEFF1, this->processDataNum); // x^2*COEFF0+COEFF1

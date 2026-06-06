@@ -29,7 +29,7 @@ namespace l0op {
 
 OP_TYPE_REGISTER(MaskedSelectV3);
 
-// AICORE算子kernel
+// Implementation note.
 static const aclTensor* MaskedSelectAiCore(const aclTensor* self, const aclTensor* mask, aclTensor* out, aclOpExecutor* executor) {
   op::Shape broadcastShape;
   if (!BroadcastInferShape(self->GetStorageShape(), mask->GetStorageShape(), broadcastShape)) {
@@ -39,12 +39,12 @@ static const aclTensor* MaskedSelectAiCore(const aclTensor* self, const aclTenso
   }
 
   L0_DFX(MaskedSelectAiCore, self, mask, out);
-  // outShapeTensor用于执行期放置实际shape，并用于刷新out的大小。
+  // Implementation note.
   Shape outShapeShape{2};
   auto outShapeTensor = executor->AllocTensor(outShapeShape, DataType::DT_INT64, Format::FORMAT_ND);
   CHECK_RET(outShapeTensor != nullptr, nullptr);
-  // 使用框架宏ADD_TO_LAUNCHER_LIST_AICORE，将MaskedSelect算子加入任务队列
-  // MaskedSelect是算子的OpType，self是算子的输入，out是算子的输出
+  // Implementation note.
+  // Implementation note.
   auto ret = ADD_TO_LAUNCHER_LIST_AICORE(MaskedSelectV3,
                                          OP_INPUT(self, mask),
                                          OP_OUTPUT(out),

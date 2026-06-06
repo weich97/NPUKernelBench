@@ -1,44 +1,46 @@
 # aclnnsplitkMatmul
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-该Ascend C算子用于执行两个二维矩阵的乘法运算，即 `A` 乘以 `B`。与常规矩阵乘法不同，该算子采用了一种名为“Split-K”的性能优化策略。通过在 `k` 维度上对计算任务进行切分和并行化，该算子能够更有效地利用昇腾AI处理器的计算资源，尤其是在处理具有较大 `k` 维度的矩阵时，可以显著提升计算效率和吞吐量。
+### Operator Semantics
+`aclnnsplitkMatmul` is an Ascend NPU benchmark operator in the `level3` `GMM` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.splitk_matmul()`.
 
-### 计算公式
-假设输入张量为 $A$（维度为 $m \times k$）和 $B$（维度为 $k \times n$），输出张量为 $C$（维度为 $m \times n$）。
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-基础矩阵乘法的计算公式为：
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
+
 $$C_{ij} = \sum_{p=1}^{k} A_{ip} B_{pj}$$
-
-“Split-K”策略将此计算分解为 $S$ 个子任务的和。它将矩阵 $A$ 沿 `k` 维度（列）切分为 $S$ 个子矩阵 $[A_1, A_2, ..., A_S]$，并将矩阵 $B$ 沿 `k` 维度（行）切分为 $S$ 个子矩阵 $[B_1^T, B_2^T, ..., B_S^T]^T$。总的计算公式演变为：
 
 $$C = \sum_{s=1}^{S} A_s B_s$$
 
-其中，$S$ 是根据矩阵维度和硬件核心数量动态决定的切分因子（`splitkFactor`）。
+## Interface Definition
 
-### 计算过程与类型转换
-为了在执行大规模累加操作时保持较高的数值精度，并有效防止数据溢出，该算子在内部计算过程中采用了高精度累加的策略。具体流程如下：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
-1.  算子接收两个数据类型为 `float16` 的输入张量 `a` 和 `b`。
-2.  根据“Split-K”策略，将原始的矩阵乘法任务分解为多个并行的子任务。
-3.  在执行每个子任务的乘加计算时，内部的累加器（Accumulator）会使用 `float32` 类型。即 `float16` 的乘积结果会先转换为 `float32`，再进行累加，生成 `float32` 类型的局部和。
-4.  所有并行子任务的 `float32` 局部和将被累加，得到最终的 `float32` 结果张量。
-5.  最后，将 `float32` 的结果张量转换回 `float16` 类型，作为最终的输出。
+```python
+def splitk_matmul(*args, **kwargs):
+    """Execute `aclnnsplitkMatmul` on Ascend NPU tensors."""
 
-## 接口定义
+```
 
-### 算子原型定义接口
-#### Input
-- a：Device侧的aclTensor，公式中的A，数据类型支持float16，维度支持2维，数据格式支持ND。
-- b：Device侧的aclTensor，公式中的B，数据类型支持float16，维度支持2维，数据格式支持ND。
-#### Output
-- c：Device侧的aclTensor，公式中的C，数据类型支持float16，维度支持2维，数据格式支持ND。
-#### Attr
-- 无
+### Inputs
+- Operator arguments are supplied by the benchmark input generator and follow the reference validation signature.
 
-## 约束与限制
-  * 输入张量 `a` 和 `b` 的数据类型当前仅支持 `float16`。
-  * 输入张量 `a` 和 `b` 必须为二维矩阵。
-  * `a` 的第二个维度（列数）必须与 `b` 的第一个维度（行数）相等。
-  * 输入张量的数据格式只支持ND。
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
+
+```python
+import kernel_gen_ops
+
+result = kernel_gen_ops.splitk_matmul(...)
+```
+
+## Constraints and Notes
+
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

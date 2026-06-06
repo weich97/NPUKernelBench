@@ -118,7 +118,7 @@ private:
 
         uint64_t blockMask = 0;
         uint64_t remainRepeat = row % BLOCK_NUM_PER_REP;
-        // 组装一个block的mask构成
+        // Implementation note.
         if (formerLoops < TRANSPOSE_C0_SIZE) {
             for (uint32_t i = 0; i < UINT16_BIT_SIZE; i++) {
                 if (i < UINT16_BIT_SIZE - formerLoops) {
@@ -166,16 +166,16 @@ private:
                 }
             }
             DataCopy(dstTensor[ubOffset], xGm[xGmOffset + gmOffset], xCopyParams);
-            // gm偏移连续，每次偏curFactor * row
+            // Implementation note.
             gmOffset += curFactor * row;
-            // ub偏移对齐，每次固定rFormerAxisAlign
+            // Implementation note.
             ubOffset += rFormerAxisAlign;
         }
     }
 
     __aicore__ inline void CopyInGammaBeta()
     {
-        // 搬入inputGamma和inputBeta并cast
+        // Implementation note.
         DataCopyParams copyParams;
         copyParams.blockCount = 1;
         copyParams.blockLen = (row + GAMMA_NUM_PER_BLOCK - 1) / GAMMA_NUM_PER_BLOCK;
@@ -217,8 +217,8 @@ private:
     __aicore__ inline void DoTranspose(LocalTensor<Tfm> &dstTensor, LocalTensor<Tfm> &srcTensor)
     {
         /*
-        tiling限制repeat不大于255
-        暂只支持bloat16和float16
+        // Implementation note.
+        // Implementation note.
         */
         __ubuf__ Tfm *srcAddr = (__ubuf__ Tfm *)srcTensor.GetPhyAddr();
         __ubuf__ Tfm *dstAddr = (__ubuf__ Tfm *)dstTensor.GetPhyAddr();
@@ -242,13 +242,13 @@ private:
     __aicore__ inline void DoReshape(LocalTensor<Tfm> &dstTensor, LocalTensor<Tfm> &srcTensor)
     {
         /*
-        仅支持16数据类型
+        // Implementation note.
         */
-        // 一个repeat处理（128 / 16）行数据
+        // Implementation note.
         uint64_t repeatTimes = row / BLOCK_NUM_PER_REP;
         uint64_t remainRepeat = row % BLOCK_NUM_PER_REP;
         uint64_t mask = ELEM_PER_REP_FP16;
-        // 清0处理
+        // Implementation note.
         if (formerLoops < TRANSPOSE_C0_SIZE) {
             if (repeatTimes) {
                 uint64_t maskDup[2] = {formerMask, formerMask};
@@ -308,8 +308,8 @@ private:
     __aicore__ inline void DoReduce(LocalTensor<float> &dstTensor, LocalTensor<float> &srcTensor)
     {
         /*
-        srcTensor为reduce之前的Tensor: row * rowLineElements
-        dstTensor为存放reduce结果的tensor: rowLineElements
+        // Implementation note.
+        // Implementation note.
         */
         uint64_t nowRows = row;
         if (nowRows == 1) {
@@ -317,7 +317,7 @@ private:
             pipe_barrier(PIPE_V);
             return;
         }
-        // row为非二次幂，先将二次幂差值行加到前面
+        // Implementation note.
         if (dichotomizeAddDiffSize != 0) {
             Add(srcTensor,
                 srcTensor,
@@ -340,9 +340,9 @@ private:
     __aicore__ inline void DoSub(LocalTensor<float> &dstTensor, LocalTensor<float> &src1Tensor)
     {
         /*
-        dst复用src0，大小为row * rowLineElements
-        src1大小为rowLineElements
-        做inline broadcast的sub计算
+        // Implementation note.
+        // Implementation note.
+        // Implementation note.
         */
         if (((rowLineElements / ELEM_PER_REP_FP32) < row) && (rowLineElements < (MAX_REP_NUM * BLOCK_NUM_PER_REP))) {
             for (uint32_t i = 0; i < (rowLineElements / ELEM_PER_REP_FP32); i++) {
@@ -382,8 +382,8 @@ private:
         LocalTensor<float> &dstTensor, LocalTensor<float> &src0Tensor, LocalTensor<float> &src1Tensor)
     {
         /*
-        src0Tensor为置1的一个block的tensor
-        src1Tensor和dstTensor大小为rowLineElements
+        // Implementation note.
+        // Implementation note.
         */
         uint64_t repeatTimes = rowLineElements / ELEM_PER_REP_FP32;
         uint64_t repeatRemain = rowLineElements % ELEM_PER_REP_FP32;
@@ -408,9 +408,9 @@ private:
     __aicore__ inline void DoMul(LocalTensor<float> &dstTensor, LocalTensor<float> &src1Tensor)
     {
         /*
-        dst复用src0，大小为row * rowLineElements
-        src1大小为rowLineElements
-        做inline broadcast的mul计算
+        // Implementation note.
+        // Implementation note.
+        // Implementation note.
         */
         if (((rowLineElements / ELEM_PER_REP_FP32) < row) && (rowLineElements < (MAX_REP_NUM * BLOCK_NUM_PER_REP))) {
             for (uint32_t i = 0; i < (rowLineElements / ELEM_PER_REP_FP32); i++) {
@@ -513,8 +513,8 @@ private:
     __aicore__ inline void DoPostTranspose(LocalTensor<Tfm> &dstTensor, LocalTensor<Tfm> &srcTensor)
     {
         /*
-        tiling限制repeat不大于255
-        暂只支持bloat16和float16
+        // Implementation note.
+        // Implementation note.
         */
         __ubuf__ Tfm *srcAddr = (__ubuf__ Tfm *)srcTensor.GetPhyAddr();
         __ubuf__ Tfm *dstAddr = (__ubuf__ Tfm *)dstTensor.GetPhyAddr();
@@ -538,8 +538,8 @@ private:
     __aicore__ inline void DoMeanOrRstdTranspose(LocalTensor<float> &dstTensor, LocalTensor<float> &srcTensor)
     {
         /*
-        tiling限制repeat不大于255
-        只支持fp32
+        // Implementation note.
+        // Implementation note.
         */
         __ubuf__ float *srcAddr = (__ubuf__ float *)srcTensor.GetPhyAddr();
         __ubuf__ float *dstAddr = (__ubuf__ float *)dstTensor.GetPhyAddr();
@@ -553,7 +553,7 @@ private:
             transDataParams.srcRepStride = 0;
             transDataParams.dstRepStride = 0;
         }
-        // fp32数据需要处理上下两部分
+        // Implementation note.
         for (uint32_t i = 0; i < (FLOAT_SIZE / HALF_SIZE); i++) {
             for (uint32_t j = 0; j < TRANSPOSE_C0_SIZE; j++) {
                 srcLocalList[j] = srcAddr + FP32_TRANSPOSE_DST_SIZE * i + TRANSPOSE_C0_SIZE * j;
@@ -575,10 +575,10 @@ private:
         LocalTensor<T> &dstTensor, LocalTensor<T> &srcTensor, uint32_t rowNum, uint32_t lineLength)
     {
         /*
-        rowNum 表示一行中一个有效元素组的元素个数
-        lineLength表示ub中，一行的长度
+        // Implementation note.
+        // Implementation note.
         */
-        // pipe_s等pipe_v
+        // Implementation note.
         pipe_barrier(PIPE_ALL);
         uint32_t blockAlignNum = BLOCK / sizeof(T);
         uint32_t setValueNum = 0;
@@ -604,14 +604,14 @@ private:
                 }
             }
         }
-        // pipe_mte3等pipe_s
+        // Implementation note.
         pipe_barrier(PIPE_ALL);
     }
 
     __aicore__ inline void CopyOutMeanOrRstd(GlobalTensor<float> outGm, LocalTensor<float> &srcTensor)
     {
         /*
-        16次重复按block搬运，gm按有效元素偏移，并校验是否踩多核，如果踩多核，提前退出，使用scalar拼接最后一个block数据
+        // Implementation note.
         */
         uint32_t curNum = bFormerFactor;
         uint32_t loopNums = TRANSPOSE_C0_SIZE;
@@ -719,7 +719,7 @@ private:
         pipe_barrier(PIPE_V);
 
         LocalTensor<float> mulTempTensor = tmpBuf.Get<float>();
-        // xLocalFp32需要驻留
+        // Implementation note.
         Muls(mulTempTensor, xLocalFp32, coefficient, calcXElements);
         pipe_barrier(PIPE_V);
         LocalTensor<float> outTempTensor = outQueueRstd.AllocTensor<float>();
@@ -735,7 +735,7 @@ private:
         CopyOutMeanOrRstd(meanGm, outMeanTensor);
         outQueueMean.FreeTensor(outMeanTensor);
 
-        // do mul2, xLocalFp32需要驻留
+        // Implementation note.
         LocalTensor<float> mul2TempTensor = tmpBuf.Get<float>();
         Mul(mul2TempTensor, xLocalFp32, xLocalFp32, calcXElements);
         pipe_barrier(PIPE_V);
@@ -835,21 +835,21 @@ private:
     // in ub loop col size
     uint64_t colLength = 0;
 
-    // x搬入时整块的借轴因子
+    // Implementation note.
     uint32_t bFormerFactor = 0;
-    // x搬入时一行整块的对齐长度
+    // Implementation note.
     uint32_t rFormerAxisAlign = 0;
-    // x搬入时尾块的借轴因子
+    // Implementation note.
     uint32_t bTailFactor = 0;
-    // x搬入时一行尾块的对齐长度
+    // Implementation note.
     uint32_t rTailAxisAlign = 0;
-    // 整块搬入的循环次数
+    // Implementation note.
     uint32_t formerLoops = 0;
-    // 重排后x基本块的元素个数
+    // Implementation note.
     uint64_t calcXElements;
-    // 重排后x做row Reduce后的元素个数
+    // Implementation note.
     uint64_t rowLineElements;
-    // Duplicate清零脏数据的mask
+    // Implementation note.
     uint64_t formerMask = 0;
     uint64_t remainMaskLow = 0;
     uint64_t remainMaskHigh = 0;

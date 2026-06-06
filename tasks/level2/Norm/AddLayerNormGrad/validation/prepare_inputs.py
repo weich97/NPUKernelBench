@@ -52,19 +52,19 @@ def custom_check_precision(param, outputs, outputs_new):
     all_abs_diff, all_rel_diff = [], []
     is_pass = 1
     for out, out_new in zip(outputs, outputs_new):
-        # 计算绝对差值、相对误差
+        # Implementation note.
         abs_diff = torch.abs(out - out_new)
         rel_diff = abs_diff / (torch.abs(out) + 1e-7)
         all_abs_diff.append(abs_diff.view(-1))
         all_rel_diff.append(rel_diff.view(-1))
 
-        # 计算容忍度阈值
+        # Implementation note.
         tolerance = rtol * torch.maximum(torch.tensor(1.0, device=out.device), torch.abs(out))
 
-        # 找出差异大于容忍度的位置
+        # Implementation note.
         error_mask = abs_diff > tolerance
 
-        # 检查是否有任何元素的差异超过了容忍度
+        # Implementation note.
         if torch.any(error_mask):
             is_pass = 0
 

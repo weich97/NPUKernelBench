@@ -51,15 +51,15 @@ constexpr uint32_t UB_RESERVED_BUFF = 0; // reserve 0k
 constexpr uint32_t PACK_UINT_IN_CACHE_512B = 512; // pack unit in cache 512B
 constexpr uint32_t ALIGN_UINT_IN_CACHE_32B = 32; // align unit in cache 32B
 constexpr uint32_t ALIGN_UINT_IN_CACHE_64B = 64; // align unit in cache 64B
-constexpr uint32_t ALIGN_TYPE_INT32 = 8; //int32 对齐32字节
+constexpr uint32_t ALIGN_TYPE_INT32 = 8; // Implementation note.
 constexpr uint32_t DEFAULT_BUFFER_NUM = 2;
-constexpr uint32_t MAX_BLOCK_COUNT = 4095; // datacopy指令包含的连续传输数据块的最大个数
-constexpr uint32_t MAX_BLOCK_LEN = 2097120; // 65535 * 32 datacopy指令每个连续传输数据块的最长长度为65535，单位为32bytes
+constexpr uint32_t MAX_BLOCK_COUNT = 4095; // Implementation note.
+constexpr uint32_t MAX_BLOCK_LEN = 2097120; // Implementation note.
 constexpr uint32_t MAX_UINT32 = 4294967295;
 constexpr uint32_t MAX_CORE_NUMBER = 64;
-constexpr uint16_t DISCONTINE_COPY_MAX_BLOCKCNT = 4095; // 非连续拷贝，blockCount最大值,AscendC接口限制
-constexpr uint16_t DISCONTINE_COPY_MAX_BLOCKLEN = 65535; // 非连续拷贝，blockLen最大值,AscendC接口限制
-constexpr uint16_t DISCONTINE_COPY_MAX_STRIDE = 65535; // 非连续拷贝，srcStride/dstStride最大值,AscendC接口限制
+constexpr uint16_t DISCONTINE_COPY_MAX_BLOCKCNT = 4095; // Implementation note.
+constexpr uint16_t DISCONTINE_COPY_MAX_BLOCKLEN = 65535; // Implementation note.
+constexpr uint16_t DISCONTINE_COPY_MAX_STRIDE = 65535; // Implementation note.
 
 static const uint32_t DYNAMIC_BF16_TBUF_NUM_HALF = 11;
 static const uint32_t DYNAMIC_BF16_INT16_TBUF_NUM_HALF = 6;
@@ -75,18 +75,18 @@ static const size_t INDEX_IN_QUANT_OFFSET = 5;
 static const size_t NUMBER_OF_INPUT_SIZE = 10;
 static const size_t USER_WORKSPACE = 16777216; // 16 * 1024 * 1024
 
-// Tiling优选参数
+// Implementation note.
 struct GluSingleTilingOptParam {
     // Maximum amount of data that can be transferred by an operator UB at a time. Unit:element
     uint32_t maxTileLen = 0;
-    uint32_t optBaseRowLen = 0; // 最优的BaseRowLen
-    uint32_t optBaseColLen = 0; // 最优的BaseColLen
-    uint64_t optTotalTileNum = 0; // 最优的分割后的数据块数量
-    uint64_t optBaseSize = 0; // 最优的分割后的base shape数据块的大小， optBaseRowLen*optBaseColLen, Unit:element
-    uint64_t optBaseTileNum = 0; // 最优的分割后的base shape数据块数量，不包含尾块
+    uint32_t optBaseRowLen = 0; // Implementation note.
+    uint32_t optBaseColLen = 0; // Implementation note.
+    uint64_t optTotalTileNum = 0; // Implementation note.
+    uint64_t optBaseSize = 0; // Implementation note.
+    uint64_t optBaseTileNum = 0; // Implementation note.
 
-    uint32_t totalUsedCoreNum = 0; // 最终实际使用的核数
-    uint64_t tileNumPerCore = 0; // 每个核需要处理的TileNum，如果不均匀，按照多的计算
+    uint32_t totalUsedCoreNum = 0; // Implementation note.
+    uint64_t tileNumPerCore = 0; // Implementation note.
 };
 
 class DequantSwigluQuantTiling : public TilingBaseClass {
@@ -110,19 +110,19 @@ protected:
         return false;
     }
 
-    // 1、获取平台信息比如CoreNum、UB/L1/L0C资源大小
+    // Implementation note.
     ge::graphStatus GetPlatformInfo() override;
-    // 2、获取INPUT/OUTPUT/ATTR信息
+    // Implementation note.
     ge::graphStatus GetShapeAttrsInfo() override;
-    // 3、计算数据切分TilingData
+    // Implementation note.
     ge::graphStatus DoOpTiling() override;
-    // 4、计算高阶API的TilingData
+    // Implementation note.
     ge::graphStatus DoLibApiTiling() override;
-    // 5、计算TilingKey
+    // Implementation note.
     uint64_t GetTilingKey() const override;
-    // 6、计算Workspace 大小
+    // Implementation note.
     ge::graphStatus GetWorkspaceSize() override;
-    // 7、保存Tiling数据
+    // Implementation note.
     ge::graphStatus PostTiling() override;
     void Reset();
 
@@ -160,11 +160,11 @@ private:
     uint32_t activateLeft = 0; // false <-> 0: activate right
     int32_t quantMode = 0;
     uint32_t maxTileLen = 0;
-    uint32_t optBaseRowLen = 0; // 最优的BaseRowLen
-    uint32_t optBaseColLen = 0; // 最优的BaseColLen
-    uint64_t optTotalTileNum = 0; // 最优的分割后的数据块数量
-    uint64_t optBaseSize = 0; // 最优的分割后的base shape数据块的大小， optBaseRowLen*optBaseColLen, Unit:element
-    uint64_t optBaseTileNum = 0; // 最优的分割后的base shape数据块数量，不包含尾块
+    uint32_t optBaseRowLen = 0; // Implementation note.
+    uint32_t optBaseColLen = 0; // Implementation note.
+    uint64_t optTotalTileNum = 0; // Implementation note.
+    uint64_t optBaseSize = 0; // Implementation note.
+    uint64_t optBaseTileNum = 0; // Implementation note.
     uint32_t ubMinBlockLen = 0;
     uint32_t cacheLineLen = 0;
     uint32_t alignPackLen = 0;
@@ -212,12 +212,12 @@ inline ge::graphStatus DequantSwigluQuantTiling::SetTotalShape(gert::TilingConte
         shapeBefore *= inShape.GetDim(i);
     }
     shapeAfter = inShape.GetDim(splitDim);
-    // 如果shape不是2的倍数,返回
+    // Implementation note.
 
     CHECK_FAIL(cont, shapeAfter % 2 != 0, "The shape dim of x dim must be even number");
 
     tilingData.set_rowLen(shapeBefore);
-    // colLen为原shape除以2
+    // Implementation note.
     tilingData.set_colLen(shapeAfter / 2);
     return ge::GRAPH_SUCCESS;
 }
@@ -236,7 +236,7 @@ ge::graphStatus DequantSwigluQuantTiling::checkWeightBiasActivate(gert::TilingCo
         CHECK_FAIL(context_, biasShapeSize != tilingData.get_colLen() * 2, "The shape of the bias is not equal to the last dimension of the xshape.");
     }
     tilingData.set_biasIsEmpty(biasShapeShapePtr == nullptr);
-    // int32时 weight_scale为必选项
+    // Implementation note.
     auto weightScaleShapePtr = context_->GetOptionalInputShape(1);
     OPS_CHECK_NULL_WITH_CONTEXT(context_, weightScaleShapePtr);
 
@@ -249,7 +249,7 @@ ge::graphStatus DequantSwigluQuantTiling::checkWeightBiasActivate(gert::TilingCo
     CHECK_FAIL(context_, weightScaleShapeSize != tilingData.get_colLen() * 2,
         "The shape of the weight scale is not equal to the last dimension of the xshape.");
 
-    // int32时 activate_scale为可选项
+    // Implementation note.
     auto activateScaleShapePtr = context_->GetOptionalInputShape(2);
     if (activateScaleShapePtr != nullptr) {
         auto activateScaleInputDesc = context_->GetOptionalInputDesc(2);
@@ -334,9 +334,9 @@ bool DequantSwigluQuantTiling::GetBufferNumAndDataLenPerUB(uint64_t ubSize, int3
     if (quantMode == 0) {
         if (dtype == ge::DT_INT32) {
             if ((biasDataType == ge::DT_INT32 || biasDataType == ge::DT_FLOAT)) {
-                singleDataSize = STATIC_BF16_TBUF_NUM_HALF * static_cast<uint32_t>(sizeof(float)) + static_cast<uint32_t>(sizeof(int8_t));            /* 11 -> float 块数量 */
+                // Implementation note.
             } else {
-                singleDataSize = STATIC_BF16_TBUF_NUM_HALF * static_cast<uint32_t>(sizeof(float)) + DYNAMIC_INT16_TBUF_NUM_HALF * static_cast<uint32_t>(sizeof(int16_t)) + static_cast<uint32_t>(sizeof(int8_t));            /* 11 -> float 块数量 */
+                // Implementation note.
             }
         } else if (dtype == ge::DT_FLOAT16 || dtype == ge::DT_BF16) {
             singleDataSize = STATIC_BF16_INT16_TBUF_NUM_HALF * static_cast<uint32_t>(sizeof(float)) + static_cast<uint32_t>(sizeof(int8_t));
@@ -354,7 +354,7 @@ bool DequantSwigluQuantTiling::CalcUbMaxTileLen(uint64_t ubSize, int32_t dtype, 
         OP_LOGE("DequantSwigluQuant", "CalcTiling Get maxTileLenPerUB %lu failed", maxTileLenPerUB);
         return false;
     }
-    optTiling.maxTileLen = AlignDown<uint64_t>(maxTileLenPerUB, ALIGN_UINT_IN_CACHE_32B); // 32个元素对齐
+    optTiling.maxTileLen = AlignDown<uint64_t>(maxTileLenPerUB, ALIGN_UINT_IN_CACHE_32B); // Implementation note.
     OP_LOGI("DequantSwigluQuant", "CalcTiling ubSize:%lu, maxTileLenPerUB:%u", ubSize, optTiling.maxTileLen);
     return true;
 }
@@ -369,7 +369,7 @@ uint32_t DequantSwigluQuantTiling::getBaseColLenUpBound(GluSingleTilingOptParam 
     }
 
     if (upBound < tilingData.get_colLen() && upBound > cacheLineLen) {
-        // 该种场景，每一个colLen至少被切割成2块，需要保证baseColLen为512B整数倍才高效
+        // Implementation note.
         return AlignDown<uint32_t>(upBound, cacheLineLen);
     } else {
         return upBound;
@@ -411,11 +411,11 @@ bool DequantSwigluQuantTiling::CalcOptBaseShape(GluSingleTilingOptParam& optTili
 
 bool DequantSwigluQuantTiling::CalcOptTiling(const uint64_t ubSize, const int32_t dtype, GluSingleTilingOptParam &optTiling)
 {
-    // 计算maxTilingLen
+    // Implementation note.
     if (!CalcUbMaxTileLen(ubSize, dtype, optTiling)) {
         return false;
     }
-    // 计算最优的base块形状
+    // Implementation note.
     if (!CalcOptBaseShape(optTiling, dtype)) {
         return false;
     }
@@ -431,7 +431,7 @@ bool DequantSwigluQuantTiling::CalcTiling(const uint32_t totalCores, const uint6
     }
     ubMinBlockLen = ALIGN_UINT_IN_CACHE_32B / inputDTypeLen; // min block size
     cacheLineLen = PACK_UINT_IN_CACHE_512B / inputDTypeLen; // bandwidth max efficiency
-    alignPackLen = cacheLineLen; // 默认512对齐，策略可调整
+    alignPackLen = cacheLineLen; // Implementation note.
     OP_LOGI("DequantSwigluQuant", "CalcTiling GetLengthByType:%u ubMinBlockLen:%u cacheLineLen:%u alignPackLen:%u", inputDTypeLen, ubMinBlockLen, cacheLineLen, alignPackLen);
     // Is 32-byte aligned for split colLen?
     tilingData.set_is32BAligned(tilingData.get_colLen() % ubMinBlockLen == 0);
@@ -446,7 +446,7 @@ bool DequantSwigluQuantTiling::CalcTiling(const uint32_t totalCores, const uint6
         return false;
     }
     const GluSingleTilingOptParam *const optTiling = &optTilingDb;
-    // 记录最优的结果
+    // Implementation note.
     tilingData.set_baseRowLen(optTiling->optBaseRowLen);
     tilingData.set_baseColLen(optTiling->optBaseColLen);
     totalUsedCoreNum = optTiling->totalUsedCoreNum;
@@ -457,7 +457,7 @@ bool DequantSwigluQuantTiling::CalcTiling(const uint32_t totalCores, const uint6
 
 ge::graphStatus DequantSwigluQuantTiling::GetShapeAttrsInfo() {
     opName = context_->GetNodeName();
-    // 获取输入shape
+    // Implementation note.
     auto xShapePtr = context_->GetInputShape(0);
     OPS_CHECK_NULL_WITH_CONTEXT(context_, xShapePtr);
     const gert::Shape xShape = xShapePtr->GetStorageShape();
@@ -468,7 +468,7 @@ ge::graphStatus DequantSwigluQuantTiling::GetShapeAttrsInfo() {
         return  ge::GRAPH_FAILED;
     }
 
-    // 获取输入属性
+    // Implementation note.
     const gert::RuntimeAttrs *attrs = context_->GetAttrs();
     OPS_CHECK_NULL_WITH_CONTEXT(context_, attrs);
 
@@ -596,7 +596,7 @@ uint64_t DequantSwigluQuantTiling::GetTilingKey() const {
 }
 
 ge::graphStatus DequantSwigluQuantTiling::GetWorkspaceSize() {
-    // 计算workspace大小，无需workspace临时空间，不存在多核同步，预留固定大小即可
+    // Implementation note.
     workspaceSize_ = USER_WORKSPACE;
     if (quantMode == 1 && (tilingData.get_colLen() > tilingData.get_baseColLen())) {
         workspaceSize_ += (totalUsedCoreNum * tilingData.get_colLen() * sizeof(float));

@@ -20,14 +20,14 @@ class Model(nn.Module):
 
     def forward(
         self,
-        grad_loss: torch.Tensor,          # [N] 或 []
+        grad_loss: torch.Tensor,  # Implementation note.
         log_softmax: torch.Tensor,        # [N, C]
         target: torch.Tensor,             # [N]
         grad_zloss: Optional[torch.Tensor],   # [C]
         lse_for_zloss: Optional[torch.Tensor]
     ) -> List[torch.Tensor]:
 
-        # ---------------- 统一转 float32 ----------------
+        # Implementation note.
         log_softmax_fp32 = log_softmax.to(torch.float32)
         grad_loss_fp32   = grad_loss.to(torch.float32)
         weight_fp32      = self.weight.to(torch.float32) if self.weight is not None \
@@ -36,8 +36,8 @@ class Model(nn.Module):
 
         batch_size, num_classes = log_softmax_fp32.shape
 
-        # --------------- 参考代码逻辑开始 ---------------
-        # 1. 根据 target 取出对应 weight
+        # Implementation note.
+        # Implementation note.
         weight_yn = torch.gather(weight_fp32, 0, target_fp32)          # [N]
 
         # 2. ignore_index mask
@@ -46,7 +46,7 @@ class Model(nn.Module):
         else:
             ignore_mask = torch.ones(batch_size, dtype=torch.float32, device=log_softmax.device)
 
-        # 3. 计算 loss_out_grad 与 smooth_loss_grad
+        # Implementation note.
         if self.reduction == "mean":
             mean_out_grad   = grad_loss_fp32 * (1.0 - self.label_smoothing)           # scalar
             weight_sum      = torch.sum(weight_yn * ignore_mask)                  # scalar
@@ -66,29 +66,29 @@ class Model(nn.Module):
             loss_out_grad   = none_out_grad                                       # [N]
             smooth_loss_grad = grad_loss_fp32 * self.label_smoothing / num_classes     # [N]
 
-        # 4. 应用 ignore mask
-        loss_out_grad   = loss_out_grad   * ignore_mask        # [N] 或 [1]
-        smooth_loss_grad = smooth_loss_grad * ignore_mask      # [N] 或 [1]
+        # Implementation note.
+        loss_out_grad   = loss_out_grad   * ignore_mask  # Implementation note.
+        smooth_loss_grad = smooth_loss_grad * ignore_mask  # Implementation note.
 
-        # 5. 乘以 weight_yn
+        # Implementation note.
         nll_loss_grad = loss_out_grad * weight_yn              # [N]
 
-        # 6. 计算 softmax 概率分支
+        # Implementation note.
         log_softmax_probs_grad_loss_out_sub_part = torch.exp(log_softmax_fp32) * nll_loss_grad.unsqueeze(-1)  # [N, C]
 
-        # 7. 构造 one-hot 并填充
+        # Implementation note.
         predictions_grad_loss_out = torch.zeros(batch_size, num_classes, dtype=torch.float32, device=log_softmax.device)
         predictions_grad_loss_out.scatter_(1, target_fp32.unsqueeze(-1), nll_loss_grad.unsqueeze(-1))
 
-        # 8. 最终梯度
+        # Implementation note.
         grad_input = log_softmax_probs_grad_loss_out_sub_part - predictions_grad_loss_out  # [N, C]
 
-        # 9. 平滑项梯度
+        # Implementation note.
         if self.label_smoothing > 0:
             smooth_grad = smooth_loss_grad.unsqueeze(-1) * torch.ones_like(log_softmax_fp32)  # [N, C]
             grad_input += smooth_grad
 
-        # ---------------- 转回原始 dtype ----------------
+        # Implementation note.
         return [grad_input.to(log_softmax.dtype)]
 
 

@@ -1,54 +1,44 @@
 # aclnnGroupedMatmulSliceK
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-该Ascend C算子用于执行一系列分组的矩阵乘法运算。与标准矩阵乘法不同，此算子将输入矩阵`a`和`b`沿其共享的`k`维度进行切片，并对每一片执行独立的矩阵乘法。切片的方式由`groupList`张量定义。
+### Operator Semantics
+`aclnnGroupedMatmulSliceK` is an Ascend NPU benchmark operator in the `level3` `GMM` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.grouped_matmul_slice_k()`.
 
-该算子适用于`m`和`n`维度固定，但中间`k`维度可变的场景，常见于处理变长序列或特征的先进模型中。它将多个小矩阵乘法打包成一个算子调用，提高了计算效率。
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-### 计算公式
-假设共有 $P$ 组矩阵乘法，由输入`groupList`的长度决定。`groupList` $G = \{g_0, g_1, ..., g_{P-1}\}$ 是一个包含 $P$ 个整数的张量，它定义了每组计算在`k`维度上的切片边界。
-
-我们定义一个累积边界序列 $S = \{s_0, s_1, ..., s_P\}$，其中 $s_0=0$ 且 $s_i = g_{i-1}$ 对于 $i \in [1, P]$。
-
-对于第 $i$ 组计算（$i$ 从 0 到 $P-1$）：
-1.  确定该组的`k`维度大小：$k_i = s_{i+1} - s_i$。
-2.  从输入张量`a`和`b`中逻辑上切分出第 $i$ 组的输入矩阵 $A_i$（维度为 $m \times k_i$）和 $B_i$（维度为 $k_i \times n$）。
-3.  执行标准矩阵乘法，得到该组的结果矩阵 $C_i$（维度为 $m \times n$）：
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
 
 $$ (C_i)_{jk} = \sum_{p=1}^{k_i} (A_i)_{jp} (B_i)_{pk} $$
 
-其中，$j$ 的范围是从 $1$ 到 $m$，$k$ 的范围是从 $1$ 到 $n$。
+## Interface Definition
 
-4.  如果某个分组的 $k_i=0$，则其对应的输出 $C_i$ 是一个全零矩阵。
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
-最终，所有分组的结果矩阵 $C_0, C_1, ..., C_{P-1}$ 被展平（Flatten）并沿主轴拼接（Concatenate），形成最终的一维输出张量`c`。
+```python
+def grouped_matmul_slice_k(*args, **kwargs):
+    """Execute `aclnnGroupedMatmulSliceK` on Ascend NPU tensors."""
 
-### 计算过程与类型转换
-为了在执行大规模累加操作时保持较高的数值精度，并有效防止数据溢出，该算子在内部计算过程中采用了高精度累加的策略。具体流程如下：
+```
 
-1.  算子接收两个数据类型为 `float16` 的输入张量 `a` 和 `b`。
-2.  在执行每组的乘加计算时，内部的累加器（Accumulator）会使用 `float32` 类型。也就是说，`float16` 的乘积结果会先转换为 `float32`，然后再进行累加。
-3.  所有累加计算完成后，得到 `float32` 类型的结果。
-4.  最后，将 `float32` 的结果张量转换回 `float16` 类型，作为最终的输出。
+### Inputs
+- Operator arguments are supplied by the benchmark input generator and follow the reference validation signature.
 
-## 接口定义
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
 
-### 算子原型定义接口
-#### Input
-- a：Device侧的aclTensor，包含所有分组的A矩阵数据，数据类型支持float16，维度支持2维，数据格式支持ND。
-- b：Device侧的aclTensor，包含所有分组的B矩阵数据，数据类型支持float16，维度支持2维，数据格式支持ND。
-- groupList：Device侧的aclTensor，定义了沿k维度分组的累积边界，数据类型支持int64，维度支持1维，数据格式支持ND。
-#### Output
-- c：Device侧的aclTensor，为所有分组计算结果展平后拼接而成的一维张量，数据类型支持float16，数据格式支持ND。
-#### Attr
-- 无
+## Usage Example
 
-## 约束与限制
-  * 输入张量 `a` 和 `b` 的数据类型当前仅支持 `float16`。
-  * 输入张量 `groupList` 的数据类型当前仅支持 `int64`。
-  * 输入张量 `a` 和 `b` 必须为二维矩阵，`groupList` 必须为一维张量。
-  * `a` 的第二个维度（总k值）必须与 `b` 的第一个维度（总k值）相等。
-  * `groupList` 中的值必须是单调非递减的，代表k维度的累积和。`groupList`的最后一个值必须等于`a`的第二个维度的大小。
-  * 所有输入和输出张量的数据格式只支持ND。
+```python
+import kernel_gen_ops
+
+result = kernel_gen_ops.grouped_matmul_slice_k(...)
+```
+
+## Constraints and Notes
+
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

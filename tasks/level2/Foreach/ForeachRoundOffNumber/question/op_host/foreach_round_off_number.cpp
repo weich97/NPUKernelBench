@@ -24,19 +24,19 @@ inline ge::DataType DtypeScalarToTensor2(ge::DataType dtype) {
 class ForeachRoundOffNumber : public OpDef {
 public:
     explicit ForeachRoundOffNumber(const char* name) : OpDef(name) {
-        /* 1. 准备张量 dtype 与格式 */
+        // Implementation note.
         std::vector<ge::DataType> tensor_dtype_list = {ge::DT_FLOAT16, ge::DT_FLOAT, ge::DT_BF16};
         std::vector<ge::Format>   format_list(tensor_dtype_list.size(), ge::FORMAT_ND);
 
-        /* 2. 准备 scalar dtype（根据 tensor dtype 映射） */
+        // Implementation note.
         std::vector<ge::DataType> scalar_tensor_dtype_list = {
             DtypeScalarToTensor2(ge::DT_FLOAT16),
             DtypeScalarToTensor2(ge::DT_FLOAT),
             DtypeScalarToTensor2(ge::DT_BF16)
         };
 
-        /* 3. 注册参数 */
-        /*   3.1 输入张量列表 x */
+        // Implementation note.
+        // Implementation note.
         this->Input("x")
             .ParamType(DYNAMIC)
             .DataType(tensor_dtype_list)
@@ -44,14 +44,14 @@ public:
             .UnknownShapeFormat(format_list)
             .AutoContiguous();
 
-        /*   3.2 输入标量   roundMode */
+        // Implementation note.
         this->Input("roundMode")
             .ParamType(REQUIRED)
             .DataType(scalar_tensor_dtype_list)
             .Format(format_list)
             .UnknownShapeFormat(format_list);
 
-        /* 3.3 输出张量列表 y */
+        // Implementation note.
         this->Output("y")
             .ParamType(DYNAMIC)
             .DataType(tensor_dtype_list)
@@ -59,7 +59,7 @@ public:
             .UnknownShapeFormat(format_list)
             .AutoContiguous();
 
-        /* 4. 核心设备配置 */
+        // Implementation note.
         this->AICore()
             .SetTiling(optiling::TilingFunc)
             .AddConfig("ascend910_93")

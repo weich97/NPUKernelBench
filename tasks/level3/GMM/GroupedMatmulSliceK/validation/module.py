@@ -10,12 +10,12 @@ import math
 
 class Model(nn.Module):
     """
-    实现add算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 

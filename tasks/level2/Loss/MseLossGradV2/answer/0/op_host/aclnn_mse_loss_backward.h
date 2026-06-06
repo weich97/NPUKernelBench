@@ -24,41 +24,41 @@ extern "C" {
 #endif
 
 /**
- * @brief aclnnMseLossBackward的第一段接口，根据具体的计算流程，计算workspace大小。
+ * Implementation note.
  * @domain aclnn_ops_train
  *
- * 算子功能：均方误差函数的反向传播。
+ * Implementation note.
  *
  * @param [in] gradOutput：npu
- * device侧的aclTensor，数据类型支持FLOAT、BFLOAT16、FLOAT16，数据类型需要与self相同，shape需要与self、target
- * 满足broadcast关系。支持非连续的Tensor，数据格式支持ND。
- * @param [in] self：npu device侧的aclTensor，数据类型支持FLOAT、BFLOAT16、FLOAT16，shape需要与gradOutput、target
- * 满足broadcast关系。支持非连续的Tensor，数据格式支持ND。
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
  * @param [in] target：npu
- * device侧的aclTensor，数据类型支持FLOAT、BFLOAT16、FLOAT16，数据类型需要与self相同，shape需要与gradOutput、self
- * 满足broadcast关系。支持非连续的Tensor，数据格式支持ND。
- * @param [in] reduction：host侧的int64，指定要应用到输出的缩减，支持 0('none') | 1('mean') | 2('sum')。'none'
- * 表示不应用减少， 'mean' 表示输出的总和将除以输出中的元素数，'sum' 表示输出将被求和。
- * @param [in] out：npu device侧的aclTensor，数据类型支持FLOAT、BFLOAT16、FLOAT16，shape需要是target与self、gradOutput
- * broadcast之后的shape。 支持非连续的Tensor，数据格式支持ND。
- * @param [out] workspaceSize: 返回用户需要在npu device侧申请的workspace大小。
- * @param [out] executor: 返回op执行器，包含算子计算流程。
- * @return aclnnStatus: 返回状态码。
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
  */
 ACLNN_API aclnnStatus aclnnMseLossBackwardGetWorkspaceSize(const aclTensor* gradOutput, const aclTensor* self,
                                                            const aclTensor* target, int64_t reduction, aclTensor* out,
                                                            uint64_t* workspaceSize, aclOpExecutor** executor);
 
 /**
- * @brief aclnnMseLossBackward的第二段接口，用于执行计算。
+ * Implementation note.
  *
- * 算子功能：均方误差函数的反向传播。
+ * Implementation note.
  *
- * @param [in] workspace: 在npu device侧申请的workspace内存起址。
- * @param [in] workspace_size: 在npu device侧申请的workspace大小，由第一段接口aclnnMseLossBackwardGetWorkspaceSize获取。
- * @param [in] executor: op执行器，包含了算子计算流程。
- * @param [in] stream: acl stream流。
- * @return aclnnStatus: 返回状态码。
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
  */
 ACLNN_API aclnnStatus aclnnMseLossBackward(void* workspace, uint64_t workspaceSize, aclOpExecutor* executor,
                                            aclrtStream stream);

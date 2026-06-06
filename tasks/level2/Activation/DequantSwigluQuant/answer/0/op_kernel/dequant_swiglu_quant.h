@@ -78,7 +78,7 @@ class DequantSwigluQuantBase {
 
   const DequantSwigluQuantBaseTilingData* tl_ = nullptr;
 };
-// 公共函数实现
+// Implementation note.
 
 template <typename T, typename TQuantScale, typename TGroup>
 __aicore__ inline void DequantSwigluQuantBase<T, TQuantScale, TGroup>::Init(

@@ -1,57 +1,47 @@
 # aclnnFastGeluGrad
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-‌`FastGeluGrad‌`是一种在`FastGelu`基础上进行升级的算子，`FastGeluGrad`算子在`FastGelu`的基础上增加了一个输入`dy`，使得其有两个输入和一个输出，不需要进行大幅度的数据搬迁。其主要目的是优化计算过程，减少类型转换的需求。
+### Operator Semantics
+`aclnnFastGeluGrad` is an Ascend NPU benchmark operator in the `level2` `Activation` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.fast_gelu_grad()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
 
 $$
   z = \text{d}y \frac {\exp(-1.702|x|) + 1.702x\exp(-1.702|x|) + \exp(1.702(x-|x|))} {(\exp(-1.702|x|) + 1) ^ 2}
 $$
 
-## 接口定义
+## Interface Definition
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.fast_gelu_grad()` 函数形式提供：
-
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def fast_gelu_grad(dy, x):
-    """
-    实现 FastGELU 激活函数的反向梯度计算。
-
-    参数:
-        dy (Tensor): 上游梯度，形状与 `x` 相同。
-        x (Tensor): 输入张量，原始的前向输入，Device 侧张量。
-
-    返回:
-        Tensor: 输出张量，与 `x` 形状一致，表示 FastGELU 的梯度值。数据类型与输入一致。
-
-    注意:
-        - 支持 ND 格式张量；
-        - 要求输入和梯度张量的数据类型一致；
-        - 推荐用于训练阶段进行反向传播。
-    """
+    """Execute `aclnnFastGeluGrad` on Ascend NPU tensors."""
 
 ```
 
-## 使用案例
+### Inputs
+- `dy`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `x`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
 
-```
-import torch
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
+
+```python
 import kernel_gen_ops
 
-# 创建上游梯度和输入
-dy = torch.randn(4, 8, 2048, dtype=torch.float32)     # 与 x 相同形状的上游梯度
-x = torch.randn(4, 8, 2048, dtype=torch.float32)      # 任意维度张量
-
-# 使用 fast_gelu_grad 计算反向梯度
-grad = kernel_gen_ops.fast_gelu_grad(dy, x)
+result = kernel_gen_ops.fast_gelu_grad(dy, x)
 ```
-## 约束与限制
 
-- 张量数据格式支持ND。
+## Constraints and Notes
 
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

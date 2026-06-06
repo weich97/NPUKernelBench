@@ -1,11 +1,14 @@
 # aclnnExpandV2
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-将输入张量x广播成指定shape的张量。该算子x参数仅支持int64输入。
+### Operator Semantics
+`aclnnExpandV2` is an Ascend NPU benchmark operator in the `level2` `TensorMove` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.expand_v2()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
 
 $$
   x = 
@@ -29,48 +32,34 @@ $$
   \right]
   $$
 
+## Interface Definition
 
-## 接口定义
-
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.expand_v2()` 函数形式提供：
-
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def expand_v2(x, shape):
-    """
-    参数:
-        x (Tensor): 输入张量，Device侧的张量，数据格式支持ND。
-        shape : 目标扩展形状。该形状中的维度值必须与原始张量兼容：
-            - 如果目标维度为 -1，则保持该维度与原始张量相同；
-            - 如果原始张量的某个维度为1，则该维度可以被扩展为任意值；
-            - 如果原始张量的维度不为1，则必须与目标维度相等。
-
-    返回:
-        Tensor: 输出张量，维度为 shape，数据类型与输入一致，数据格式支持ND。
-
-    注意:
-        - 该操作不会复制数据，返回的是原始张量的一个视图（view）；
-        - 原始张量的维度必须与 shape 中非 -1 的部分兼容；
-        - 扩展操作不支持在原始维度不为 1 的位置进行维度改变。
-    """
+    """Execute `aclnnExpandV2` on Ascend NPU tensors."""
 
 ```
 
-## 使用案例
+### Inputs
+- `x`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `shape`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量，shape 为 [3, 1]
-x = torch.tensor([[1], [2], [3]], dtype=torch.int64)
-
-# 目标扩展为 [3, 4]
-result = kernel_gen_ops.expand_v2(x, [3, 4])
+result = kernel_gen_ops.expand_v2(x, shape)
 ```
-## 约束与限制
 
-- 张量数据格式支持ND。
+## Constraints and Notes
 
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

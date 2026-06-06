@@ -84,7 +84,7 @@ __aicore__ inline void KernelForeachUnary<T, Predicate, bufferNum, paramsCount, 
 
 template <typename T, typename Predicate, int32_t bufferNum, uint8_t paramsCount, bool needCopyOut>
 __aicore__ inline void KernelForeachUnary<T, Predicate, bufferNum, paramsCount, needCopyOut>::Process() {
-    /*将中间量预留出来*/
+    // Implementation note.
     LocalTensor<float> float32Tensor;
     #if __CCE_AICORE__ == 220
         if (std::is_same_v<T, bfloat16_t>) {

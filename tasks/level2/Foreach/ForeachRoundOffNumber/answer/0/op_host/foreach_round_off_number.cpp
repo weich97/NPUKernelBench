@@ -51,10 +51,10 @@ namespace optiling {
     constexpr uint32_t FOREACH_LERP_LIST_UB_DIVIDER = 11;
     constexpr uint32_t FOREACH_SIN_DIVIDER = 4;
     constexpr uint32_t FOREACH_ERF_BUFFER_DIVIDER = 4;
-    constexpr uint32_t FOREACH_ERF_FLOAT_DIVIDER = 4; // erf float 预留 3 倍的输入空间
-    constexpr uint32_t FOREACH_ERF_HALF_DIVIDER = 9; // erf half 预留 8 倍的输入空间
-    constexpr uint32_t FOREACH_ERFC_FLOAT_DIVIDER = 8; // erfc float 预留 7 倍的输入空间
-    constexpr uint32_t FOREACH_ERFC_HALF_DIVIDER = 17; // erfc half 预留 16 倍的输入空间
+    constexpr uint32_t FOREACH_ERF_FLOAT_DIVIDER = 4; // Implementation note.
+    constexpr uint32_t FOREACH_ERF_HALF_DIVIDER = 9; // Implementation note.
+    constexpr uint32_t FOREACH_ERFC_FLOAT_DIVIDER = 8; // Implementation note.
+    constexpr uint32_t FOREACH_ERFC_HALF_DIVIDER = 17; // Implementation note.
 
     constexpr uint8_t ZERO_OP_CODE = 1;
     constexpr uint8_t SOLO_LOG_OP_CODE = 2;
@@ -951,7 +951,7 @@ public:
 
     explicit ForeachRoundOffNumber(const char* name) : OpDef(name) {
 
-        /* 1. 准备张量 dtype 与格式 */
+        // Implementation note.
 
         std::vector<ge::DataType> tensor_dtype_list = {ge::DT_FLOAT16, ge::DT_FLOAT, ge::DT_BF16};
 
@@ -959,7 +959,7 @@ public:
 
 
 
-        /* 2. 准备 scalar dtype（根据 tensor dtype 映射） */
+        // Implementation note.
 
         std::vector<ge::DataType> scalar_tensor_dtype_list = {
 
@@ -973,9 +973,9 @@ public:
 
 
 
-        /* 3. 注册参数 */
+        // Implementation note.
 
-        /*   3.1 输入张量列表 x */
+        // Implementation note.
 
         this->Input("x")
 
@@ -991,7 +991,7 @@ public:
 
 
 
-        /*   3.2 输入标量   roundMode */
+        // Implementation note.
 
         this->Input("roundMode")
 
@@ -1005,7 +1005,7 @@ public:
 
 
 
-        /* 3.3 输出张量列表 y */
+        // Implementation note.
 
         this->Output("y")
 
@@ -1021,7 +1021,7 @@ public:
 
 
 
-        /* 4. 核心设备配置 */
+        // Implementation note.
 
         this->AICore().AddConfig("ascend910b");
 

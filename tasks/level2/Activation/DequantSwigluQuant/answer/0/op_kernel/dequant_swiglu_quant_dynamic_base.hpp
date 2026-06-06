@@ -42,13 +42,13 @@ public:
         colNum = tilingData->colLen;
         rowNum = tilingData->rowLen;
         useCoreNum = tilingData->usedCoreNum;
-        // 每行为全载情况下每次最大拷贝行数
+        // Implementation note.
         baseRowLen = tilingData->baseRowLen;
         baseColLen = tilingData->baseColLen;
         if (rowNum < useCoreNum) {
             useCoreNum = rowNum;
         }
-        // 行全载和不全载情况下，分别判断是否对齐
+        // Implementation note.
         isMultiCols = baseRowLen == 1 && this->baseColLen < this->colNum;
         if (isMultiCols) {
             isOut32BAligned = baseColLen == Align(baseColLen, sizeof(InType));

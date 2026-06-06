@@ -43,10 +43,10 @@ namespace optiling {
     constexpr uint32_t FOREACH_LERP_LIST_UB_DIVIDER = 11;
     constexpr uint32_t FOREACH_SIN_DIVIDER = 4;
     constexpr uint32_t FOREACH_ERF_BUFFER_DIVIDER = 4;
-    constexpr uint32_t FOREACH_ERF_FLOAT_DIVIDER = 4;    // erf float 预留 3 倍的输入空间
-    constexpr uint32_t FOREACH_ERF_HALF_DIVIDER = 9;     // erf half 预留 8 倍的输入空间
-    constexpr uint32_t FOREACH_ERFC_FLOAT_DIVIDER = 8;   // erfc float 预留 7 倍的输入空间
-    constexpr uint32_t FOREACH_ERFC_HALF_DIVIDER = 17;   // erfc half 预留 16 倍的输入空间
+    constexpr uint32_t FOREACH_ERF_FLOAT_DIVIDER = 4; // Implementation note.
+    constexpr uint32_t FOREACH_ERF_HALF_DIVIDER = 9; // Implementation note.
+    constexpr uint32_t FOREACH_ERFC_FLOAT_DIVIDER = 8; // Implementation note.
+    constexpr uint32_t FOREACH_ERFC_HALF_DIVIDER = 17; // Implementation note.
     constexpr uint8_t ZERO_OP_CODE = 1;
     constexpr uint8_t SOLO_LOG_OP_CODE = 2;
     constexpr uint8_t BINARY_LIST_OP_CODE = 3;

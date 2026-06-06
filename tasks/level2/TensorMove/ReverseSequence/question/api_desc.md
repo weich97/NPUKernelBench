@@ -1,64 +1,42 @@
 # aclnnReverseSequence
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-`aclnnReverseSequence` 沿指定的序列维度（`seqDim`）反转每个批次（由 `batchDim` 指定）中变长序列的元素。序列的实际长度由 `seqLengths` 指定。
+### Operator Semantics
+`aclnnReverseSequence` is an Ascend NPU benchmark operator in the `level2` `TensorMove` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.reverse_sequence()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-对于一个输入张量 $x$ 和序列长度张量 $seqLengths$，沿维度 `seqDim`，对于批次维度 `batchDim` 中的每个批次 $b$，将前 $seqLengths[b]$ 个元素进行反转。其余元素保持不变。
+### Mathematical Definition
+The exact element-wise, reduction, indexing, tensor-construction, or in-place semantics are defined by the corresponding `validation/module.py` reference path and benchmark input generator. Implementations must match that reference behavior for all generated test cases.
 
-例如，如果 $x$ 的形状是 $[B, T, D]$，`seqDim=1`，`batchDim=0`，且 $seqLengths = [t_1, t_2, ..., t_B]$，那么对于每个 $i \in [0, B-1]$，`x[i, 0:t_i, :]` 将沿时间维度（维度 1）反转。
+## Interface Definition
 
-## 接口定义
-
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.reverse_sequence()` 函数形式提供：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
-def reverse_sequence(x: Tensor, seq_lengths: Tensor, seq_dim: int = 0, batch_dim: int = 1) -> Tensor:
-    """
-    沿指定的序列维度反转每个批次中变长序列的元素。
+def reverse_sequence(*args, **kwargs):
+    """Execute `aclnnReverseSequence` on Ascend NPU tensors."""
 
-    参数:
-        x (Tensor): 输入 Device 侧张量。支持的数据类型包括：
-                    torch.float16、torch.bfloat16、torch.float。
-                    支持非连续 Tensor，shape 维度不超过 8 维，数据格式支持 ND。
-        seq_lengths (Tensor): 一维的 Device 侧 int64 张量，包含每个批次的序列长度。
-                              其大小必须等于输入张量 `x` 在 `batch_dim` 上的大小。
-        seq_dim (int): 指定进行反转的序列维度。默认为 0。
-        batch_dim (int): 指定批次维度。默认为 1。
+```
 
-    返回:
-        Tensor: 输出张量，与输入张量 `x` 具有相同的形状和数据类型。
+### Inputs
+- Operator arguments are supplied by the benchmark input generator and follow the reference validation signature.
 
-    注意:
-        - `seqLengths` 的大小必须与输入张量在 `batch_dim` 上的大小一致。
-        - `seqDim` 和 `batchDim` 必须是有效的维度索引且不能相等。
-        - 支持非连续 Tensor。
-        - 支持的最大维度为 8 维。
-    """
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
 
-    import torch
-    import kernel_gen_ops
+## Usage Example
 
-    # 构造输入张量和序列长度
-    x = torch.randn(3, 5, 7, dtype=torch.float)
-    seq_lengths = torch.tensor([2, 4, 1], dtype=torch.int64)
-    seq_dim = 1
-    batch_dim = 0
+```python
+import kernel_gen_ops
 
-    # 执行 ReverseSequence 操作
-    y = kernel_gen_ops.reverse_sequence(x, seq_lengths, seq_dim, batch_dim)
+result = kernel_gen_ops.reverse_sequence(...)
+```
 
-    print("Shape of x:", x.shape)
-    print("Shape of y:", y.shape)
-    print("Sequence Lengths:", seq_lengths)
-    print("Sequence Dimension:", seq_dim)
-    print("Batch Dimension:", batch_dim)
+## Constraints and Notes
 
-### 约束与限制
-seqLengths 必须是一维张量。
-seqLengths 的大小必须等于输入张量在 batch_dim 上的大小。
-seqDim 和 batchDim 必须是有效的维度索引且不能相等。
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

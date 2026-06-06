@@ -187,7 +187,7 @@ ge::graphStatus BatchNormV3TilingBase::GetShapeAttrsInfo()
         return ge::GRAPH_FAILED;
     }
     commonParams.nodeName = context_->GetNodeName();
-    // 获取attr
+    // Implementation note.
     auto attrs = context_->GetAttrs();
     OPS_CHECK_NULL_WITH_CONTEXT(context_, attrs);
     const float *epsilon = attrs->GetFloat(EPS_ATTR_IDX);
@@ -202,11 +202,11 @@ ge::graphStatus BatchNormV3TilingBase::GetShapeAttrsInfo()
     OP_TILING_CHECK(!*isTraining,
         VECTOR_INNER_ERR_REPORT_TILIING(commonParams.nodeName, "Attr is_training false is not supported."),
         return ge::GRAPH_FAILED);
-    // check输入dtype
+    // Implementation note.
     OP_TILING_CHECK(!BatchNormV3TilingBase::CheckInputDtype(),
         VECTOR_INNER_ERR_REPORT_TILIING(commonParams.nodeName, "CheckInputDtype failed."),
         return ge::GRAPH_FAILED);
-    // check输入shape
+    // Implementation note.
     OP_TILING_CHECK(!BatchNormV3TilingBase::CheckInputShape(),
         VECTOR_INNER_ERR_REPORT_TILIING(commonParams.nodeName, "CheckInputShape failed."),
         return ge::GRAPH_FAILED);

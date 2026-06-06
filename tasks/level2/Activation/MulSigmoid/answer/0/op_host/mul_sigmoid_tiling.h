@@ -20,15 +20,15 @@
 
 namespace optiling {
 BEGIN_TILING_DATA_DEF(MulSigmoidTilingData)
-  TILING_DATA_FIELD_DEF(uint64_t, formerCoreNum); // 非尾核数据需要使用的核数
-  TILING_DATA_FIELD_DEF(uint64_t, formerCoreRowLen); // 非尾核每个核负责的row数
-  TILING_DATA_FIELD_DEF(uint64_t, tailCoreNum); // 尾核数据需要使用的核数
-  TILING_DATA_FIELD_DEF(uint64_t, tailCoreRowLen); // 尾核每个核负责的row数
-  TILING_DATA_FIELD_DEF(uint64_t, tileLen); // 核内循环次数，tileNum*tileLength=8k or 32k
+  TILING_DATA_FIELD_DEF(uint64_t, formerCoreNum); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint64_t, formerCoreRowLen); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint64_t, tailCoreNum); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint64_t, tailCoreRowLen); // Implementation note.
+  TILING_DATA_FIELD_DEF(uint64_t, tileLen); // Implementation note.
   TILING_DATA_FIELD_DEF(uint64_t, tileNum); // 
-  TILING_DATA_FIELD_DEF(float, t1); // 输入标量1
-  TILING_DATA_FIELD_DEF(float, t2); // 输入标量2
-  TILING_DATA_FIELD_DEF(float, t3); // 输入标量3
+  TILING_DATA_FIELD_DEF(float, t1); // Implementation note.
+  TILING_DATA_FIELD_DEF(float, t2); // Implementation note.
+  TILING_DATA_FIELD_DEF(float, t3); // Implementation note.
 END_TILING_DATA_DEF;
 REGISTER_TILING_DATA_CLASS(MulSigmoid, MulSigmoidTilingData)
 

@@ -1,7 +1,7 @@
 #include "kernel_operator.h"
 
 constexpr uint64_t BUFFER_NUM = 2;
-constexpr uint64_t UB_BLOCK_SIZE = 32; // 32B对齐
+constexpr uint64_t UB_BLOCK_SIZE = 32; // Implementation note.
 
 class KernelExpand {
 public:
@@ -10,7 +10,7 @@ public:
     {
         uint64_t repeatCount = expandSize / AscendC::GetBlockNum();
         uint64_t delta = expandSize % AscendC::GetBlockNum();
-        int bigCore = 0; // 1表示多做1次的核，0是expandSize / AscendC::GetBlockNum()这种核
+        int bigCore = 0; // Implementation note.
         if (AscendC::GetBlockIdx() < delta) {
             repeatCount += 1;
             bigCore = 1;
@@ -107,7 +107,7 @@ private:
     uint64_t tileLength;
     uint64_t miniTileLength;
     uint64_t loopCount;
-    uint64_t repeatCount; // 重复次数
+    uint64_t repeatCount; // Implementation note.
     uint8_t dummyLength;
 };
 

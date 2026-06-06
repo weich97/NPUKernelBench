@@ -15,7 +15,7 @@ class Model(nn.Module):
         eye_matrix = torch.eye(num_rows, num_columns).to(input.device).to(input.dtype)
         res_shape = batch_shape + [num_rows, num_columns]
 
-        # 广播到目标 batch 形状
+        # Implementation note.
         res = eye_matrix.expand(*res_shape)
         return res
 

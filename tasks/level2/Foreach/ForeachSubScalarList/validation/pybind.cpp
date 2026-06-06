@@ -8,11 +8,11 @@
 
 std::vector<at::Tensor> custom_pybind_api(std::vector<at::Tensor> &x, at::Tensor scalar_tensor)
 {
-    // 从tensor中提取标量值
+    // Implementation note.
     std::vector<at::Scalar> scalars;
     scalars.reserve(scalar_tensor.size(0));
 
-    // 根据标量张量的数据类型进行处理
+    // Implementation note.
     if (scalar_tensor.scalar_type() == at::ScalarType::Float) {
         auto accessor = scalar_tensor.accessor<float, 1>();
         for (int i = 0; i < scalar_tensor.size(0); i++) {
@@ -41,7 +41,7 @@ std::vector<at::Tensor> custom_pybind_api(std::vector<at::Tensor> &x, at::Tensor
         throw std::runtime_error("Unsupported scalar type for foreach_mul_scalar_list");
     }
 
-    // 其余代码不变
+    // Implementation note.
     std::vector<at::Tensor> result;
     result.reserve(x.size());
 

@@ -3,7 +3,7 @@ from framework.utils import check_precision
 
 def get_inputs(param, device=None):
     """
-    根据 DataFrame 行中的参数生成模型的输入张量列表和标量。
+    Reference implementation detail.
     """
     shape = eval(param.get('input_shape', '[1]'))
     dtype_str = param.get('dtype', 'float16')
@@ -12,7 +12,7 @@ def get_inputs(param, device=None):
     # x1 = torch.rand(shape, device=device, dtype=dtype)
     # x2 = torch.rand(shape, device=device, dtype=dtype)
     
-    x1 = (torch.rand(shape, device=device, dtype=dtype) * 2 - 1)  # 区间 [-1, 1)
+    x1 = (torch.rand(shape, device=device, dtype=dtype) * 2 - 1)  # Implementation note.
     x2 = (torch.rand(shape, device=device, dtype=dtype) * 2 - 1)
 
     return (x1, x2)
@@ -42,10 +42,10 @@ def get_init_inputs(param, device=None):
     gamma = torch.rand(shape, device=device, dtype=dtype)
 
     scales1 = torch.rand(shape, device=device, dtype=scales_dtype)
-    scales2 = None # c++底层实现默认为空
+    scales2 = None  # Implementation note.
 
     zero_points1 = torch.rand(shape, device=device, dtype=zeros_dtype)
-    zero_points2 = None # c++底层实现默认为空
+    zero_points2 = None  # Implementation note.
 
     axis = -1
 

@@ -29,8 +29,8 @@ namespace AscendC {
 constexpr uint32_t SHAPEOUT_SIZE = 2;
 constexpr uint32_t BIT_NUM_PER_BYTE = 8;
 constexpr uint32_t HEAD_BLOCK_SIZE = 64;
-constexpr uint32_t OFFSET_SHIFT_BITS = 3; // offset偏移量移位输，<<3 等价于 *8
-constexpr uint32_t INT64_LENGTH_IN_INT32 = 2; // INT64 相当于 2个int32长
+constexpr uint32_t OFFSET_SHIFT_BITS = 3; // Implementation note.
+constexpr uint32_t INT64_LENGTH_IN_INT32 = 2; // Implementation note.
 constexpr uint32_t GATHER_RESULT_STRIDE = 8;
 
 template <typename T>
@@ -67,14 +67,14 @@ public:
         this->tailtileLength = tailtileLength;
         this->taillasttileLength = taillasttileLength;
 
-        if (blockIdx < this->formerNum) {  //分到大块核的处理
+        if (blockIdx < this->formerNum) { // Implementation note.
             this->tileLength = this->formertileLength / BUFFER_NUM;
             this->lasttileLength = this->formerlasttileLength / BUFFER_NUM;
             this->tileNum = this->formertileNum * BUFFER_NUM;
             xGlobal.SetGlobalBuffer((__gm__ T*)x + this->formerLength * blockIdx, this->formerLength);
             maskGlobal.SetGlobalBuffer((__gm__ uint8_t*)mask + this->formerLength * blockIdx, this->formerLength);
             workGlobal.SetGlobalBuffer(globalWorkTensor + this->formerLength * blockIdx, this->formerLength);
-        } else {  //分到小块核的处理，需要处理的数据量比大核少alignNum个
+        } else { // Implementation note.
             this->tileLength = this->tailtileLength / BUFFER_NUM;
             this->lasttileLength = this->taillasttileLength / BUFFER_NUM;
             this->tileNum = this->tailtileNum * BUFFER_NUM;
@@ -117,13 +117,13 @@ public:
     __aicore__ inline void Process(GM_ADDR y, GM_ADDR shapeout)
     {
         int32_t loopCount = this->tileNum ;
-        //GYW 先处理可以整分的。
+        // Implementation note.
         for (int32_t i = 0; i < loopCount; ++i) {
             CopyIn(i);
             Compute(i);
             CopyOut2WorkSpace();
         }
-        //workspace 写入 offset
+        // Implementation note.
         offsetGlobal.SetValue(blockIdx<<OFFSET_SHIFT_BITS, this->outOffset);
         DataCacheCleanAndInvalid<uint64_t, CacheLine::SINGLE_CACHE_LINE, DcciDst::CACHELINE_OUT>(offsetGlobal[blockIdx<<OFFSET_SHIFT_BITS]);
         SyncAll();
@@ -135,15 +135,15 @@ public:
         
         yGlobal.SetGlobalBuffer((__gm__ T*)y + ind, this->outOffset);
         
-        //搬运至GM
+        // Implementation note.
         loopCount = this->outOffset / this->tileLength;
         int32_t tailLoopLength = this->outOffset % this->tileLength;
-        //GYW 先处理可以整分的。
+        // Implementation note.
         for (int32_t i = 0; i < loopCount; ++i) {
             CopyInMove(i, this->tileLength);
             CopyOutMove(i, this->tileLength);
         }
-        //剩余不能被整分处理
+        // Implementation note.
         if (tailLoopLength > 0) {
             CopyInMove(loopCount, tailLoopLength);
             CopyOutMove(loopCount, tailLoopLength);
@@ -188,7 +188,7 @@ private:
         uint32_t ind = progress * this->tileLength;
         uint32_t length = this->tileLength;
         if (progress == this->tileNum - 1) {
-            // 最后一个block，最后一个tile
+            // Implementation note.
             length = this->lasttileLength;
         } 
 
@@ -255,7 +255,7 @@ __aicore__ inline void GatherResult(LocalTensor<T>& dstLocal, const LocalTensor<
         } else if constexpr (IS_2_BYTES_TYPE) {
             uint32_t mask = count;
             LocalTensor<uint16_t> bitMask = bitMaskLocal.ReinterpretCast<uint16_t>();
-            GatherMask(dstLocal, srcLocal, bitMask, true, mask, params, rsvdCnt);//rsvdCnt 最终有效元素个数
+            GatherMask(dstLocal, srcLocal, bitMask, true, mask, params, rsvdCnt); // Implementation note.
         } else {
             uint32_t mask = count;
             LocalTensor<half> xCastLocal = xCastBuf.Get<half>();
@@ -274,7 +274,7 @@ __aicore__ inline void GatherResult(LocalTensor<T>& dstLocal, const LocalTensor<
         LocalTensor<T> xLocal = inQueueX.DeQue<T>();
         LocalTensor<uint8_t> maskLocal = inQueueMask.DeQue<uint8_t>();
         LocalTensor<T> yLocal = outQueueY.AllocTensor<T>();
-        LocalTensor<uint8_t> bitMaskLocal = bitMaskBuf.Get<uint8_t>();// GYW  DeQue 和 GET区别？
+        LocalTensor<uint8_t> bitMaskLocal = bitMaskBuf.Get<uint8_t>(); // Implementation note.
 
         uint32_t length = this->tileLength;
         if (progress == this->tileNum - 1) {
@@ -292,9 +292,9 @@ __aicore__ inline void GatherResult(LocalTensor<T>& dstLocal, const LocalTensor<
                                                 int64_t count)
     {
         GlobalTensor<int32_t> srcCastGlobal;
-        srcCastGlobal.SetGlobalBuffer((__gm__ int32_t*)srcGlobal.GetPhyAddr(), count * INT64_LENGTH_IN_INT32);//将GM 中 64 转成 32 * 2
+        srcCastGlobal.SetGlobalBuffer((__gm__ int32_t*)srcGlobal.GetPhyAddr(), count * INT64_LENGTH_IN_INT32); // Implementation note.
 
-        LocalTensor<int32_t> dstCastLocal = dstLocal.template ReinterpretCast<int32_t>();//将 ue转 int32
+        LocalTensor<int32_t> dstCastLocal = dstLocal.template ReinterpretCast<int32_t>(); // Implementation note.
 
         DataCopyExtParams copyParams{1, static_cast<uint32_t>(count * INT64_LENGTH_IN_INT32 * sizeof(int32_t)), 0, 0, 0};
         DataCopyPadExtParams<int32_t> padParams{false, 0, 0, 0};
@@ -347,7 +347,7 @@ private:
     GlobalTensor<T> workGlobal;
     GlobalTensor<uint64_t> offsetGlobal;
 
-    // 输入
+    // Implementation note.
     uint32_t blockDim;
     uint32_t formerNum;
     uint32_t formerLength;
@@ -360,7 +360,7 @@ private:
     uint32_t tailtileLength;
     uint32_t taillasttileLength;
 
-    // 本block/核的
+    // Implementation note.
     uint32_t tileNum;
     uint32_t tileLength;
     uint32_t lasttileLength;
@@ -376,7 +376,7 @@ private:
 extern "C" __global__ __aicore__ void masked_select_v3(GM_ADDR x, GM_ADDR mask, GM_ADDR y, GM_ADDR shapeout, GM_ADDR workspace, GM_ADDR tiling)
 {
     GET_TILING_DATA(tiling_data, tiling);
-    GM_ADDR usrWorkspace = GetUserWorkspace(workspace); // 获取用户workspace指针。
+    GM_ADDR usrWorkspace = GetUserWorkspace(workspace); // Implementation note.
 
     if (TILING_KEY_IS(8)) {
         AscendC::KernelMaskedSelectV3<uint64_t> op;

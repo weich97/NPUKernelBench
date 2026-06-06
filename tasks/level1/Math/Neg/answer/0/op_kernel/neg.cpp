@@ -103,15 +103,15 @@ private:
             LocalTensor<half> tmp = QueueTmp.Get<half>();
             Cast(tmp, srcLocal, RoundMode::CAST_NONE, this->processDataNum);
             Muls(tmp, tmp, half(-1), this->processDataNum);
-            //移位操作实现溢出处理
+            // Implementation note.
             LocalTensor<int16_t> tmp2 = QueueTmp2.Get<int16_t>();
             Cast(tmp2, tmp, RoundMode::CAST_RINT, this->processDataNum); // float16 -> int16
-            // 处理溢出 (模拟 int8 计算的行为)
+            // Implementation note.
             ShiftLeft(tmp2, tmp2, int16_t(8), this->processDataNum);
             ShiftRight(tmp2, tmp2, int16_t(8), this->processDataNum);
-            // 转回 half
+            // Implementation note.
             Cast(tmp, tmp2, RoundMode::CAST_NONE, this->processDataNum);
-            // 转回int8
+            // Implementation note.
             Cast(dstLocal, tmp, RoundMode::CAST_NONE, this->processDataNum);
             QueueTmp2.FreeTensor(tmp2);
             QueueTmp.FreeTensor(tmp);
@@ -119,7 +119,7 @@ private:
         else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, half>) {
             Muls(dstLocal, srcLocal, T(-1), this->processDataNum);
         }
-        //Muls不支持bfloat16类型
+        // Implementation note.
         else{
             LocalTensor<float> tmp1 = QueueTmp.Get<float>();
             Cast(tmp1, srcLocal, RoundMode::CAST_NONE, this->processDataNum);

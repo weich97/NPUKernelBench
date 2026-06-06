@@ -34,7 +34,7 @@ static constexpr int64_t TWO_NUM = 2;
 namespace optiling {
 uint32_t BatchNormV3WelfordTiling::FindDichotomizeAddDiffSize(uint32_t parallelN)
 {
-    // 找到parallelN与小于parallelN的最近二次幂的差值 例如：parallelN = 15，结果为15 - 8 = 7
+    // Implementation note.
     if ((parallelN & (parallelN - 1)) != 0) {
         uint32_t temp = parallelN - 1;
         temp |= temp >> 1;
@@ -60,7 +60,7 @@ uint64_t BatchNormV3WelfordTiling::GetTilingKey() const
 
 void BatchNormV3WelfordTiling::DoUbTiling(int64_t &aUbFactor, int64_t &r0UbFactor)
 {
-    // 需要16对齐, 使得fp16 Block对齐，方便原地cast处理
+    // Implementation note.
     int64_t eleNum = FloorDiv(commonParams.ubSizePlatForm, FLOAT_SIZE);
     aUbFactor = (td_.get_blockFactor() > A_UB_SIZE_LIMIT) ? A_UB_SIZE_LIMIT
                                                           : CeilAlign(td_.get_blockFactor(), B16_BLOCK_ALIGN_NUM);
@@ -100,7 +100,7 @@ ge::graphStatus BatchNormV3WelfordTiling::DoOpTiling()
     } else {
         welfordTilingkey = BNV3_WELFORD_R0_SPLIT_NOT_ALIGN_TILING_KEY;
     }
-    // R0不切分，R1补充切分
+    // Implementation note.
     if ((commonParams.patternR0Align <= (r0UbFactor / TWO_NUM)) && commonParams.patternR1 > 1) {
         int64_t procNR0 = FloorDiv(r0UbFactor, commonParams.patternR0Align);
         int64_t nR0Loop = CeilDiv(commonParams.patternR1, procNR0);

@@ -1,68 +1,52 @@
 # aclnnAddSigmoidMulReduceSumD
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-实现了数据经过相加、相乘、sigmoid、相乘、以索引1合轴的计算，返回结果的功能。
+### Operator Semantics
+`aclnnAddSigmoidMulReduceSumD` is an Ascend NPU benchmark operator in the `level2` `Reduce` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.add_sigmoid_mul_reduce_sum_d()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
 
 $$\text{add_res} = \text{add_0_input0} + \text{add_0_input1}$$
+
 $$\text{mul_1_res} = \text{add_res} \cdot \text{mul_0_input1}$$
+
 $$\text{sigmoid_res} = \frac{1}{1 + e^{-\text{mul_1_res}}}$$
-$$\text{mul_2_res} = \text{sigmoid_res} \cdot \text{mult_1_input1}$$
-$$\text{mul_3_res} = \text{mul_2_res} \cdot \text{mult_2_input1}$$
-$$\text{result} = \sum_{i} \text{mul_3_res}_i$$
 
-## 接口定义
+## Interface Definition
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.add_sigmoid_mul_reduce_sum_d()` 函数形式提供：
-
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def add_sigmoid_mul_reduce_sum_d(add_0_input0, add_0_input1, mul_0_input1, mult_1_input1, mult_2_input1):
-    """
-    执行加法、乘法、Sigmoid 和求和等复合运算。
-
-    参数:
-        add_0_input0 (Tensor): 第一个加法输入张量。
-        add_0_input1 (Tensor): 第二个加法输入张量。
-        mul_0_input1 (Tensor): 加法结果的乘法因子，用于 mul_1。
-        mult_1_input1 (Tensor): Sigmoid 输出的乘法因子，用于 mul_2。
-        mult_2_input1 (Tensor): mul_2 结果的乘法因子，用于 mul_3。
-
-    返回:
-        Tensor: 最终输出为 mul_3 的所有元素的和（scalar Tensor）。
-    
-    注意:
-        - 所有输入张量 shape 必须一致；
-        - 本函数在所有维度上执行 reduce_sum 操作，最终结果为标量张量；
-        - 本算子主要用于融合复杂操作以提升性能。
-    """
-
+    """Execute `aclnnAddSigmoidMulReduceSumD` on Ascend NPU tensors."""
 
 ```
 
-## 使用案例
+### Inputs
+- `add_0_input0`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `add_0_input1`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `mul_0_input1`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `mult_1_input1`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `mult_2_input1`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
-import kernel_gen_ops  # 假设你将其封装为算子库
+import kernel_gen_ops
 
-add_0_input0 = torch.randn(8, 2048, dtype=torch.float32)
-add_0_input1 = torch.randn(8, 2048, dtype=torch.float32)
-mul_0_input1 = torch.randn(8, 2048, dtype=torch.float32)
-mult_1_input1 = torch.randn(8, 2048, dtype=torch.float32)
-mult_2_input1 = torch.randn(8, 2048, dtype=torch.float32)
-
-result = kernel_gen_ops.add_sigmoid_mul_reduce_sum_d(
-    add_0_input0, add_0_input1, mul_0_input1, mult_1_input1, mult_2_input1
-)
-
+result = kernel_gen_ops.add_sigmoid_mul_reduce_sum_d(add_0_input0, add_0_input1, mul_0_input1, mult_1_input1, mult_2_input1)
 ```
-## 约束与限制
 
-- 张量数据格式支持ND。
+## Constraints and Notes
 
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

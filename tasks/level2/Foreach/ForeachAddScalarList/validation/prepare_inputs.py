@@ -2,16 +2,16 @@ import torch
 
 def get_inputs(param, device=None):
     """
-    返回：
-        x      : List[Tensor] 与 input_shape 一一对应
-        alpha  : 1-D Tensor    长度=len(shape_list)，dtype按映射表
+    Reference implementation detail.
+        Reference implementation detail.
+        Reference implementation detail.
     """
     shape_list = eval(param.get('input_shape', '[[1]]'))
     scale = eval(param.get('scale', '[1.0]'))
     dtype_str = param.get('dtype', 'float16')
     x_dtype = getattr(torch, dtype_str)
 
-    # 编译器规定的 alpha dtype 映射
+    # Implementation note.
     alpha_dtype_map = {
         torch.float16: torch.float32,
         torch.float32: torch.float32,
@@ -21,7 +21,7 @@ def get_inputs(param, device=None):
     }
     alpha_dtype = alpha_dtype_map.get(x_dtype, torch.float32)
 
-    # 生成 x（保持原 dtype）
+    # Implementation note.
     x = [torch.rand(s, device=device, dtype=x_dtype) for s in shape_list]
     alpha = torch.tensor(scale, dtype=alpha_dtype)
     return x, alpha

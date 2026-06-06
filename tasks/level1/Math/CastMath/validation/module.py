@@ -9,25 +9,25 @@ import kernel_gen_ops
 
 class Model(nn.Module):
     """
-    实现Cast算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, x: torch.Tensor, dst_type: int) -> torch.Tensor:
         """
-        实现Cast算子功能。
+        Reference implementation detail.
 
         Args:
-            x: 输入张量
-            dst_type: 目标数据类型的标识
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            转换为目标数据类型后的张量
+            Reference implementation detail.
         """
         return x.to(self._get_dtype(dst_type))
 

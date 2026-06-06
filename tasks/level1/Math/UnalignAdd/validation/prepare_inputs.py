@@ -11,7 +11,7 @@ def get_inputs(param, device=None):
     dtype = getattr(torch, dtype_str)
 
 
-    input1 = torch.randn(shape, device=device, dtype=dtype) * 2 - 1  # 生成 [0,1) 均匀分布，乘2变成 [0,2)，减1变成 [-1,1)
+    input1 = torch.randn(shape, device=device, dtype=dtype) * 2 - 1  # Implementation note.
     input2 = torch.randn(shape, device=device, dtype=dtype) * 2 - 1
 
     return (input1, input2)

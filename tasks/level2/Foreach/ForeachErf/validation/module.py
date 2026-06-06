@@ -42,6 +42,6 @@ class ModelNew(nn.Module):
         # Ensure that `inputs` is passed as a tuple if `pybind.cpp` expects `c10::ArrayRef<at::Tensor>`
         # which maps well to a Python tuple of tensors or a list of tensors.
         # The common practice is to pass `tuple(inputs)` for foreach ops in `kernel_gen_ops`.
-        #零开销地把 Python 端的 Tensor 列表映射到 C++ 端的 c10::ArrayRef<at::Tensor>?
+        # Implementation note.
         return kernel_gen_ops.foreach_erf(tuple(inputs))
 

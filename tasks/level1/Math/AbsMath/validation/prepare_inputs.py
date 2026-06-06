@@ -45,9 +45,9 @@ def custom_check_precision(param, outputs, outputs_new):
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
     
-    # 根据数据类型设置 RTOL_GENERAL
+    # Implementation note.
     if dtype in [torch.int8, torch.int16, torch.int32, torch.int64, torch.uint8, torch.bool]:
-        RTOL_GENERAL = 0  # 整数类型要求精确匹配
+        RTOL_GENERAL = 0  # Implementation note.
     elif dtype == torch.float16:
         RTOL_GENERAL = 1 / 512
     elif dtype == torch.bfloat16:
@@ -55,10 +55,10 @@ def custom_check_precision(param, outputs, outputs_new):
     elif dtype == torch.float32:
         RTOL_GENERAL = 1 / 2048 + 1 / 16384
     elif dtype == torch.complex64:
-        # complex64 使用 float32 的容差
+        # Implementation note.
         RTOL_GENERAL = 1 / 2048 + 1 / 16384
     elif dtype == torch.complex128:
-        # complex128 使用 float64 的容差（自定义更严格值）
+        # Implementation note.
         RTOL_GENERAL = 1e-12
     else:
         raise ValueError(f"Unsupported dtype: {dtype}")
@@ -75,11 +75,11 @@ def custom_check_precision(param, outputs, outputs_new):
         abs_diff = torch.abs(out - out_new)
         rel_diff = abs_diff / (torch.abs(out) + 1e-7)
         
-        # 整数类型：检查绝对差值是否为0
+        # Implementation note.
         if dtype in [torch.int8, torch.int16, torch.int32, torch.int64, torch.uint8, torch.bool]:
             if torch.any(abs_diff > 0):
                 is_pass = 0
-        # 浮点数类型：使用相对容差
+        # Implementation note.
         else:
             tolerance = rtol * torch.maximum(torch.tensor(1.0, device=out.device), torch.abs(out))
             if torch.any(abs_diff > tolerance):

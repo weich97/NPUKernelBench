@@ -26,9 +26,9 @@
 namespace optiling {
 BEGIN_TILING_DATA_DEF(MseLossGradTilingData)
     TILING_DATA_FIELD_DEF(float, cof);
-    TILING_DATA_FIELD_DEF(uint64_t, totalLength);//总计算数据量
-    TILING_DATA_FIELD_DEF(uint64_t, tileNum);//每个核上总计算数据分块个数
-    TILING_DATA_FIELD_DEF(uint64_t, padLength);//尾块的个数
+    TILING_DATA_FIELD_DEF(uint64_t, totalLength); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint64_t, tileNum); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint64_t, padLength); // Implementation note.
     TILING_DATA_FIELD_DEF(uint64_t, blockLength);
     TILING_DATA_FIELD_DEF(uint32_t, usedDb);   //  8 Bytes align with cof
 END_TILING_DATA_DEF;

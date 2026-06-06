@@ -9,16 +9,16 @@ def get_inputs(param, device=None):
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
 
-    # 创建随机张量列表
+    # Implementation note.
     inputs1 = []
     inputs2 = []
     for shape in shape_list:
         if dtype == torch.int32:
-            # 整数类型使用randint
+            # Implementation note.
             x = torch.randint(-100, 100, shape, device=device, dtype=dtype)
             y = torch.randint(-100, 100, shape, device=device, dtype=dtype)
         else:
-            # 浮点类型使用randn
+            # Implementation note.
             x = torch.randn(shape, device=device, dtype=dtype)
             y = torch.randn(shape, device=device, dtype=dtype)
 

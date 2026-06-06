@@ -1,73 +1,53 @@
 # aclnnDeepNorm
 
-## 功能描述
-### 算子功能
-DeepNorm 算子用于深度归一化操作，它将两个输入张量 `x` 和 `gx` 进行加权求和，然后对结果进行层归一化（Layer Normalization）操作。
+## Functional Description
 
-### 计算公式
+### Operator Semantics
+`aclnnDeepNorm` is an Ascend NPU benchmark operator in the `level2` `Norm` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.deep_norm()`.
+
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
+
 $$x_{sum} = x \cdot \alpha + gx$$
 
 $$mean = Mean(x_{sum})$$
 
 $$variance = Mean((x_{sum} - mean)^2)$$
 
-$$rstd = {{1}\over\sqrt {variance + eps}}$$
+## Interface Definition
 
-$$y = \gamma \cdot (x_{sum} - mean) \cdot rstd + \beta$$
-
-## 接口定义
-
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.deep_norm()` 函数形式提供：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def deep_norm(x, gx, beta, gamma, alpha, epsilon):
-    """
-    对输入张量执行 DeepNorm 操作。
-
-    参数:
-        x (Tensor): 第一个输入Device侧张量。
-        gx (Tensor): 第二个输入Device侧张量，与 `x` 具有相同的形状和数据类型。
-        beta (Tensor): 偏移参数张量，用于层归一化。形状与归一化维度一致。
-        gamma (Tensor): 缩放参数张量，用于层归一化。形状与归一化维度一致。
-        alpha (double): 用于 `x` 加权求和的标量系数。
-        epsilon (double): 公式中的输入 `eps`，添加到方差中以确保数值稳定。
-
-    返回:
-        List[Tensor]: 包含三个张量的列表：
-                      - 第一个张量 (`meanOut`) 是计算过程中的均值。
-                      - 第二个张量 (`rstdOut`) 是计算过程中的标准差的倒数。
-                      - 第三个张量 (`yOut`) 是 DeepNorm 的最终输出。
-    """
+    """Execute `aclnnDeepNorm` on Ascend NPU tensors."""
 
 ```
-## 使用案例
+
+### Inputs
+- `x`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `gx`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `beta`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `gamma`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `alpha`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `epsilon`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
+
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量和参数
-input_shape = [3, 1, 4]
-normalized_shape = [4] # Assuming normalization over the last dimension
-dtype = torch.float32
-alpha = 0.3
-epsilon = 1e-6
-
-x = torch.randn(input_shape, dtype=dtype)
-gx = torch.randn(input_shape, dtype=dtype)
-beta = torch.randn(normalized_shape, dtype=dtype)
-gamma = torch.randn(normalized_shape, dtype=dtype)
-
-# 使用 deep_norm 执行操作
-mean_out, rstd_out, y_out = kernel_gen_ops.deep_norm(x, gx, beta, gamma, alpha, epsilon)
+result = kernel_gen_ops.deep_norm(x, gx, beta, gamma, alpha, epsilon)
 ```
 
-## 约束与限制
-- **功能维度**
-  * 数据格式支持：**ND**。
-  * 张量形状维度不高于**8维**。
-  * `x`、`gx`、`yOut` 的形状和数据类型必须一致。
-  * `beta` 和 `gamma` 的形状必须与**归一化维度**一致。
-  * `meanOut` 和 `rstdOut` 的形状应与 `x` 的形状匹配，但在归一化维度上为 **1**。
-  * `x`、`gx`、`beta`、`gamma` 的数据类型支持 **FLOAT16**、**FLOAT**、**BFLOAT16**。
-  * `alpha` 和 `epsilon` 必须为**浮点数**。
+## Constraints and Notes
+
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

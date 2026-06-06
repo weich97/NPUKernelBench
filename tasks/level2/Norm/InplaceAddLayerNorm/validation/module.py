@@ -33,7 +33,7 @@ class Model(nn.Module):
         var = x1.var(dim=-1, keepdim=True, unbiased=False)
         rstd = torch.rsqrt(var + self.epsilon)
 
-        # 计算归一化结果到x1
+        # Implementation note.
         x1.sub_(mean)
         x1.mul_(rstd)
         x1.mul_(self.gamma).add_(self.beta)

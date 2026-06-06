@@ -5,7 +5,7 @@
 
 std::vector<at::Tensor> custom_pybind_api(std::vector<at::Tensor> &x, at::Tensor scalar_tensor)
 {
-    // 其余代码不变
+    // Implementation note.
     std::vector<at::Tensor> result;
     result.reserve(x.size());
 

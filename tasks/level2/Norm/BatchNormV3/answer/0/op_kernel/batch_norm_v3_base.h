@@ -52,9 +52,9 @@ protected:
     TPipe *pipe_ = nullptr;
     uint32_t blockIdx = GetBlockIdx();
     uint32_t useCoreNum = GetBlockNum();
-    // 公共函数声明
+    // Implementation note.
 };
-// 公共函数实现
+// Implementation note.
 
 }  // namespace BatchNormV3Ops
 #endif  // BATCH_NORM_V3_BASE_H

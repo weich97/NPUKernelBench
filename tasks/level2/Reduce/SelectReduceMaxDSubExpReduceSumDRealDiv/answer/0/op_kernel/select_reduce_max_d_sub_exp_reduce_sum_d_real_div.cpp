@@ -47,14 +47,14 @@ private:
         LocalTensor<aType> aLocal = inQueueA.AllocTensor<aType>();
         LocalTensor<aType> bLocal = inQueueB.AllocTensor<aType>();
 
-        AscendC::DataCopyExtParams condCopyParams{1, (uint32_t)(this->tileLength * sizeof(condType)), 0, 0, 0};                      // 结构体DataCopyExtParams最后一个参数是rsv保留位
-        AscendC::DataCopyExtParams copyParams{1, (uint32_t)(this->tileLength * sizeof(aType)), 0, 0, 0};                      // 结构体DataCopyExtParams最后一个参数是rsv保留位
+        AscendC::DataCopyExtParams condCopyParams{1, (uint32_t)(this->tileLength * sizeof(condType)), 0, 0, 0}; // Implementation note.
+        AscendC::DataCopyExtParams copyParams{1, (uint32_t)(this->tileLength * sizeof(aType)), 0, 0, 0}; // Implementation note.
         AscendC::DataCopyPadExtParams<condType> condpadParams{true, 0, 0, 0};
         AscendC::DataCopyPadExtParams<aType> padParams{true, 0, 0, 0};
 
-        AscendC::DataCopyPad(condLocal, condGlobal[progress * this->tileLength], condCopyParams, condpadParams);    // 从GM->VECIN搬运
-        AscendC::DataCopyPad(aLocal, aGlobal[progress * this->tileLength], copyParams, padParams);    // 从GM->VECIN搬运
-        AscendC::DataCopyPad(bLocal, bGlobal[progress * this->tileLength], copyParams, padParams);    // 从GM->VECIN搬运
+        AscendC::DataCopyPad(condLocal, condGlobal[progress * this->tileLength], condCopyParams, condpadParams); // Implementation note.
+        AscendC::DataCopyPad(aLocal, aGlobal[progress * this->tileLength], copyParams, padParams); // Implementation note.
+        AscendC::DataCopyPad(bLocal, bGlobal[progress * this->tileLength], copyParams, padParams); // Implementation note.
 
         inQueueCond.EnQue(condLocal);
         inQueueA.EnQue(aLocal);

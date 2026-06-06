@@ -75,7 +75,7 @@ namespace ForeachCopy {
 
     template <typename T>
     __aicore__ inline void ForeachCopyND<T>::Process() {
-        /*将中间量预留出来*/
+        // Implementation note.
         LocalTensor<float> float32Tensor;
 
         for (uint16_t i = tensorStart; i <= tensorEnd; i++) {

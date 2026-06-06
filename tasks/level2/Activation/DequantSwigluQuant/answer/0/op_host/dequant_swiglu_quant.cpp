@@ -234,7 +234,7 @@ ge::graphStatus DequantSwigluQuantDskTiling::DoOpTiling() {
   auto inputShapeX = context_->GetInputShape(0);
   OPS_CHECK_NULL_WITH_CONTEXT(context_, inputShapeX);
 
-  /* 切分计算逻辑
+  // Implementation note.
   x used mem: [UbFactorDimx, outDimy_ * 2] dtype: float
   activation_scale used mem: [UbFactorDimx, 8] dtype: float
   weight_scale used mem: [UbFactorDimx, outDimy_ * 2] dtype: float
@@ -249,7 +249,7 @@ ge::graphStatus DequantSwigluQuantDskTiling::DoOpTiling() {
   // UbFactorDimx is 1,compute maxOutDimy
   int64_t numerator = ubSize_ - UB_REVERSE - BLOCK_SIZE - db * BLOCK_ELEM * sizeof(float) - sizeof(float);
   int64_t denominator =
-      5 * sizeof(float) + db * SWI_FACTOR * sizeof(float) + sizeof(int8_t);  // 和dimy相关的buffer，计算分母
+      5 * sizeof(float) + db * SWI_FACTOR * sizeof(float) + sizeof(int8_t); // Implementation note.
   int64_t maxOutDimy = static_cast<int64_t>(numerator / denominator);
   maxOutDimy = maxOutDimy / BLOCK_SIZE * BLOCK_SIZE;
   int64_t maxInDimy = static_cast<int64_t>(maxOutDimy * SWI_FACTOR);
@@ -260,10 +260,10 @@ ge::graphStatus DequantSwigluQuantDskTiling::DoOpTiling() {
                   return ge::GRAPH_FAILED);
 
   // compute ubFactorDimx
-  numerator = ubSize_ - UB_REVERSE - outDimy_ * sizeof(float) - BLOCK_SIZE;  // 减去固定buffer
+  numerator = ubSize_ - UB_REVERSE - outDimy_ * sizeof(float) - BLOCK_SIZE; // Implementation note.
   denominator = db * (outDimy_ * SWI_FACTOR + BLOCK_ELEM) * sizeof(float) + outDimy_ * sizeof(int8_t) + sizeof(float) +
                 outDimy_ * SWI_FACTOR * sizeof(float) +
-                outDimy_ * SWI_FACTOR * sizeof(float);  // 和dimx相关的buffer，计算分母
+                outDimy_ * SWI_FACTOR * sizeof(float); // Implementation note.
   int64_t ubFactorDimx = static_cast<int64_t>(numerator / denominator);
   ubFactorDimx = std::min(ubFactorDimx, inDimx_);
   maxPreCore_ = (inDimx_ + ubFactorDimx - 1) / ubFactorDimx;

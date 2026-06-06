@@ -37,7 +37,7 @@ uint64_t LayerNormV4TransposeTiling::CalcBorrowFactor(uint64_t oriFactor)
 
 uint32_t LayerNormV4TransposeTiling::FindDichotomizeAddDiffSize()
 {
-    // 找到row与小于row的最近二次幂的差值 eg：rowSize = 15，结果为15 - 8 = 7
+    // Implementation note.
     if ((commonParams.rowSize & (commonParams.rowSize - 1)) != 0) {
         uint32_t temp = commonParams.rowSize - 1;
         temp |= temp >> 1;
@@ -99,21 +99,21 @@ void LayerNormV4TransposeTiling::DoBlockTiling(BlockTilingData &blockTilingParam
     uint64_t blockAlign = (commonParams.tensorDtype == ge::DT_FLOAT ? B32_BLOCK_ALIGN_NUM : B16_BLOCK_ALIGN_NUM);
     for (int64_t curBlockNum = commonParams.coreNum; curBlockNum > 0; curBlockNum--) {
         blockTilingParams.blockFormer = (commonParams.colSize + curBlockNum - 1) / curBlockNum;
-        // 910B直接获取切分，无需后续判断
+        // Implementation note.
         if (!commonParams.isAscend310P) {
             break;
         }
         meanOutMoreThanBLOCK = (blockTilingParams.blockFormer >= B32_BLOCK_ALIGN_NUM);
         yOutMoreThanBLOCK = ((blockTilingParams.blockFormer * commonParams.rowSize) >= blockAlign);
-        // mean,rstd输出
+        // Implementation note.
         if ((commonParams.meanAndRstdNullPtr == 0) && meanOutMoreThanBLOCK && yOutMoreThanBLOCK) {
             break;
         }
-        // mean,rstd空输出
+        // Implementation note.
         if ((commonParams.meanAndRstdNullPtr == 1) && yOutMoreThanBLOCK) {
             break;
         }
-        // 置0，表示未找到合适的切分
+        // Implementation note.
         blockTilingParams.blockFormer = 0;
     }
     if (blockTilingParams.blockFormer == 0) {
@@ -135,7 +135,7 @@ void LayerNormV4TransposeTiling::DoUbTiling(const BlockTilingData &blockTilingPa
     uint64_t gammaBufferSize =
         (commonParams.rowSize + blockAlignGamma - 1) / blockAlignGamma * blockAlignGamma * sizeof(float);
     uint64_t curUbSize = commonParams.ubSizePlatForm - gammaBufferSize * TWO - UB_SIZE_RESERVED;
-    // 依次为inputX * 2 + outputY + tmpBuf + reduceBuf, 因为 (16 * bFormer) >= ubFormer,
+    // Implementation note.
     uint64_t maxUbFormer = curUbSize / (commonParams.rowSize * FLOAT_SIZE * TWO + commonParams.rowSize * FLOAT_SIZE +
                                            commonParams.rowSize * FLOAT_SIZE + FLOAT_SIZE);
 
@@ -145,8 +145,8 @@ void LayerNormV4TransposeTiling::DoUbTiling(const BlockTilingData &blockTilingPa
         uint64_t alignBAndRow = (ubTilingParams.bFormer * commonParams.rowSize + TRANSPOSE_C0_SIZE - 1) /
                                 TRANSPOSE_C0_SIZE * TRANSPOSE_C0_SIZE;
         uint64_t alignB = (ubTilingParams.bFormer + TRANSPOSE_C0_SIZE - 1) / TRANSPOSE_C0_SIZE * TRANSPOSE_C0_SIZE;
-        // 借轴后超出总空间，跳过该切分
-        // 依次为reduceBuf + inputX * 4(4表示inputX DB + outputY + tmpBuf) + outputMean * 2
+        // Implementation note.
+        // Implementation note.
         if (ubTilingParams.bFormer * TRANSPOSE_C0_SIZE * FLOAT_SIZE +
                 TRANSPOSE_C0_SIZE * alignBAndRow * FLOAT_SIZE * FOUR_BUF_NODE +
                 alignB * TRANSPOSE_C0_SIZE * FLOAT_SIZE * TWO >
@@ -161,27 +161,27 @@ void LayerNormV4TransposeTiling::DoUbTiling(const BlockTilingData &blockTilingPa
             blockTilingParams.blockFormer - (ubTilingParams.ubLoopOfFormerBlock - 1) * ubTilingParams.ubFormer;
         ubTilingParams.ubTailOfTailBlock =
             blockTilingParams.blockTail - (ubTilingParams.ubLoopOfTailBlock - 1) * ubTilingParams.ubFormer;
-        // 910B直接获取切分，无需后续判断
+        // Implementation note.
         if (!commonParams.isAscend310P) {
             return;
         }
-        // 单核无需判断踩踏情况
+        // Implementation note.
         if (blockTilingParams.blockDim == 1) {
             return;
         }
         meanOutLessThanBLOCK = (ubTilingParams.ubTailOfFormerBlock < B32_BLOCK_ALIGN_NUM);
         yOutLessThanBLOCK = ((ubTilingParams.ubTailOfFormerBlock * commonParams.rowSize) < blockAlign);
-        // 310P: 如果mean、rstd输出
+        // Implementation note.
         if ((commonParams.meanAndRstdNullPtr == 0) && (meanOutLessThanBLOCK || yOutLessThanBLOCK)) {
             continue;
         }
-        // mean,rstd空输出
+        // Implementation note.
         if ((commonParams.meanAndRstdNullPtr == 1) && yOutLessThanBLOCK) {
             continue;
         }
         return;
     }
-    // 未提前return，表示未找到可用切分
+    // Implementation note.
     ubTilingParams.ubFormer = 0;
     return;
 }
@@ -194,7 +194,7 @@ ge::graphStatus LayerNormV4TransposeTiling::DoOpTiling()
     UbTilingData ubTilingParams;
     DoUbTiling(blockTilingParams, ubTilingParams);
     if (ubTilingParams.ubFormer == 0) {
-        // ub切分不满足，走单核策略
+        // Implementation note.
         blockTilingParams.blockDim = 1;
         blockTilingParams.blockFormer = commonParams.colSize;
         blockTilingParams.blockTail = commonParams.colSize;

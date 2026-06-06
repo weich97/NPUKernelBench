@@ -10,7 +10,7 @@ std::vector<at::Tensor> custom_pybind_fun(at::Tensor &grad, at::Tensor &varRef, 
                               double lr, double emaDecay, double beta1, double beta2,
                               double eps, int64_t mode, bool biasCorrection, double weightDecay)
 {
-    // 返回变量引用作为结果，实际上算子会原地修改这些引用
+    // Implementation note.
     EXEC_NPU_CMD(aclnnCustomOp, grad, varRef, mRef, vRef, sRef, step,
                  lr, emaDecay, beta1, beta2, eps, mode, biasCorrection, weightDecay);
     std::vector<at::Tensor> results = {varRef, mRef, vRef, sRef};

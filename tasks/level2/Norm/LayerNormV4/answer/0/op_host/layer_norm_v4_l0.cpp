@@ -27,10 +27,10 @@ const std::array<aclTensor *, LAYER_NORM_V4_OUT_NUM> LayerNormV4(const aclTensor
 {
     L0_DFX(LayerNormV4, input, normalizedShape, weight, bias, eps);
 
-    // 根据array构造算子所需tensor输入
+    // Implementation note.
     auto normTensor = executor->ConvertToTensor(normalizedShape, DataType::DT_INT32);
 
-    // 根据输入与normalizedShape关系构造输出shape
+    // Implementation note.
     Shape meanOutShape = input->GetViewShape();
     for (size_t index = meanOutShape.GetDimNum() - normalizedShape->Size(); index < meanOutShape.GetDimNum(); index++) {
         meanOutShape[index] = 1;

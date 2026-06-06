@@ -1,60 +1,42 @@
 # aclnnPreLayerNorm
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-`PreLayerNorm`是`Add`和`LayerNorm`的融合算子，`Add`算子的输出作为`LayerNorm`算子的输入，进行归一化处理
+### Operator Semantics
+`aclnnPreLayerNorm` is an Ascend NPU benchmark operator in the `level2` `Norm` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.pre_layer_norm()`.
 
-## 接口定义
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.pre_layer_norm()` 函数形式提供：
+### Mathematical Definition
+The exact element-wise, reduction, indexing, tensor-construction, or in-place semantics are defined by the corresponding `validation/module.py` reference path and benchmark input generator. Implementations must match that reference behavior for all generated test cases.
 
+## Interface Definition
+
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
-def pre_layer_norm(
-    x: torch.Tensor,
-    y: torch.Tensor,
-    gamma: torch.Tensor,
-    beta: torch.Tensor,
-    epsilon: torch.Tensor,
-) -> torch.Tensor:
-    """
-    实现 pre_layer_norm 操作，对 x + y 的结果进行 LayerNorm 归一化。
-
-    参数:
-        x: 输入张量；
-        y: 输入张量，形状与 x 相同；
-        gamma: 缩放因子张量，形状为 [D] 或可广播为最后一维；
-        beta: 偏移因子张量，形状为 [D] 或可广播为最后一维；
-        epsilon: 防止除零的小常数，通常为标量张量或 float。
-
-    返回:
-        Tensor: 输出张量，形状与输入相同，表示加法后经过 LayerNorm 的结果。
-    """
+def pre_layer_norm(*args, **kwargs):
+    """Execute `aclnnPreLayerNorm` on Ascend NPU tensors."""
 
 ```
 
-## 使用案例
+### Inputs
+- Operator arguments are supplied by the benchmark input generator and follow the reference validation signature.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
-import kernel_gen_ops  # 假设已定义 pre_layer_norm 算子
+import kernel_gen_ops
 
-# 构造输入
-shape = [32, 4, 1024]
-x = torch.randn(shape, dtype=torch.float32)
-y = torch.randn(shape, dtype=torch.float32)
-gamma = torch.randn(shape[-1], dtype=torch.float32)
-beta = torch.randn(1024[-1], dtype=torch.float32)
-epsilon = torch.empty(1).uniform_(1e-7, 1e-5).item()
-
-# 执行 Pre-LayerNorm 运算
-output = kernel_gen_ops.pre_layer_norm(x, y, gamma, beta, epsilon)
-
+result = kernel_gen_ops.pre_layer_norm(...)
 ```
-## 约束与限制
 
-- 张量数据格式支持ND。
+## Constraints and Notes
 
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

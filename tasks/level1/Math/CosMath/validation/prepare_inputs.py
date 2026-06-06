@@ -9,7 +9,7 @@ def get_inputs(param, device=None):
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
 
-    # 浮点类型使用randn
+    # Implementation note.
     x = torch.randn(shape, device=device, dtype=dtype)
 
     return (x, )

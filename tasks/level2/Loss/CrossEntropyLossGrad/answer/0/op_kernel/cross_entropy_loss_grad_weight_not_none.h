@@ -79,7 +79,7 @@ __aicore__ inline void CrossEntropyLossGradWeightNotNone<T>::Init(GM_ADDR grad_l
 
 template <typename T>
 __aicore__ inline void CrossEntropyLossGradWeightNotNone<T>::TargetWeight(uint64_t targetOffset, uint64_t targetNum) {
-  for (uint64_t targetIdx = 0; targetIdx < targetNum; targetIdx++) {  // 确定一个核要处理多少个数
+  for (uint64_t targetIdx = 0; targetIdx < targetNum; targetIdx++) { // Implementation note.
     targetWeightLocal.SetValue(targetIdx, this->weightGm.GetValue(this->targetGm.GetValue(targetOffset + targetIdx)));
   }
 }
@@ -96,7 +96,7 @@ __aicore__ inline void CrossEntropyLossGradWeightNotNone<T>::TargetWeightSum(uin
   #endif
   DataCopyPad(weightMaskLocal, workspaceGm, {1, (uint32_t)(this->usedCoreNum * sizeof(float)), 0, 0, 0}, {false, 0, 0, 0});
   this->PipeM2V();
-  ReduceSum(blockBuf2Local, weightMaskLocal, weightMaskLocal, this->usedCoreNum);  // blockBuf2Local为48个数的和
+  ReduceSum(blockBuf2Local, weightMaskLocal, weightMaskLocal, this->usedCoreNum); // Implementation note.
 }
 
 template <typename T>
@@ -104,10 +104,10 @@ __aicore__ inline void CrossEntropyLossGradWeightNotNone<T>::ComputeLog(uint64_t
                                                                         uint64_t calcLen) {
   LocalTensor<T> logProbLocal = this->inQueLogProb.template DeQue<T>();
   xGradLocal = this->outQueXGrad.template AllocTensor<T>();
-  uint64_t cloopOffset = cLoopIdx * this->alignColLoopNum;    // 一个核内，一行的偏移量
+  uint64_t cloopOffset = cLoopIdx * this->alignColLoopNum; // Implementation note.
   uint64_t targetValue = this->targetGm.GetValue(this->targetOffset + nLoopIdx);
   uint64_t posIdx = targetValue - cLoopIdx * this->alignColLoopNum;
-  float nllLossGradScalar = targetWeightLocal.GetValue(nLoopIdx);  // 拿到一行要乘的值
+  float nllLossGradScalar = targetWeightLocal.GetValue(nLoopIdx); // Implementation note.
 
   if constexpr (!IsSameType<T, float>::value) {
     Cast(fp32Buf4Local, logProbLocal, RoundMode::CAST_NONE, calcLen);
@@ -115,7 +115,7 @@ __aicore__ inline void CrossEntropyLossGradWeightNotNone<T>::ComputeLog(uint64_t
     Exp(fp32Buf4Local, fp32Buf4Local, calcLen);
     Muls(fp32Buf4Local, fp32Buf4Local, nllLossGradScalar, calcLen);
     if (cloopOffset <= targetValue && targetValue <= cloopOffset + calcLen) {
-      // 找到log_prob需要修改的位置，减去对应nll_grad的值
+      // Implementation note.
       fp32Buf4Local.SetValue(posIdx, fp32Buf4Local.GetValue(posIdx) - nllLossGradScalar);
     }
     if (this->labelSmoothing == 0) {
@@ -137,8 +137,8 @@ __aicore__ inline void CrossEntropyLossGradWeightNotNone<T>::ComputeLog(uint64_t
 
 template <typename T>
 __aicore__ inline void CrossEntropyLossGradWeightNotNone<T>::ComputerEachBatch(uint64_t nLoopIdx, uint64_t nLoopNum) {
-  // 一个核内的第n行
-  for (uint64_t cLoopIdx = 0; cLoopIdx < this->colLoop; cLoopIdx++) {  // 循环一行内的每个loop
+  // Implementation note.
+  for (uint64_t cLoopIdx = 0; cLoopIdx < this->colLoop; cLoopIdx++) { // Implementation note.
     this->CopyInLog(nLoopIdx, cLoopIdx, this->alignColLoopNum);
     ComputeLog(nLoopIdx, cLoopIdx, this->alignColLoopNum);
     this->CopyOutLog(nLoopIdx, cLoopIdx, this->alignColLoopNum);
@@ -165,7 +165,7 @@ __aicore__ inline void CrossEntropyLossGradWeightNotNone<T>::Process() {
     }
   } else if (this->reduction == REDUCTION_MEAN) {
     TargetWeight(this->targetOffset, this->nLoopNum);
-    pipe_barrier(PIPE_ALL);    // 要等前面两个都算完才能计算TargetWeightSum
+    pipe_barrier(PIPE_ALL); // Implementation note.
     TargetWeightSum(this->nLoopNum);
     this->GradReductionMeanSum();
     float loss_out_grad = this->meanSumOutGrad / blockBuf2Local.GetValue(0);
@@ -176,7 +176,7 @@ __aicore__ inline void CrossEntropyLossGradWeightNotNone<T>::Process() {
     }
   } else if (this->reduction == REDUCTION_SUM) {
     this->GradReductionMeanSum();
-    pipe_barrier(PIPE_ALL);    // 要等前面两个都算完才能计算Muls
+    pipe_barrier(PIPE_ALL); // Implementation note.
     Muls(this->targetCast, this->ignoreSelect, this->meanSumOutGrad, this->nLoopNum);   // loss_out_grad
     TargetWeight(this->targetOffset, this->nLoopNum);
     Mul(targetWeightLocal, targetWeightLocal, this->targetCast, this->nLoopNum);  // nll_loss_grad

@@ -295,7 +295,7 @@ private:
         set_flag(PIPE_V, PIPE_MTE3, eventID1);
         wait_flag(PIPE_V, PIPE_MTE3, eventID1);
 
-        DataCopyExtParams copyParams{1, static_cast<uint32_t>(sizeof(P)), 0, 0, 0}; // 结构体DataCopyExtParams最后一个参数是rsv保留位       
+        DataCopyExtParams copyParams{1, static_cast<uint32_t>(sizeof(P)), 0, 0, 0}; // Implementation note.
         DataCopyPad(workTensorGM[offset], tempLocal, copyParams);
 
         event_t eventID2 = static_cast<event_t>(pipe.FetchEventID(HardEvent::MTE3_MTE2));
@@ -307,7 +307,7 @@ private:
     __aicore__ inline void CopyInStage1(uint16_t index, int64_t dataCount) {
         LocalTensor<T> dataLocal = dataQueue.AllocTensor<T>();
 
-        DataCopyExtParams copyParams{1, static_cast<uint32_t>(dataCount * sizeof(T)), 0, 0, 0}; // 结构体DataCopyExtParams最后一个参数是rsv保留位        
+        DataCopyExtParams copyParams{1, static_cast<uint32_t>(dataCount * sizeof(T)), 0, 0, 0}; // Implementation note.
         DataCopyPadExtParams<T> padParams{true, 0, 0, 0};
         DataCopyPad(dataLocal, inTensorGM[index * maxDataCount], copyParams, padParams);
 
@@ -332,7 +332,7 @@ private:
     __aicore__ inline void CopyInStage2(uint16_t dataCount, uint16_t offset) {
         LocalTensor<P> dataLocal = dataQueue.AllocTensor<P>();
 
-        DataCopyExtParams copyParams{1, static_cast<uint32_t>(dataCount * sizeof(P)), 0, 0, 0}; // 结构体DataCopyExtParams最后一个参数是rsv保留位        
+        DataCopyExtParams copyParams{1, static_cast<uint32_t>(dataCount * sizeof(P)), 0, 0, 0}; // Implementation note.
         DataCopyPadExtParams<P> padParams{true, 0, 0, 0};
         DataCopyPad(dataLocal, workTensorGM[offset], copyParams, padParams);
 
@@ -349,7 +349,7 @@ private:
         set_flag(PIPE_V, PIPE_MTE3, eventID1);
         wait_flag(PIPE_V, PIPE_MTE3, eventID1);
 
-        DataCopyExtParams copyParams2{1, static_cast<uint32_t>(sizeof(T)), 0, 0, 0}; // 结构体DataCopyExtParams最后一个参数是rsv保留位        
+        DataCopyExtParams copyParams2{1, static_cast<uint32_t>(sizeof(T)), 0, 0, 0}; // Implementation note.
         DataCopyPad(outTensorGM, outLocal, copyParams2);
 
         event_t eventID2 = static_cast<event_t>(pipe.FetchEventID(HardEvent::MTE3_MTE2));
@@ -375,7 +375,7 @@ private:
         set_flag(PIPE_V, PIPE_MTE3, eventID1);
         wait_flag(PIPE_V, PIPE_MTE3, eventID1);
 
-        DataCopyExtParams copyParams2{1, static_cast<uint32_t>(sizeof(T)), 0, 0, 0}; // 结构体DataCopyExtParams最后一个参数是rsv保留位       
+        DataCopyExtParams copyParams2{1, static_cast<uint32_t>(sizeof(T)), 0, 0, 0}; // Implementation note.
         DataCopyPad(outTensorGM, outLocal, copyParams2);
 
         event_t eventID2 = static_cast<event_t>(pipe.FetchEventID(HardEvent::MTE3_MTE2));

@@ -81,7 +81,7 @@ __aicore__ inline void CrossEntropyLossGradWeightNone<T>::WeightAfterMaskSum(uin
   #endif
   DataCopyPad(weightMaskLocal, workspaceGm, {1, (uint32_t)(this->usedCoreNum * sizeof(float)), 0, 0, 0}, {false, 0, 0, 0});
   this->PipeM2V();
-  ReduceSum(blockBuf2Local, weightMaskLocal, weightMaskLocal, this->usedCoreNum);  // blockBuf2Local为48个数的和
+  ReduceSum(blockBuf2Local, weightMaskLocal, weightMaskLocal, this->usedCoreNum); // Implementation note.
 }
 
 template <typename T>
@@ -99,7 +99,7 @@ __aicore__ inline void CrossEntropyLossGradWeightNone<T>::ComputeLog(uint64_t nL
                                                                      uint64_t calcLen) {
   LocalTensor<T> logProbLocal = this->inQueLogProb.template DeQue<T>();
   xGradLocal = this->outQueXGrad.template AllocTensor<T>();
-  uint64_t cloopOffset = cLoopIdx * this->alignColLoopNum;    // 一个核内，一行的偏移量
+  uint64_t cloopOffset = cLoopIdx * this->alignColLoopNum; // Implementation note.
   uint64_t targetValue = this->targetGm.GetValue(this->targetOffset + nLoopIdx);
   uint64_t posIdx = targetValue - cLoopIdx * this->alignColLoopNum;
 

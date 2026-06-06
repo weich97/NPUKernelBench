@@ -28,7 +28,7 @@ public:
         dst_global.SetGlobalBuffer((__gm__ T *)dst_gm + startPointer, bufferlength);
         pipe.InitBuffer(inQueueX, BUFFER_NUM, this->tileLength * sizeof(T));
         pipe.InitBuffer(outQueue, BUFFER_NUM, this->tileLength * sizeof(T));
-        //分出两块TBuffer存放计算过程中产生的临时Tensor
+        // Implementation note.
         if constexpr ( ! std::is_same_v<T, float32_t>)
             pipe.InitBuffer(tmp1, this->tileLength * sizeof(float));
             pipe.InitBuffer(tmp2, this->tileLength * sizeof(float));
@@ -60,7 +60,7 @@ private:
     {
         LocalTensor<T> dstLocal = outQueue.AllocTensor<T>();
         LocalTensor<T> srcLocal = inQueueX.DeQue<T>();
-        //计算前加入输入tensor对float32的转换，计算后转回原类型
+        // Implementation note.
         if constexpr ( ! std::is_same_v<T, float32_t>)
         {
             LocalTensor<float> p1 = tmp1.Get<float>();

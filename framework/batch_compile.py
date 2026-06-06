@@ -232,11 +232,11 @@ def post_compile_callback(task_obj: TaskObject, result_or_exception, idx: int, v
             if isinstance(result_or_exception, Exception):
                 common_logger.error(f"Task {idx} failed with exception: {result_or_exception}", exc_info=True)
 
-            # 创建失败的编译结果
+            # Manually implemented aclnn path.
             log_file = getattr(task_obj, 'compile_log_path', None)
             task_obj.compile_result = CompileResult(False, log_file=log_file)
 
-        # 记录编译状态
+        # Manually implemented aclnn path.
         status = "SUCCESS" if task_obj.compile_result.success else "FAILED"
         common_logger.info(f"Task {idx} ({task_obj.short_id}): {status}")
 

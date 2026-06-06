@@ -28,7 +28,7 @@ namespace optiling
         if (dt == ge::DT_FLOAT16 || dt == ge::DT_BF16)
         {
             sizeofdatatype = DATATYPE1;
-            NUM = 4;    //需要额外分出一半空间给TBuffer
+            NUM = 4; // Implementation note.
         }
         else
         {

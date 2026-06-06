@@ -22,7 +22,7 @@
 
 namespace GeluQuantALL {
 using namespace AscendC;
-// static quant per-tensor   elewise切分
+// Implementation note.
 template <typename T1, typename T2> class StaticQuantPerTensor : public GeluQuantBase {
 public:
     __aicore__ inline StaticQuantPerTensor(){};

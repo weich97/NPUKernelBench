@@ -1,79 +1,57 @@
 # aclnnMseLossGrad
 
-## 功能描述
-### 算子功能
-计算均方误差损失（MSE Loss）的反向传播梯度。它根据损失的梯度（`gradOutput`）、预测值（`self`）和目标值（`target`）来计算对预测值的梯度。
+## Functional Description
 
-### 计算公式
-假设 MSE Loss 前向计算为：
+### Operator Semantics
+`aclnnMseLossGrad` is an Ascend NPU benchmark operator in the `level2` `Loss` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.mse_loss_grad()`.
+
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
+
 $$
 \text{Loss} = \frac{1}{N} \sum_{i=1}^{N} (x_i - y_i)^2 \quad (\text{for reduction='mean'})
 $$
+
 $$
 \text{Loss} = \sum_{i=1}^{N} (x_i - y_i)^2 \quad (\text{for reduction='sum'} \text{ or 'none'})
 $$
-其中 $x$ 是预测值（`self`），$y$ 是目标值（`target`）。
 
-反向传播的梯度（`out`）计算公式为：
 $$
 \text{out}_i = \text{gradOutput}_i \cdot \text{coefficient} \cdot (x_i - y_i)
 $$
-其中，`coefficient` 取决于 `reduction` 类型：
-* 如果 `reduction` 为 `"mean"`：`coefficient` 为 $\frac{2}{N_{total}}$，其中 $N_{total}$ 是 `x` 张量中所有元素的总数。
-* 如果 `reduction` 为 `"sum"` 或 `"none"`：`coefficient` 为 $2$。
 
-## 接口定义
+## Interface Definition
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.mse_loss_grad()` 函数形式提供：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def mse_loss_grad(gradOutput, self_input, target_input, reduction):
-    """
-    计算均方误差损失的反向传播梯度。
+    """Execute `aclnnMseLossGrad` on Ascend NPU tensors."""
 
-    参数:
-        gradOutput (Tensor): 损失函数输出的梯度张量。
-        self_input (Tensor): 预测值张量（MSE Loss 前向的输入 `x`）。
-        target_input (Tensor): 目标值张量（MSE Loss 前向的输入 `y`）。
-        reduction (str): 前向损失的归约方式，可选 "none", "mean", "sum"。
-
-    返回:
-        Tensor: 对预测值 `self_input` 的梯度张量。
-    """
 ```
 
-## 使用案例
+### Inputs
+- `gradOutput`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `self_input`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `target_input`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `reduction`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量和参数
-input_shape = [2, 2]
-dtype = torch.float32
-reduction = "mean"
-
-input_predict = torch.randn(input_shape, dtype=dtype)
-input_label = torch.randn(input_shape, dtype=dtype)
-input_dout = torch.randn(input_shape, dtype=dtype) # Gradient from downstream
-
-# 使用 mse_loss_grad 计算反向梯度
-out_grad = kernel_gen_ops.mse_loss_grad(input_dout, input_predict, input_label, reduction)
-
-# Example with 'sum' reduction
-out_grad_sum = kernel_gen_ops.mse_loss_grad(
-    torch.randn(input_shape, dtype=dtype),
-    torch.randn(input_shape, dtype=dtype),
-    torch.randn(input_shape, dtype=dtype),
-    "sum"
-)
+result = kernel_gen_ops.mse_loss_grad(gradOutput, self_input, target_input, reduction)
 ```
 
-## 约束与限制
-- **功能维度**
-  * 数据格式支持：**ND**。
-  * `gradOutput`、`self`（预测值）、`target`（目标值）和 `out` 的形状和数据类型必须一致。
-  * `gradOutput`、`self`、`target` 的数据类型支持 **FLOAT16**、**FLOAT**、**BFLOAT16**。
-  * `reduction` 必须是字符串 `"none"`、`"mean"` 或 `"sum"` 之一。
-  * `reduction` 参数的映射：`"none"` 对应 `0`，`"mean"` 对应 `1`，`"sum"` 对应 `2`。
+## Constraints and Notes
+
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

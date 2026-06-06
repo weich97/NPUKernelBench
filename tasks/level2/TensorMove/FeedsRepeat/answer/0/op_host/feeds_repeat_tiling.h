@@ -20,16 +20,16 @@
 namespace optiling {
 
 BEGIN_TILING_DATA_DEF(FeedsRepeatTilingData)
-    TILING_DATA_FIELD_DEF(uint32_t, length);            // feeds_repeat_times的元素个数
-    TILING_DATA_FIELD_DEF(uint32_t, length_aligned);    // length与32B对齐
-    TILING_DATA_FIELD_DEF(int64_t, elem_row);          // feeds第0维一行切片的数据量
-    TILING_DATA_FIELD_DEF(int64_t, elem_per_loop);     // 实际一个核一次循环处理的数据量
-    TILING_DATA_FIELD_DEF(int64_t, max_core_num);       // 可用最大核数（全部使用）
-    TILING_DATA_FIELD_DEF(int64_t, core_per_group);     // 核数大于feeds行数时，同时处理一行的平均核数
-    TILING_DATA_FIELD_DEF(int64_t, core_moreover);      // 核数大于feeds行数时，核数除以行数的余量
-    TILING_DATA_FIELD_DEF(int64_t, empty_size);         // 需要清零的行的结束位置，即output_feeds_size
-    TILING_DATA_FIELD_DEF(int64_t, row_per_core);       // 每个核处理的平均核数
-    TILING_DATA_FIELD_DEF(int64_t, row_left);           // 行数除以核数的余量
+    TILING_DATA_FIELD_DEF(uint32_t, length); // Implementation note.
+    TILING_DATA_FIELD_DEF(uint32_t, length_aligned); // Implementation note.
+    TILING_DATA_FIELD_DEF(int64_t, elem_row); // Implementation note.
+    TILING_DATA_FIELD_DEF(int64_t, elem_per_loop); // Implementation note.
+    TILING_DATA_FIELD_DEF(int64_t, max_core_num); // Implementation note.
+    TILING_DATA_FIELD_DEF(int64_t, core_per_group); // Implementation note.
+    TILING_DATA_FIELD_DEF(int64_t, core_moreover); // Implementation note.
+    TILING_DATA_FIELD_DEF(int64_t, empty_size); // Implementation note.
+    TILING_DATA_FIELD_DEF(int64_t, row_per_core); // Implementation note.
+    TILING_DATA_FIELD_DEF(int64_t, row_left); // Implementation note.
 END_TILING_DATA_DEF;
 
 REGISTER_TILING_DATA_CLASS(FeedsRepeat, FeedsRepeatTilingData)

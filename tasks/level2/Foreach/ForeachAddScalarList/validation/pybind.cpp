@@ -5,23 +5,23 @@
 
 /**
  * register forward implementation for NPU device
- * 使用说明：
- * 1. 将此文件中的 aclnnCustomOp 替换为实际算子名称，如 aclnnForeachExp
- * 2. 将 custom_pybind_api 替换为对应的下划线命名形式，如 foreach_exp
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
  *
- * 替换示例：
- * - aclnnCustomOp -> aclnnXXX (其中XXX为算子名，如替换为aclnnForeachExp)
- * - custom_pybind_api -> YYY (其中YYY为算子名的下划线形式，如foreach_exp)
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
  *
- * 注意：替换时需保持函数签名和逻辑不变，仅修改上述指定的名称，这一替换过程将在batch_compile.py文件中自动被执行
+ * Implementation note.
  */
 std::vector<at::Tensor> custom_pybind_api(std::vector<at::Tensor> &x, at::Tensor &scalar_tensor)
 {
-    // 从tensor中提取标量值
+    // Implementation note.
     std::vector<at::Scalar> scalars;
     scalars.reserve(scalar_tensor.size(0));
 
-    // 根据标量张量的数据类型进行处理
+    // Implementation note.
     if (scalar_tensor.scalar_type() == at::ScalarType::Float) {
         auto accessor = scalar_tensor.accessor<float, 1>();
         for (int i = 0; i < scalar_tensor.size(0); i++) {
@@ -50,7 +50,7 @@ std::vector<at::Tensor> custom_pybind_api(std::vector<at::Tensor> &x, at::Tensor
         throw std::runtime_error("Unsupported scalar type for ForeachAddScalarList");
     }
 
-    // 其余代码不变
+    // Implementation note.
     std::vector<at::Tensor> result;
     result.reserve(x.size());
 

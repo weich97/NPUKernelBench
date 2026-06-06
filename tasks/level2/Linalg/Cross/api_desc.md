@@ -1,54 +1,44 @@
 # aclnnCross
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-计算 `x1` 和 `x2` 在 dim 维度上的向量积（叉积）
+### Operator Semantics
+`aclnnCross` is an Ascend NPU benchmark operator in the `level2` `Linalg` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.cross()`.
 
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-## 接口定义
+### Mathematical Definition
+The exact element-wise, reduction, indexing, tensor-construction, or in-place semantics are defined by the corresponding `validation/module.py` reference path and benchmark input generator. Implementations must match that reference behavior for all generated test cases.
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.cross()` 函数形式提供：
+## Interface Definition
 
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def cross(input1, input2, dim=-1):
-    """
-    实现自定义向量叉积操作（cross product）。
-
-    参数:
-        input1 (Tensor): 输入张量，表示第一个向量组，数据格式支持ND。
-        input2 (Tensor): 输入张量，表示第二个向量组，形状与 input 相同。
-        dim (int, 可选): 指定在哪个维度上计算叉积，默认值为-65530（即最后一个维度）。
-    
-    返回:
-        Tensor: 输出张量，表示对应位置上 input1 和 input2 的叉积，形状与输入相同，数据类型与 input1 相同。
-
-    注意:
-        - `input1` 和 `input2` 的形状必须相同；
-        - 支持ND格式张量，在指定的 dim 维度上执行向量叉积；
-        - 此操作适用于 3D 向量或在指定维度为3的批量计算场景。
-    """
+    """Execute `aclnnCross` on Ascend NPU tensors."""
 
 ```
 
-## 使用案例
+### Inputs
+- `input1`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `input2`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `dim`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量，最后一个维度为3
-input1 = torch.randn(4, 8, 3, dtype=torch.float32)
-input2 = torch.randn(4, 8, 3, dtype=torch.float32)
-dim = 2
-
-# 使用 cross 执行叉积计算
 result = kernel_gen_ops.cross(input1, input2, dim)
 ```
-## 约束与限制
 
-- 张量数据格式支持ND。
+## Constraints and Notes
 
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

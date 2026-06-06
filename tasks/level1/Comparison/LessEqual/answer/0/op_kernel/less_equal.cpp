@@ -151,7 +151,7 @@ private:
     uint32_t block_length_mean = tiling_data.blockLengthMean;
     uint32_t block_length_end = tiling_data.blockLengthEnd;
 
-    uint32_t pad32 = BLOCK_SIZE;  // 对齐32B需要的最小数据量
+    uint32_t pad32 = BLOCK_SIZE;  // Alignment and tail-handling logic.
     this->total_length = total_length;
     if (AscendC::GetBlockNum() >= 1 && AscendC::GetBlockIdx() == (AscendC::GetBlockNum() - 1)) {
       this->block_length = block_length_end;

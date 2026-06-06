@@ -56,7 +56,7 @@ template <typename TYPE_X, typename TYPE_Y>
 class KernelCast0TBuf : public BaseKernelCast<TYPE_X, TYPE_Y>
 {
     /*
-    无临时变量
+    // Implementation note.
     half -> float
     half -> int32       (TRUNC)
     half -> bool        (Abs)
@@ -182,7 +182,7 @@ template <typename TYPE_X, typename TYPE_Y>
 class KernelCast1TBuf4B : public BaseKernelCast<TYPE_X, TYPE_Y>
 {
     /*
-    1个4Bytes的临时变量
+    // Implementation note.
     half -> float ->(RINT) bfloat16
     int32 -> float ->(RINT) bfloat16
     int32 -> float -> half
@@ -305,7 +305,7 @@ template <typename TYPE_X, typename TYPE_Y>
 class KernelCast2TBuf2B : public BaseKernelCast<TYPE_X, TYPE_Y>
 {
     /*
-    2个2Bytes的临时变量
+    // Implementation note.
     half -> int8
     half -> uint8
     float -> bool
@@ -437,7 +437,7 @@ template <typename TYPE_X, typename TYPE_Y>
 class KernelCast3TBuf2B : public BaseKernelCast<TYPE_X, TYPE_Y>
 {
     /*
-    3个2Bytes的临时变量
+    // Implementation note.
     float -> int8
     float -> uint8
     int32 -> int8
@@ -543,7 +543,7 @@ template <typename TYPE_X, typename TYPE_Y>
 class KernelCast1TBuf2B : public BaseKernelCast<TYPE_X, TYPE_Y>
 {
     /*
-    1个2Bytes的临时变量
+    // Implementation note.
     int8/uint8/bool -> float
     int8/uint8/bool -> int32
     int8/uint8 -> int16
@@ -647,7 +647,7 @@ template <typename TYPE_X, typename TYPE_Y>
 class KernelCast1TBuf2B1TBuf4B : public BaseKernelCast<TYPE_X, TYPE_Y>
 {
     /*
-    1个2Bytes,1个4Bytes的临时变量
+    // Implementation note.
     int8/uint8/bool -> half ->(TRUNC) int32 -> int64
     int8/uint8/bool -> half -> float -> bfloat16
     int64 -> bool
@@ -762,7 +762,7 @@ template <typename TYPE_X, typename TYPE_Y>
 class KernelCast3TBuf2B1TBuf4B : public BaseKernelCast<TYPE_X, TYPE_Y>
 {
     /*
-    3个2Bytes,1个4Bytes的临时变量
+    // Implementation note.
     int64 -> int8
     int64 -> uint8
     bfloat16 -> int8
@@ -871,7 +871,7 @@ private:
 class KernelCastTQueBind
 {
     /*
-    使用TQueBind直接传输8bit的数据类型
+    // Implementation note.
     bool -> int8/uint8
     int8 -> uint8
     uint8 -> int8

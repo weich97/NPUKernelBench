@@ -12,8 +12,8 @@
  * \file scatter_list_rlbse_pad.h
  * \brief
  */
-// 此文件实现所有芯片、-2轴更新、大batch小element、updates的后两维乘积不对齐block场景，对应模板211
-// R: row, L: large, B: batch(updates的前两维除以核数得到), S: small, E: element(updates的后两维乘积), PAD: 填充
+// Implementation note.
+// Implementation note.
 #ifndef SCATTER_LIST_RLBSE_PAD_H_
 #define SCATTER_LIST_RLBSE_PAD_H_
 

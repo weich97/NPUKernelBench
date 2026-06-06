@@ -12,8 +12,8 @@
  * \file scatter_list_rsble.h
  * \brief
  */
-// 此文件实现所有芯片、-2轴更新、小batch大element、尾轴对齐block场景，对应模板220
-// R: row, S: small, B: batch(updates的前两维除以核数得到), L: large, E: element(updates的后两维乘积)
+// Implementation note.
+// Implementation note.
 #ifndef SCATTER_LIST_RSBLE_H_
 #define SCATTER_LIST_RSBLE_H_
 

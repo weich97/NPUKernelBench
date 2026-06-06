@@ -1,50 +1,43 @@
 # aclnnMaskSelectV3
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-根据一个布尔掩码张量（mask）中的值选择输入张量（input_tensor）中的元素作为输出，形成一个新的一维张量。
+### Operator Semantics
+`aclnnMaskSelectV3` is an Ascend NPU benchmark operator in the `level2` `Mask` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.mask_select_v3()`.
 
-### 计算公式
-从输入张量 `input_tensor` 中选择 `mask` 为 `True` 位置的元素组成新的一维张量。
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-## 接口定义
+### Mathematical Definition
+The exact element-wise, reduction, indexing, tensor-construction, or in-place semantics are defined by the corresponding `validation/module.py` reference path and benchmark input generator. Implementations must match that reference behavior for all generated test cases.
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.mask_select_v3()` 函数形式提供：
+## Interface Definition
+
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def mask_select_v3(input_tensor, mask):
-    """
-    实现MaskSelectV3操作。
-    
-    参数:
-        input_tensor (Tensor): 输入张量，Device侧的张量，数据格式支持ND。
-        mask (Tensor): 布尔掩码张量，Device侧的张量，数据格式支持ND。
-        
-    返回:
-        Tensor: 计算结果张量，为一维张量，数据类型与输入一致，数据格式支持ND。
-    
-    注意:
-        张量数据格式支持ND
-    """
+    """Execute `aclnnMaskSelectV3` on Ascend NPU tensors."""
+
 ```
 
-## 使用案例
+### Inputs
+- `input_tensor`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+- `mask`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量
-input_tensor = torch.randn(8, 2048, dtype=torch.float16)
-mask = torch.randint(0, 2, (8, 2048), dtype=torch.bool)
-
-# 使用mask_select_v3执行计算
 result = kernel_gen_ops.mask_select_v3(input_tensor, mask)
 ```
 
-## 约束与限制
+## Constraints and Notes
 
-无
-    
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

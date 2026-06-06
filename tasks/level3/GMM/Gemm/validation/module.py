@@ -10,25 +10,25 @@ import math
 
 class Model(nn.Module):
     """
-    实现add算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, a: torch.Tensor, b: torch.Tensor, c: torch.Tensor, alpha: torch.float32, beta: torch.float32) -> torch.Tensor:
         """
-        实现add算子功能。
+        Reference implementation detail.
 
         Args:
-            a: 第一个输入张量
-            b: 第二个输入张量
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            两个输入张量的和
+            Reference implementation detail.
         """
         output = torch.matmul(alpha * a, b) + beta * c
         return output

@@ -45,7 +45,7 @@ constexpr size_t DIM_C_IDX = 1;
 constexpr int64_t PATTERN_A_MIN = 64;
 constexpr int64_t PATTERN_R_MIN = 8192;
 
-// 根据API定义，需要列出所能支持的所有dtype
+// Implementation note.
 static const std::initializer_list<op::DataType> &GetSupportDtypeList(SocVersion socVersion)
 {
     static const std::initializer_list<op::DataType> emptyDtypes = {};
@@ -249,7 +249,7 @@ aclnnStatus aclnnBatchNormGetWorkspaceSize(const aclTensor *input, const aclTens
     L2_DFX_PHASE_1(aclnnBatchNorm,
         DFX_IN(input, weight, bias, runningMean, runningVar, training, momentum, eps),
         DFX_OUT(output, saveMean, saveInvstd));
-    // 固定写法，创建OpExecutor
+    // Implementation note.
     auto uniqueExecutor = CREATE_EXECUTOR();
     CHECK_RET(uniqueExecutor.get() != nullptr, ACLNN_ERR_INNER_CREATE_EXECUTOR);
 
@@ -552,7 +552,7 @@ aclnnStatus BatchNorm(const aclTensor *input, const aclTensor *weight, const acl
 aclnnStatus aclnnBatchNorm(void *workspace, uint64_t workspaceSize, aclOpExecutor *executor, aclrtStream stream)
 {
     L2_DFX_PHASE_2(aclnnBatchNorm);
-    // 固定写法，调用框架能力，完成计算
+    // Implementation note.
     return CommonOpExecutorRun(workspace, workspaceSize, executor, stream);
 }
 

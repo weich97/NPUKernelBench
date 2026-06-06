@@ -4,18 +4,18 @@ import numpy as np
 
 def get_inputs(param, device=None):
     """
-    根据 DataFrame 行中的参数生成 DequantSwigluQuant 算子的输入张量。
+    Reference implementation detail.
 
     Args:
-        param (dict): 参数配置，如输入形状和数据类型
-        device (torch.device): 输入张量所在设备
+        Reference implementation detail.
+        Reference implementation detail.
 
     Returns:
-        tuple: 包含 DequantSwigluQuant 算子的所有输入张量和非张量参数
+        Reference implementation detail.
                (x, weight_scale, activate_scale, bias, quant_scale, quant_offset, group_index, activate_left, quant_mode)
     """
-    # 必选参数
-    # input_shape 仍然可能是字符串 "[1, 2]"，所以 eval 是正确的
+    # Implementation note.
+    # Implementation note.
     shape = eval(param.get('input_shape', '[1, 2]'))
     dtype_str = param.get('dtype', 'float16')
     dtype = getattr(torch, dtype_str)
@@ -77,12 +77,12 @@ def get_inputs(param, device=None):
 
 def get_init_inputs(param, device=None):
     """
-    DequantSwigluQuant 没有模型初始化参数，返回空列表。
+    Reference implementation detail.
 
     Args:
-        param (dict): 参数配置
+        Reference implementation detail.
 
     Returns:
-        list: 空列表
+        Reference implementation detail.
     """
     return []

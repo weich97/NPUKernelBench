@@ -63,7 +63,7 @@ public:
         {
             m_value=(half)this->value;
         }
-        //tmp1用于临时存储数据用，方便类型的转换，用于转换成float
+        // Implementation note.
         if constexpr (std::is_same_v<TYPE_X, bfloat16_t> || 
                           std::is_same_v<TYPE_X, int16_t>|| 
                          std::is_same_v<TYPE_X, int32_t> || 
@@ -73,7 +73,7 @@ public:
     }
     __aicore__ inline void Process()
     {
-        //在process侧实现分流，实现对复数类型和常规数据类型的处理
+        // Implementation note.
         int32_t loopCount = this->tileNum;
         this->processDataNum = this->ubPartDataNum;
         for (int32_t i = 0; i < loopCount-1; i++)
@@ -143,7 +143,7 @@ private:
     TYPE_X m_value;
 };
 
-//在这里编写一个适配complex64类型的算子
+// Implementation note.
 template <typename TYPE_X>
 class KernelMulsComplex64
 {
@@ -192,7 +192,7 @@ public:
     }
     __aicore__ inline void Process()
     {
-        //在process侧实现分流，实现对复数类型和常规数据类型的处理
+        // Implementation note.
         int32_t loopCount = this->tileNum;
         this->processDataNum = this->ubPartDataNum;
         for (int32_t i = 0; i < loopCount-1; i++)

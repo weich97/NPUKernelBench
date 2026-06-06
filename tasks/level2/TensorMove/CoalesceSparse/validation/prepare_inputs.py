@@ -4,14 +4,14 @@ import numpy as np
 
 def get_inputs(param, device=None):
     """
-    根据 DataFrame 行中的参数生成 CoalesceSparse 算子的输入张量。
+    Reference implementation detail.
 
     Args:
-        param (dict): 参数配置，如输入形状和数据类型
-        device (torch.device): 输入张量所在设备
+        Reference implementation detail.
+        Reference implementation detail.
 
     Returns:
-        tuple: 张量 (indices, values, sparse_tensor)
+        Reference implementation detail.
     """
 
     indices_shape = eval(param.get('indices_shape', '[2, 2]'))
@@ -39,12 +39,12 @@ def get_inputs(param, device=None):
 
 def get_init_inputs(param, device=None):
     """
-    CoalesceSparse 没有模型初始化参数，返回空列表。
+    Reference implementation detail.
 
     Args:
-        param (dict): 参数配置
+        Reference implementation detail.
 
     Returns:
-        list: 空列表
+        Reference implementation detail.
     """
     return []

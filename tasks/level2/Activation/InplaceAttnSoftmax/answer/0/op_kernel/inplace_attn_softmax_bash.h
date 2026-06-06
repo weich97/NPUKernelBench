@@ -9,7 +9,7 @@ using namespace AscendC;
 constexpr uint32_t BUFFER_NUM = 1;
 constexpr uint32_t BLOCK_SIZE = 32;
 
-// 单输入场景，一个tile需要的偏置参数
+// Implementation note.
 struct InplaceAttnSoftmaxOffsetParam {
     uint64_t tmpVecGmOffset;
 };
@@ -21,15 +21,15 @@ public:
 
     __aicore__ inline void ParseTilingData(const InplaceAttnSoftmaxTilingData *tilingData)
     {
-        tilingData_.rowLen = tilingData->rowLen;                            // 多少行数据
-        tilingData_.colLen = tilingData->colLen;                            // 列数，对输入x的一半
-        tilingData_.rowLenPerHeadCore = tilingData->rowLenPerHeadCore;      // 每核处理的行数
-        tilingData_.rowLenPerTailCore = tilingData->rowLenPerTailCore;      // 每核处理的行数
-        tilingData_.basicRowLenHeadCore = tilingData->basicRowLenHeadCore;  // 头核每次计算的行数
-        tilingData_.basicRowLenTailCore = tilingData->basicRowLenTailCore;  // 尾核每次计算的行数
-        tilingData_.basicColLen = tilingData->basicColLen;                  // 每次计算的列数
-        tilingData_.headCoreNum = tilingData->headCoreNum;                  // 使用的head核数
-        tilingData_.realCoreNum = tilingData->realCoreNum;                  // 使用的核数
+        tilingData_.rowLen = tilingData->rowLen; // Implementation note.
+        tilingData_.colLen = tilingData->colLen; // Implementation note.
+        tilingData_.rowLenPerHeadCore = tilingData->rowLenPerHeadCore; // Implementation note.
+        tilingData_.rowLenPerTailCore = tilingData->rowLenPerTailCore; // Implementation note.
+        tilingData_.basicRowLenHeadCore = tilingData->basicRowLenHeadCore; // Implementation note.
+        tilingData_.basicRowLenTailCore = tilingData->basicRowLenTailCore; // Implementation note.
+        tilingData_.basicColLen = tilingData->basicColLen; // Implementation note.
+        tilingData_.headCoreNum = tilingData->headCoreNum; // Implementation note.
+        tilingData_.realCoreNum = tilingData->realCoreNum; // Implementation note.
     }
 
     __aicore__ inline void InitParamsComm()
@@ -62,7 +62,7 @@ public:
 
             uint32_t alignedNum = BLOCK_SIZE / sizeof(inType);
             sizeHalfLen = AlignUp(basicColLen, alignedNum);
-            // 若basicColLen比32B还小 -> sizeHalfLen == 0 -> sizeHalfLen直接按32B字节算
+            // Implementation note.
             tileLength = basicRowLen * (sizeHalfLen == 0 ? (BLOCK_SIZE / sizeof(inType)) : sizeHalfLen);
             rightPadding = sizeHalfLen - basicColLen;
         }
@@ -118,7 +118,7 @@ public:
     uint32_t rowLoop = 1;
     uint32_t colLoop = 1;
     uint32_t lastcolLen = 0;
-    uint32_t baseRow = 0;  // 记录开始处理的行数
+    uint32_t baseRow = 0; // Implementation note.
     uint16_t basicRowLenCal;
     uint64_t tileLength;
     InplaceAttnSoftmaxOffsetParam offsetParam;

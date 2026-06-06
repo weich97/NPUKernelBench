@@ -4,16 +4,16 @@ from typing import List, Tuple
 
 def get_inputs(param, device=None) -> Tuple[List[torch.Tensor], torch.Tensor]:
     """
-    根据 DataFrame 行中的参数生成 ForeachPowScalarAndTensor 算子的输入张量。
+    Reference implementation detail.
 
     Args:
-        param (dict): 参数配置，如输入形状列表和数据类型。
+        Reference implementation detail.
                       Expected keys: 'input_shapes_str' (e.g., '[[10, 20], [5, 5]]'),
                       'weight_scalar', 'dtype'.
-        device (torch.device): 输入张量所在设备。
+        Reference implementation detail.
 
     Returns:
-        tuple: 包含输入张量列表 (x_list, weight_scalar_tensor)。
+        Reference implementation detail.
     """
 
     shape_list = eval(param.get('input_shape', '[[1]]'))

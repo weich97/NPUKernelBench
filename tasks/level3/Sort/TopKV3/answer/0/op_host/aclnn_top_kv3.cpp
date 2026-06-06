@@ -60,7 +60,7 @@ static bool CheckNotNull(const aclTensor *self, const aclTensor *values, const a
 }
 
 static int64_t MakeWrapDim(int64_t dim, int64_t dimPostExpr) {
-  // 支持0维tensor
+  // Implementation note.
   if (dimPostExpr <= 0) {
     dimPostExpr = 1;
   }
@@ -71,7 +71,7 @@ static int64_t MakeWrapDim(int64_t dim, int64_t dimPostExpr) {
 }
 
 static bool CheckParamValid(const aclTensor *self, int64_t k, int64_t dim) {
-  // 检查参数dim是否合法
+  // Implementation note.
   auto inputShape = self->GetViewShape();
   int64_t tmpDim = static_cast<int64_t>(inputShape.GetDimNum());
   if (tmpDim == 0 && dim != 0 && dim != -1) {
@@ -84,7 +84,7 @@ static bool CheckParamValid(const aclTensor *self, int64_t k, int64_t dim) {
     return false;
   }
 
-  // 检查参数k是否合法
+  // Implementation note.
   int64_t positiveDim = MakeWrapDim(dim, tmpDim);
   int64_t tmpK = (tmpDim > 0) ? inputShape.GetDim(positiveDim) : 1;
   if (k < 0 || k > tmpK) {
@@ -97,7 +97,7 @@ static bool CheckParamValid(const aclTensor *self, int64_t k, int64_t dim) {
 
 static bool CheckDtypeValid(const aclTensor *self, const aclTensor *values, const aclTensor *indices) {
   auto supportList = GetDtypeSupportList();
-  // 检查self的数据类型是否在topk算子的支持列表内
+  // Implementation note.
   OP_CHECK_DTYPE_NOT_SUPPORT(self, supportList, return false);
   OP_CHECK_DTYPE_NOT_MATCH(values, self->GetDataType(), return false);
   OP_CHECK_DTYPE_NOT_MATCH(indices, op::DataType::DT_INT64, return false);
@@ -111,16 +111,16 @@ static bool CheckShape(const aclTensor *self) {
 
 static aclnnStatus CheckParams(const aclTensor *self, int64_t k, int64_t dim,
                                const aclTensor *values, const aclTensor *indices) {
-  // 1. 检查参数是否为空指针
+  // Implementation note.
   CHECK_RET(CheckNotNull(self, values, indices), ACLNN_ERR_PARAM_NULLPTR);
 
-  // 2. 检查参数k和dim是否合法
+  // Implementation note.
   CHECK_RET(CheckParamValid(self, k, dim), ACLNN_ERR_PARAM_INVALID);
 
-  // 3. 检查self、values和indices的数据类型是否合法
+  // Implementation note.
   CHECK_RET(CheckDtypeValid(self, values, indices), ACLNN_ERR_PARAM_INVALID);
 
-  // 4. 查输入tensor的shape是否为异常
+  // Implementation note.
   CHECK_RET(CheckShape(self), ACLNN_ERR_PARAM_INVALID);
   return ACLNN_SUCCESS;
 }
@@ -172,23 +172,23 @@ aclnnStatus aclnnTopKV3GetWorkspaceSize(const aclTensor *self, int64_t k, int64_
                                       aclOpExecutor **executor) {
   L2_DFX_PHASE_1(aclnnTopKV3, DFX_IN(self, k, dim, largest, sorted), DFX_OUT(valuesOut, indicesOut));
 
-   // 创建OpExecutor
+   // Implementation note.
   auto uniqueExecutor = CREATE_EXECUTOR();
   CHECK_RET(uniqueExecutor.get() != nullptr, ACLNN_ERR_INNER_CREATE_EXECUTOR);
 
-  // 参数检查
+  // Implementation note.
   auto ret = CheckParams(self, k, dim, valuesOut, indicesOut);
   CHECK_RET(ret == ACLNN_SUCCESS, ret);
 
-  // 支持空tensor
+  // Implementation note.
   if (self->IsEmpty() || valuesOut->IsEmpty() || indicesOut->IsEmpty()) {
-    // 根据实际支持情况补充
+    // Implementation note.
     *workspaceSize = 0;
     uniqueExecutor.ReleaseTo(executor);
     return ACLNN_SUCCESS;
   }
 
-  // 固定写法，将输入self转换成连续的tensor
+  // Implementation note.
   auto selfContiguous = l0op::Contiguous(self, uniqueExecutor.get());
   CHECK_RET(selfContiguous != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
@@ -202,7 +202,7 @@ aclnnStatus aclnnTopKV3GetWorkspaceSize(const aclTensor *self, int64_t k, int64_
   aclTensor *indicesCastInt32 = nullptr;
   aclTensor *valuesTopkOut = nullptr;
 
-  // 在910上,当输入fp32时,路径3的ge侧会插入cast,转换到fp16.此处修改与路径3保持一致。
+  // Implementation note.
   auto selfCast = TopkAdaptGeCastTensor(selfReshape, selfReshape, k, op::DataType::DT_FLOAT16, uniqueExecutor.get());
   CHECK_RET(selfCast != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
@@ -210,20 +210,20 @@ aclnnStatus aclnnTopKV3GetWorkspaceSize(const aclTensor *self, int64_t k, int64_
     aclIntArray *axes = GetDimTransposeArray(dimNum, lastDim, positiveDim, uniqueExecutor.get());
     CHECK_RET(axes != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-    // 对self进行transpose
+    // Implementation note.
     auto selfTranspose = l0op::Transpose(selfCast, axes, uniqueExecutor.get());
     CHECK_RET(selfTranspose != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-    // 进行top计算
+    // Implementation note.
     auto topkOut = l0op::Topk(selfTranspose, k, lastDim, largest, sorted, uniqueExecutor.get());
     valuesTopkOut = std::get<0>(topkOut);
     aclTensor *indicesTopkOut = std::get<1>(topkOut);
     CHECK_RET(valuesTopkOut != nullptr && indicesTopkOut != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-    // 将结果values_transpose进行transpose，转换成正确的shape
+    // Implementation note.
     valuesTopkOut = const_cast<aclTensor *>(l0op::Transpose(valuesTopkOut, axes, uniqueExecutor.get()));
 
-    // 将结果indices_transpose进行transpose，转换成正确的shape
+    // Implementation note.
     indicesCastInt32 = const_cast<aclTensor *>(l0op::Transpose(indicesTopkOut, axes, uniqueExecutor.get()));
   } else {
     auto topkOut = l0op::Topk(selfCast, k, positiveDim, largest, sorted, uniqueExecutor.get());
@@ -235,23 +235,23 @@ aclnnStatus aclnnTopKV3GetWorkspaceSize(const aclTensor *self, int64_t k, int64_
   CHECK_RET(CheckReduceOutShape(valuesOut, valuesTopkOut), ACLNN_ERR_PARAM_INVALID);
   CHECK_RET(CheckReduceOutShape(indicesOut, indicesCastInt32), ACLNN_ERR_PARAM_INVALID);
 
-  // 在910上，输入fp32转换到fp16计算完后需要重新转换到fp32。
+  // Implementation note.
   auto valuesCast = TopkAdaptGeCastTensor(selfReshape, valuesTopkOut, k, op::DataType::DT_FLOAT, uniqueExecutor.get());
   CHECK_RET(valuesCast != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 将valuesCast结果拷贝到values上
+  // Implementation note.
   auto viewCopyValuesResult = l0op::ViewCopy(valuesCast, valuesOut, uniqueExecutor.get());
   CHECK_RET(viewCopyValuesResult != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 将结果indices_cast_int32进行cast，转换成int64类型
+  // Implementation note.
   auto indicesCastInt64 = l0op::Cast(indicesCastInt32, op::DataType::DT_INT64, uniqueExecutor.get());
   CHECK_RET(indicesCastInt64 != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 将indices_cast_int64结果拷贝到values上
+  // Implementation note.
   auto viewCopyIndicesResult = l0op::ViewCopy(indicesCastInt64, indicesOut, uniqueExecutor.get());
   CHECK_RET(viewCopyIndicesResult != nullptr, ACLNN_ERR_INNER_NULLPTR);
 
-  // 获取计算过程中需要使用的workspace大小
+  // Implementation note.
   *workspaceSize = uniqueExecutor->GetWorkspaceSize();
   uniqueExecutor.ReleaseTo(executor);
   return ACLNN_SUCCESS;
@@ -259,7 +259,7 @@ aclnnStatus aclnnTopKV3GetWorkspaceSize(const aclTensor *self, int64_t k, int64_
 
 aclnnStatus aclnnTopKV3(void *workspace, uint64_t workspaceSize, aclOpExecutor *executor, const aclrtStream stream) {
   L2_DFX_PHASE_2(aclnnTopKV3);
-  // 固定写法，调用框架能力，完成计算
+  // Implementation note.
   return CommonOpExecutorRun(workspace, workspaceSize, executor, stream);
 }
 

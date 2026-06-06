@@ -1,62 +1,48 @@
 # aclnnMulSigmoidMulAddCustom
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-实现了数据mul->sigmoid->mul->add计算过程，返回结果的功能。
+### Operator Semantics
+`aclnnMulSigmoidMulAddCustom` is an Ascend NPU benchmark operator in the `level2` `Reduce` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.mul_sigmoid_mul_add_custom()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
+
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
+
 $$\text{mul_res} = \text{a1} \cdot \text{a2}$$
-  $$\text{sigmoid_res} = \frac{1}{1 + e^{-\text{mul_res}}}$$
-  $$\text{mul_2_res} = \text{sigmoid_res} \cdot \text{a3}$$
-  $$\text{add_result} = \text{mul_2_res} + \text{a4}$$
 
-## 接口定义
+$$\text{sigmoid_res} = \frac{1}{1 + e^{-\text{mul_res}}}$$
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.mul_sigmoid_mul_add_custom()` 函数形式提供：
+$$\text{mul_2_res} = \text{sigmoid_res} \cdot \text{a3}$$
 
+## Interface Definition
+
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
-def mul_sigmoid_mul_add_custom(
-    input: torch.Tensor,
-    mulscalar1: torch.Tensor,
-    mulscalar2: torch.Tensor,
-    mulscalar3: torch.Tensor,
-) -> torch.Tensor:
-    """
-    实现 mul_sigmoid_mul_add_custom 操作，对输入依次进行乘法、Sigmoid、乘法、加法运算。
+def mul_sigmoid_mul_add_custom(*args, **kwargs):
+    """Execute `aclnnMulSigmoidMulAddCustom` on Ascend NPU tensors."""
 
-    参数:
-        input: 输入张量；
-        mulscalar1: 输入张量，与 a1 可广播；
-        mulscalar2: 输入张量，与中间结果可广播；
-        mulscalar3: 输入张量，与中间结果可广播；
-
-    返回:
-        Tensor: 输出张量，形状与广播结果一致，表示经过 mul → sigmoid → mul → add 运算后的结果。
-    """
 ```
 
-## 使用案例
+### Inputs
+- Operator arguments are supplied by the benchmark input generator and follow the reference validation signature.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 构造输入
-input = torch.rand(32, 32, dtype=torch.float32)
-
-mulscalar1 = torch.randn(1, dtype=torch.float32)
-mulscalar2 = torch.randn(1, dtype=torch.float32)
-mulscalar3 = torch.randn(1, dtype=torch.float32)
-
-
-output = kernel_gen_ops.mul_sigmoid_mul_add_custom(input, mulscalar1, mulscalar2, mulscalar3)
-
+result = kernel_gen_ops.mul_sigmoid_mul_add_custom(...)
 ```
-## 约束与限制
 
-- 张量数据格式支持ND。
+## Constraints and Notes
 
-
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

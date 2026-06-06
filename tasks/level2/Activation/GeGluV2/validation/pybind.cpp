@@ -5,34 +5,34 @@
 
 /**
  * register forward implementation for NPU device
- * 使用说明：
- * 1. 将此文件中的 aclnnCustomOp 替换为实际算子名称，如 aclnnGeGluV2
- * 2. 将 custom_pybind_api 替换为对应的下划线命名形式，如 ge_glu_v2
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
  *
- * 替换示例：
+ * Implementation note.
  * - aclnnCustomOp -> aclnnGeGluV2
  * - custom_pybind_api -> ge_glu_v2
  *
- * 注意：替换时需保持函数签名和逻辑不变，仅修改上述指定的名称，这一替换过程将在batch_compile.py文件中自动被执行
+ * Implementation note.
  */
 std::vector<at::Tensor> custom_pybind_api(at::Tensor x)
 {
-    // 获取输入张量的形状
-    auto x_sizes = x.sizes().vec();  // 转为 std::vector<int64_t>
+    // Implementation note.
+    auto x_sizes = x.sizes().vec(); // Implementation note.
 
-    // 检查输入张量 x 的最后一维是否可以被 2 整除
+    // Implementation note.
     TORCH_CHECK(x_sizes.back() % 2 == 0, "Last dimension of input x must be divisible by 2 for GeGluV2.");
     int64_t dim = -1;
     int64_t approximate = 0;
     bool activate_left = true;
 
-    // 创建输出张量 result，其形状为输入 x 的最后一维减半
+    // Implementation note.
     x_sizes.back() /= 2;
     at::Tensor result = torch::empty(x_sizes, x.options());
     at::Tensor outGelu = torch::empty_like(result);
     size_t workspace_size = 0;
 
-    // 执行 NPU 自定义算子
+    // Implementation note.
     EXEC_NPU_CMD(aclnnGeGluV2, x, dim, approximate, activate_left, result, outGelu);
 
     // Return a std::vector containing the two tensors

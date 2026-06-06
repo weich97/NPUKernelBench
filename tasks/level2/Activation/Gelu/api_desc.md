@@ -1,48 +1,44 @@
 # Gelu
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-该AscendC算子用于计算Gelu函数。
+### Operator Semantics
+`Gelu` is an Ascend NPU benchmark operator in the `level2` `Activation` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.gelu()`.
 
-### 计算公式
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-  $$\text{GELU}(x) \approx \frac{x}{1 + \exp\left(-\sqrt{\frac{8}{\pi}} \left(x + 0.044715 \cdot x^3\right)\right)}$$
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
 
-## 接口定义
+$$\text{GELU}(x) \approx \frac{x}{1 + \exp\left(-\sqrt{\frac{8}{\pi}} \left(x + 0.044715 \cdot x^3\right)\right)}$$
 
-### Python 接口
-该操作通过 PyBind11 封装 C++ 实现，在 Python 中以 `kernel_gen_ops.gelu()` 函数形式提供：
+## Interface Definition
+
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
 ```python
 def gelu(x):
-    """
-    实现GELU激活函数操作。
-    
-    参数:
-        x (Tensor): 输入张量，Device侧的张量，数据格式支持ND。
-        
-    返回:
-        Tensor: 计算结果张量，数据类型与输入一致，数据格式支持ND。
-    
-    注意:
-        - 张量数据格式支持ND
-    """
+    """Execute `Gelu` on Ascend NPU tensors."""
+
 ```
 
-## 使用案例
+### Inputs
+- `x`: Operator argument supplied by the benchmark input generator. Tensor arguments reside on the device unless the task explicitly defines a host-side scalar or attribute.
+
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
 
 ```python
-import torch
 import kernel_gen_ops
 
-# 创建输入张量
-x = torch.randn(8, 1024, dtype=torch.float32)
-
-# 使用gelu执行计算
 result = kernel_gen_ops.gelu(x)
 ```
 
-## 约束与限制
+## Constraints and Notes
 
-- 输入输出张量数据格式支持ND。
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

@@ -64,7 +64,7 @@ namespace optiling
     uint32_t tileLengthEnd = 0;
     uint32_t blockLengthMean = 0;
     uint32_t blockLengthEnd = 0;
-    // 如果总数据比32B还小，直接当尾数处理
+  // Alignment and tail-handling logic.
     if (totalLength < pad32)
     {
       blockLengthMean = pad32;
@@ -75,11 +75,11 @@ namespace optiling
       tileLengthEnd = totalLength;
     }
     else
-    { // 总数据至少比32B大时
-      // 总数据至少比32B大时
+    {  // Alignment and tail-handling logic.
+  // Alignment and tail-handling logic.
       uint32_t realTotalLength =
           totalLength % (pad32 * coreNum)
-              ? // 补足totalLength到32B倍核心数的整数倍
+              ?  // Alignment and tail-handling logic.
               ((totalLength / (pad32 * coreNum)) + 1) * (pad32 * coreNum)
               : totalLength;
       if (coreNum == 0)
@@ -94,14 +94,14 @@ namespace optiling
 
       if (maxBlockLength >
           padMax)
-      { // maxBlockLength大于padMax时对maxBlockLength进行判定
+      {  // Alignment and tail-handling logic.
         uint32_t padTemp = 0;
         for (uint32_t i = padMax / 2; i <= padMax; i += pad32)
         {
           padTemp = maxBlockLength % i == 0 ? i : padTemp;
         }
         if (padTemp)
-        { // 如果maxBlockLength可以被PadTemp整除，那么padTemp就是tilelength
+        {  // Alignment and tail-handling logic.
           blockLengthMean = maxBlockLength;
           blockLengthEnd = totalLength - blockLengthMean * (coreNum - 1);
           tileNumMean = blockLengthMean / padTemp;
@@ -110,14 +110,14 @@ namespace optiling
           tileLengthEnd = blockLengthEnd - padTemp * (tileNumEnd - 1);
         }
         else
-        { // 如果maxBlockLength不能被PadTemp整除，那么padMax就是tilelength
+        {  // Alignment and tail-handling logic.
           blockLengthMean = maxBlockLength - maxBlockLength % padMax;
           blockLengthEnd = totalLength - blockLengthMean * (coreNum - 1);
           tileNumMean = blockLengthMean / padMax;
           tileNumEnd = blockLengthEnd % padMax
                            ? blockLengthEnd / padMax + 1
                            : (blockLengthEnd /
-                              padMax); // 计算最后一个核心会不会多一个尾数块
+                              padMax);  // Alignment and tail-handling logic.
           if (padMax >= blockLengthEnd)
           {
             tileNumEnd = 1;
@@ -125,21 +125,21 @@ namespace optiling
           tileLengthMean = padMax;
           tileLengthEnd =
               blockLengthEnd -
-              padMax * (tileNumEnd - 1); // 计算最后一个核心的尾数块长度
+              padMax * (tileNumEnd - 1);  // Alignment and tail-handling logic.
         }
       }
       else
-      { // maxBlockLength小于padMax时直接取maxBlockLength中的最大Pad32倍数
+      {  // Alignment and tail-handling logic.
         if (maxBlockLength >= pad32)
-        { // maxBlockLength大于pad32时
+        {  // Alignment and tail-handling logic.
           blockLengthMean = maxBlockLength - maxBlockLength % pad32;
           blockLengthEnd = totalLength - blockLengthMean * (coreNum - 1);
-          tileNumMean = 1; // 只有一个tileNum
+          tileNumMean = 1;  // Alignment and tail-handling logic.
           tileNumEnd =
               blockLengthEnd % pad32
                   ? blockLengthEnd / blockLengthMean + 1
                   : blockLengthEnd /
-                        blockLengthMean; // 如果尾块不能32B对齐则多分配一个尾块
+                        blockLengthMean;  // Alignment and tail-handling logic.
           if (blockLengthMean >= blockLengthEnd)
           {
             tileNumEnd = 1;
@@ -148,10 +148,10 @@ namespace optiling
           tileLengthEnd =
               blockLengthEnd -
               tileLengthMean *
-                  (tileNumEnd - 1); // 将尾数彻底分给最后一个核心的最后一个tile
+                  (tileNumEnd - 1);  // Alignment and tail-handling logic.
         }
         else
-        { // maxBlockLength小于pad32时，前面的block优先分配32B数据
+        {  // Alignment and tail-handling logic.
           blockLengthMean = pad32;
           blockLengthEnd = totalLength - pad32 * (coreNum - 1);
           tileNumMean = 1;

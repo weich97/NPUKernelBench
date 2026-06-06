@@ -72,8 +72,8 @@ class ModelNew(nn.Module):
                 activate_left: bool = False,
                 quant_mode: str = "static") -> List[torch.Tensor]:
         
-        # 调用 C++ 实现的算子
-        # 这里的参数名必须与 forward 方法的参数名一致
+        # Implementation note.
+        # Implementation note.
         return kernel_gen_ops.dequant_swiglu_quant(x, weight_scale, activate_scale,
                                                    bias, quant_scale, quant_offset,
                                                    group_index, activate_left, quant_mode)

@@ -23,7 +23,7 @@ using namespace AscendC;
 
 #define BRC_IMPL(FUNC_IMPL, D_T, S0_T, S1_T, LINE_LENGTH, I_LOOP, I_REMAIN, J_LOOP, J_REMAIN, REP_STRIDE) \
     do {                                                                                                  \
-        /* 切分保证I_LOOP和J_LOOP不会同时大于0 */                                              \
+        // Implementation note.
         for (int64_t i = 0; i < (I_LOOP); i++) {                                                            \
             FUNC_IMPL((D_T)[i * UINT8_MAX_NUM * (LINE_LENGTH)],                                               \
                 (S0_T)[i * UINT8_MAX_NUM * (LINE_LENGTH)],                                                    \
@@ -87,7 +87,7 @@ public:
         this->epsilon = tilingData->epsilon;
         this->momentum = tilingData->momentum;
         this->momentumReverse = tilingData->momentumReverse;
-        // R = 1场景, 0除0生成Nan，running_var输出为Nan
+        // Implementation note.
         this->batchVarScale = (patternR1 * patternR0 == 1) ? static_cast<float>(0.0 / 0.0) : tilingData->batchVarScale;
         dichotomizeAddDiffSize = tilingData->dichotomizeAddDiffSize;
         coefficient0 = tilingData->coefficient0;
@@ -110,13 +110,13 @@ public:
         this->pipe_->InitBuffer(tmpBuf0, rUbSize * FLOAT_SIZE);
         this->pipe_->InitBuffer(tmpBuf1, aUbSize * FLOAT_SIZE);
         this->pipe_->InitBuffer(tmpBuf2, aUbSize * FLOAT_SIZE);
-        // 输入que
+        // Implementation note.
         this->pipe_->InitBuffer(xQueue, DOUBLE_BUFFER, rUbSize * FLOAT_SIZE);
         this->pipe_->InitBuffer(runningMeanInQueue, 1, aUbSize * FLOAT_SIZE);
         this->pipe_->InitBuffer(runningVarInQueue, 1, aUbSize * FLOAT_SIZE);
         this->pipe_->InitBuffer(weightQueue, 1, aUbSize * FLOAT_SIZE);
         this->pipe_->InitBuffer(biasQueue, 1, aUbSize * FLOAT_SIZE);
-        // 输出que
+        // Implementation note.
         this->pipe_->InitBuffer(yQueue, 1, rUbSize * sizeof(T1));
         this->pipe_->InitBuffer(runningMeanOutQueue, 1, aUbSize * FLOAT_SIZE);
         this->pipe_->InitBuffer(runningVarOutQueue, 1, aUbSize * FLOAT_SIZE);
@@ -150,7 +150,7 @@ public:
 private:
     __aicore__ inline void CopyInXPhase(int64_t aProcNum, int64_t aGmOffset)
     {
-        // -----------------------搬入x并Cast---------------------------
+        // Implementation note.
         xTensor = xQueue.AllocTensor<float>();
         if constexpr (!IsSameType<T1, float>::value) {
             LocalTensor<T1> xTensorHalf = xTensor.template ReinterpretCast<T1>();
@@ -182,7 +182,7 @@ private:
 
     __aicore__ inline void CopyInWeightBiasPhase(int64_t aProcNum, int64_t aGmOffset)
     {
-        // -----------------------搬入WeightBias并Cast------------------
+        // Implementation note.
         weightTensor = weightQueue.AllocTensor<float>();
         biasTensor = biasQueue.AllocTensor<float>();
         if constexpr (!IsSameType<T2, float>::value) {
@@ -211,7 +211,7 @@ private:
 
     __aicore__ inline void CopyInRunningMeanVarPhase(int64_t aProcNum, int64_t aGmOffset)
     {
-        // -----------------------搬入runningMeanVar------------------
+        // Implementation note.
         runningMeanInTensor = runningMeanInQueue.AllocTensor<float>();
         CopyInMeanOrVar(runningMeanInTensor, this->runningMeanGm, aProcNum, aGmOffset);
         runningMeanInQueue.EnQue(runningMeanInTensor);
@@ -222,13 +222,13 @@ private:
 
     __aicore__ inline void ComputeMeanPhase(int64_t aProcNum)
     {
-        // -----------------------计算Mean------------------
+        // Implementation note.
         saveMeanTensor = saveMeanQueue.AllocTensor<float>();
         reduceTensor = tmpBuf0.Get<float>();
         if constexpr (IsSameType<T1, float>::value) {
             xTensor = xQueue.DeQue<float>();
         } else {
-            PipeBarrier<PIPE_V>();  // 依赖输入数据cast完成
+            PipeBarrier<PIPE_V>(); // Implementation note.
         }
         if constexpr (PARALLEL_MODE == FULL_REDUCE_NORMAL_MODE) {
             int64_t calLineLength = patternR1 * patternR0Align;
@@ -237,13 +237,13 @@ private:
             DoNormalReduce(saveMeanTensor, reduceTensor, aProcNum);
             PipeBarrier<PIPE_V>();
             Muls(saveMeanTensor, saveMeanTensor, coefficient1, aProcNum);
-            // 插入S等V的同步，saveMeanTensor.GetValue依赖saveMeanTensor计算完成
+            // Implementation note.
             TEventID eventIdVtoS = GetTPipePtr()->FetchEventID(HardEvent::V_S);
             SetFlag<HardEvent::V_S>(eventIdVtoS);
             WaitFlag<HardEvent::V_S>(eventIdVtoS);
             for (int64_t aNum = 0; aNum < aProcNum; aNum++) {
                 finalMean = saveMeanTensor.GetValue(aNum);
-                // 插入V等S的同步，SkipPadSubMean中Adds(-finalMean)依赖saveMeanTensor.GetValue完成
+                // Implementation note.
                 TEventID eventIdStoV = GetTPipePtr()->FetchEventID(HardEvent::S_V);
                 SetFlag<HardEvent::S_V>(eventIdStoV);
                 WaitFlag<HardEvent::S_V>(eventIdStoV);
@@ -255,7 +255,7 @@ private:
             Muls(reduceTensor, xTensor, coefficient0, patternR1 * aR0Align);
             PipeBarrier<PIPE_V>();
             DoAParallelReduce(saveMeanTensor, reduceTensor, aR0Align);
-            PipeBarrier<PIPE_V>();  // 依赖saveMeanTensor计算完成
+            PipeBarrier<PIPE_V>(); // Implementation note.
             Muls(saveMeanTensor, saveMeanTensor, coefficient1, aR0Align);
             PipeBarrier<PIPE_V>();
             int64_t jLoop = calLineLength / ELEM_PER_REP_FP32;
@@ -282,10 +282,10 @@ private:
 
     __aicore__ inline void ComputeVarAndYPhase(int64_t aProcNum)
     {
-        // -----------------------计算Var和Y------------------
+        // Implementation note.
         saveVarTensor = saveVarQueue.AllocTensor<float>();
         yTensor = yQueue.AllocTensor<T1>();
-        PipeBarrier<PIPE_V>();  // 保证xTensor的vector计算完成
+        PipeBarrier<PIPE_V>(); // Implementation note.
         RoundMode b16RoundMode = IsSameType<T1, bfloat16_t>::value ? RoundMode::CAST_ROUND : RoundMode::CAST_NONE;
         if constexpr (PARALLEL_MODE == FULL_REDUCE_NORMAL_MODE) {
             int64_t calcXNum = aProcNum * patternR1 * patternR0Align;
@@ -417,13 +417,13 @@ private:
 
     __aicore__ inline void ComputeRunningMeanVarPhase(int64_t aProcNum)
     {
-        // -----------------------计算RunningMeanVar-----------------------
+        // Implementation note.
         runningMeanInTensor = runningMeanInQueue.DeQue<float>();
         Muls(runningMeanInTensor, runningMeanInTensor, this->momentumReverse, aProcNum);
         runningVarInTensor = runningVarInQueue.DeQue<float>();
         Muls(runningVarInTensor, runningVarInTensor, this->momentumReverse, aProcNum);
         momentumMeanTensor = tmpBuf1.Get<float>();
-        PipeBarrier<PIPE_V>();  // 依赖saveMeanTensor，saveVarTensor计算完成
+        PipeBarrier<PIPE_V>(); // Implementation note.
         Muls(momentumMeanTensor, saveMeanTensor, this->momentum, aProcNum);
         saveMeanQueue.FreeTensor(saveMeanTensor);
         momentumVarTensor = tmpBuf2.Get<float>();
@@ -440,7 +440,7 @@ private:
 
     __aicore__ inline void CopyOutYPhase(int64_t aProcNum, int64_t aGmOffset)
     {
-        // -----------------------搬出Y----------------------------
+        // Implementation note.
         yQueue.EnQue(yTensor);
         yTensor = yQueue.DeQue<T1>();
         if constexpr (PARALLEL_MODE == FULL_REDUCE_NORMAL_MODE) {
@@ -453,7 +453,7 @@ private:
 
     __aicore__ inline void CopyOutSaveMeanVarPhase(int64_t aProcNum, int64_t aGmOffset)
     {
-        // -----------------------搬出SaveMeanVar-----------------------
+        // Implementation note.
         saveMeanQueue.EnQue(saveMeanTensor);
         saveMeanTensor = saveMeanQueue.DeQue<float>();
         CopyOutMeanOrVar(this->saveMeanGm, saveMeanTensor, aProcNum, aGmOffset);
@@ -464,7 +464,7 @@ private:
 
     __aicore__ inline void CopyOutRunningMeanVarPhase(int64_t aProcNum, int64_t aGmOffset)
     {
-        // -----------------------搬出RunningMeanVar-----------------------
+        // Implementation note.
         runningMeanOutQueue.EnQue(runningMeanOutTensor);
         runningMeanOutTensor = runningMeanOutQueue.DeQue<float>();
         CopyOutMeanOrVar(this->runningMeanOutGm, runningMeanOutTensor, aProcNum, aGmOffset);
@@ -509,7 +509,7 @@ private:
     {
         DataCopyPadExtParams<T1> padParams = {true, 0, static_cast<uint8_t>(eleNumAlign - eleNum), 0};
         DataCopyExtParams intriParams;
-        // 全载模板 patternR1不会大于65535
+        // Implementation note.
         intriParams.blockCount = static_cast<uint16_t>(patternR1);
         intriParams.blockLen = static_cast<uint32_t>(eleNum * sizeof(T1));
         intriParams.srcStride = static_cast<uint32_t>((patternA * patternR0 - eleNum) * sizeof(T1));
@@ -591,15 +591,15 @@ private:
     __aicore__ inline void SkipPadSubMean(const LocalTensor<float> &calcTensor, float negMean)
     {
         /*
-        函数实现对patternR1行个patternR0数据加negMean的计算（即减均值）
-        计算需要跳过patternR0对齐到patternR0Align的补0数值部分，否则影响后续计算方差
+        // Implementation note.
+        // Implementation note.
         calcTensor: patternR1 * patternR0Align
         */
         if (patternR0 == patternR0Align) {
             Adds(calcTensor, calcTensor, negMean, patternR1 * patternR0);
         } else {
             if ((forLoopNum < patternR1) && (patternR0Align < (UINT8_MAX_NUM * B32_BLOCK_ALIGN_NUM))) {
-                // patternR1 不会大于255, 循环走进去的条件forLoopNum >= 1,则patternR0 >= 64, 64*255 > rUbSize
+                // Implementation note.
                 for (int64_t i = 0; i < forLoopNum; i++) {
                     Adds(calcTensor[i * ELEM_PER_REP_FP32],
                         calcTensor[i * ELEM_PER_REP_FP32],
@@ -639,10 +639,10 @@ private:
     __aicore__ inline void DoNormalReduce(LocalTensor<float> &dstTensor, LocalTensor<float> &srcTensor, int64_t lineNum)
     {
         /*
-        函数实现同时lineNum行的行内二分累加，累加结果为lineNum个数，每行一个最终累加结果
-        srcTensor为reduce之前的Tensor: lineNum * lineLength
-        dstTensor为存放reduce结果的tensor: lineNum
-        dichotomizeAddDiffSize为lineLength与比他小的最邻近二次幂的差值
+        // Implementation note.
+        // Implementation note.
+        // Implementation note.
+        // Implementation note.
         */
         int64_t lineLength = patternR1 * patternR0Align;
         int64_t sumNum = lineLength;
@@ -689,16 +689,16 @@ private:
         LocalTensor<float> &dstTensor, LocalTensor<float> &srcTensor, int64_t lineLength)
     {
         /*
-        函数实现patternR1行的二分累加，累加结果为一行
-        srcTensor为reduce之前的Tensor: patternR1 * lineLength
-        dstTensor为存放reduce结果的tensor: lineLength
+        // Implementation note.
+        // Implementation note.
+        // Implementation note.
         */
         int64_t nowRows = patternR1;
         if (nowRows == 1) {
             Adds<float>(dstTensor, srcTensor, 0, lineLength);
             return;
         }
-        // row为非二次幂，先将二次幂差值行加到前面
+        // Implementation note.
         if (dichotomizeAddDiffSize != 0) {
             Add(srcTensor,
                 srcTensor,

@@ -17,12 +17,12 @@ class Model(nn.Module):
         input_label:   torch.Tensor,
         input_dout:    torch.Tensor
     ) -> torch.Tensor:
-        # 1. 统一提升到 float32
+        # Implementation note.
         pred_f32 = input_predict.to(torch.float32)
         tgt_f32  = input_label.to(torch.float32)
         dout_f32 = input_dout.to(torch.float32)
 
-        # 2. 计算梯度系数 cof
+        # Implementation note.
         if self.reduction == 'mean':
             cof = torch.scalar_tensor(2.0 / pred_f32.numel(),
                                     device=pred_f32.device,
@@ -32,15 +32,15 @@ class Model(nn.Module):
                                     device=pred_f32.device,
                                     dtype=torch.float32)
         else:  # 'none'
-            # 逐元素系数 2.0，自动广播到与 pred_f32 同形
+            # Implementation note.
             cof = torch.tensor(2.0, device=pred_f32.device, dtype=torch.float32)
 
-        # 3. 计算梯度
-        sub_res   = pred_f32 - tgt_f32          # (...,) 与输入同形
-        norm_grad = sub_res * cof               # 广播后同形
-        golden    = norm_grad * dout_f32        # 与 input_dout 广播规则一致
+        # Implementation note.
+        sub_res   = pred_f32 - tgt_f32  # Implementation note.
+        norm_grad = sub_res * cof  # Implementation note.
+        golden    = norm_grad * dout_f32  # Implementation note.
 
-        # 4. 返回原 dtype
+        # Implementation note.
         return golden.to(input_predict.dtype)
 
 

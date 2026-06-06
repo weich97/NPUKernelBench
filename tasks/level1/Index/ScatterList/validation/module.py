@@ -9,29 +9,29 @@ import math
 
 class Model(nn.Module):
     """
-    实现ScatterList算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, varRef: list[torch.Tensor], indice: torch.Tensor, updates: torch.Tensor, mask: Optional[torch.Tensor], reduce: str, axis: int) -> torch.Tensor:
         """
-        实现ScatterList算子功能。
+        Reference implementation detail.
 
         Args:
-            varRef: 第一个输入张量
-            indice: 索引张量
-            updates: 更新张量
-            mask: 可选的掩码张量
-            reduce: 规约操作类型
-            axis: 指定的轴
+            Reference implementation detail.
+            Reference implementation detail.
+            Reference implementation detail.
+            Reference implementation detail.
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            经过ScatterList操作后的结果张量
+            Reference implementation detail.
         """
         for i in range(len(varRef)):
             if mask[i] == False: continue

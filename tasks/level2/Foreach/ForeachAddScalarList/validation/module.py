@@ -25,9 +25,9 @@ class Model(nn.Module):
         alpha: torch.Tensor,
     ) -> List[torch.Tensor]:
         """
-        逐张量计算：out_i = x_i + α_i
-        α 是一维 Tensor，长度等于 len(x)。
-        中间值用 float32，结果回到原 dtype。
+        Reference implementation detail.
+        Reference implementation detail.
+        Reference implementation detail.
         """
         return [
             (t.float() + alpha[i]).to(t.dtype)

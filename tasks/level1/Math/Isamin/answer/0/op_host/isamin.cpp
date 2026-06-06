@@ -82,13 +82,13 @@ static void CalTilingData(uint32_t minEleRepeatsNumber, uint32_t minEleRepeatTai
             startOffset[i] = endOffset[i - 1];
         }
 
-        // 均分给所有核
+        // Implementation note.
         if (minEleRepeatsNumbeTail > 0) {
             eleLenEachCore += minEleEachCore;
             minEleRepeatsNumbeTail--;
         }
         dealTimesEachCore[i] = 0;
-        dealLenEachTime[i] = eleLenEachCore;  // 不带尾块算
+        dealLenEachTime[i] = eleLenEachCore; // Implementation note.
         if (eleLenEachCore > 0 && eleLenEachCore <= MAXNUMF32ELEEACHCORE) {
             dealTimesEachCore[i] = 1;
         } else if (eleLenEachCore > MAXNUMF32ELEEACHCORE) {
@@ -101,7 +101,7 @@ static void CalTilingData(uint32_t minEleRepeatsNumber, uint32_t minEleRepeatTai
 
         uint32_t dealLenEachTimeAttachTail = dealLenEachTime[i];
         if (i == 0 && minEleRepeatTail != 0) {
-            eleLenEachCore += minEleRepeatTail;  // 尾块全给第一个核
+            eleLenEachCore += minEleRepeatTail; // Implementation note.
             if (dealTimesEachCore[i] == 0) {
                 dealTimesEachCore[i] = 1;
             }
@@ -110,7 +110,7 @@ static void CalTilingData(uint32_t minEleRepeatsNumber, uint32_t minEleRepeatTai
         endOffset[i] = startOffset[i] + eleLenEachCore;
         eleTotalEachCore[i] = eleLenEachCore;
 
-        // 默认就申请这么大
+        // Implementation note.
         reduceMaxRstsLenEachCore[i] = DEAL_TIMES_EACH_CORE_REDUCE * ELEMENTS_IN_BLOCK + ELEMENTS_IN_BLOCK;
         dealLenUpBlockEachTime[i] = CeilA2B(dealLenEachTimeAttachTail, ELEMENTS_IN_BLOCK) * ELEMENTS_IN_BLOCK;
 
@@ -152,7 +152,7 @@ static ge::graphStatus TilingFunc(gert::TilingContext *context)
     uint32_t rstLenAllCoreBytes = needVecCoreNum * GM_RESULT_LEN * BYTE_LEN_4;
     uint32_t maxRepeatLen = MAX_REPEATS * ELENUM_PER_REPEAT;
 
-    // 按repeat64均分，尽量保证每个核吃到整repeat的数据，尾块数据部分丢给头块核
+    // Implementation note.
     uint32_t minEleRepeatsNumber = tmpLen / minEleEachCore;
     uint32_t minEleRepeatTail = tmpLen % minEleEachCore;
 

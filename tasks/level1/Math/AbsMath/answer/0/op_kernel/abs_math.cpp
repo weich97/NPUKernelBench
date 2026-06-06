@@ -17,7 +17,7 @@
 #include "abs_complex64.h"
 #include "abs_float32.h"
 
-#define ABS_TILING_0 1 // 直接改变符号 :float16, bfp16
+#define ABS_TILING_0 1 // Implementation note.
 #define ABS_TILING_1 2 //int32
 #define ABS_TILING_2 3 //int64
 #define ABS_TILING_3 4 //complex64

@@ -31,7 +31,7 @@ public:
         this->alignFP32ColLen_ = this->template AlignUp<uint32_t>(this->baseTilingData_.colLen, ELE_NUM_FP32);
         this->dstStride_  =  this->baseTilingData_.alignColLen == this->alignFP32ColLen_ ? 0 : 1;
 
-        // gm数据
+        // Implementation note.
         this->softmaxOutputGm_.SetGlobalBuffer((__gm__ dataType *)softmaxOutput,
             this->baseTilingData_.b * this->baseTilingData_.m * this->baseTilingData_.n);
         this->gradOutputGm_.SetGlobalBuffer(

@@ -127,7 +127,7 @@ template <typename T1, typename T2>
 __aicore__ inline void FeedsRepeatND<T1, T2>::ClearOutputSpace(){
     end_sum = end_sum_buf.Get<float>();
     end_sum_int64 = end_sum_int64_buf.Get<int64_t>();
-    //计算清零起始地址
+    // Implementation note.
     sumParams_total.inner = length_aligned;
     sumParams_total.n = length;
     Sum(end_sum, feeds_repeat_times_float, sumParams_total);
@@ -135,7 +135,7 @@ __aicore__ inline void FeedsRepeatND<T1, T2>::ClearOutputSpace(){
     SetFlag<HardEvent::V_S>(event_v_to_s);
     WaitFlag<HardEvent::V_S>(event_v_to_s);
     end_index += end_sum_int64.GetValue(0);
-    //gm清零
+    // Implementation note.
     int64_t empty_per_core = ((empty_size - end_index) * elem_row) / max_core_num;
     int64_t empty_left = ((empty_size - end_index) * elem_row) % max_core_num;
     if((core_index == 0) && ((empty_per_core + empty_left) != 0)){
@@ -152,7 +152,7 @@ template <typename T1, typename T2>
 __aicore__ inline void FeedsRepeatND<T1, T2>::ComputeStartDest(){
     sum_result = sum_result_buf.Get<float>();
     sum_result_int64 = sum_result_int64_buf.Get<int64_t>();
-    //计算搬运起始地址
+    // Implementation note.
     if(start_row != 0){
         sumParams.inner = start_aligned;
         sumParams.n = start_row;
@@ -228,7 +228,7 @@ __aicore__ inline void FeedsRepeatND<T1, T2>::RepeatMultiRow(){
 template <typename T1, typename T2> 
 __aicore__ inline void FeedsRepeatND<T1, T2>::Process(){
     if (core_per_group != 0){ 
-        //行数大于核数
+        // Implementation note.
         group_num = (max_core_num - core_moreover) / core_per_group;
         if(core_index < core_moreover * (core_per_group +1)){
             block_in_group = core_per_group + 1;
@@ -241,12 +241,12 @@ __aicore__ inline void FeedsRepeatND<T1, T2>::Process(){
             id_in_group = (core_index - core_moreover) % core_per_group;
         }
     }
-    //feeds分核
+    // Implementation note.
     index = core_per_group == 0 ? core_index : group_id;
     start_row = index * row_per_core + (index < row_left ? index : row_left);
     end_row = start_row + row_per_core + (index < row_left ? 1 : 0);
     start_aligned = (start_row * sizeof(float) + align_num - 1) / align_num * align_num / sizeof(float);
-    //feeds一行拆分
+    // Implementation note.
     loop_num = elem_row / elem_per_loop;
     loop_left = elem_row % elem_per_loop;
     start_index = elem_row * start_row;
@@ -262,10 +262,10 @@ __aicore__ inline void FeedsRepeatND<T1, T2>::Process(){
     else{
         copyParams.blockLen = (uint32_t)(elem_per_loop * sizeof(T1));
     }
-    if (core_per_group != 0){   //一行多核
+    if (core_per_group != 0){ // Implementation note.
         RepeatSingleRow();
     }
-    else{   //一核多行
+    else{ // Implementation note.
         RepeatMultiRow();
     }
 }

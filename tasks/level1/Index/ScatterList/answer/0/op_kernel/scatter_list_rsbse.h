@@ -12,8 +12,8 @@
  * \file scatter_list_rsbse.h
  * \brief
  */
-// 此文件实现所有芯片、-2轴更新、小batch小element、updates的后两维乘积对齐block场景，对应模板200
-// R: row, S: small, B: batch(updates的前两维除以核数得到), E: element(updates的后两维乘积)
+// Implementation note.
+// Implementation note.
 #ifndef SCATTER_LIST_RSBSE_H_
 #define SCATTER_LIST_RSBSE_H_
 

@@ -9,12 +9,12 @@ import kernel_gen_ops
 
 class Model(nn.Module):
     """
-    实现ForeachAddcmulList算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
@@ -26,13 +26,13 @@ class Model(nn.Module):
         scalars: torch.Tensor
     ) -> List[torch.Tensor]:
         """
-        实现 ForeachAddcmulList 算子功能。
+        Reference implementation detail.
 
-        步骤：
-        1. 先把 x1、x2、x3 中的每个张量提升到 float32；
-        2. scalars 保持原 dtype 不变；
-        3. 执行计算：x + scalar * y * z；
-        4. 返回 float32 结果列表。
+        Reference implementation detail.
+        Reference implementation detail.
+        Reference implementation detail.
+        Reference implementation detail.
+        Reference implementation detail.
         """
         ret = []
         for scalar, x, y, z in zip(scalars, x1, x2, x3):

@@ -1,41 +1,44 @@
 # aclnnBatchedMatmul
 
-## 功能描述
+## Functional Description
 
-### 算子功能
-该Ascend C算子用于执行批量化的二维矩阵乘法运算。它接收两个三维张量作为输入，其中第一个维度代表批次（Batch），后两个维度构成一个矩阵。算子会对批次中每一对对应的矩阵执行标准的矩阵乘法，这在处理批量数据（如在Transformer模型中）时非常高效。
+### Operator Semantics
+`aclnnBatchedMatmul` is an Ascend NPU benchmark operator in the `level3` `GMM` task family. The implementation should reproduce the reference tensor semantics used by the validation module and expose the custom kernel through `kernel_gen_ops.batched_matmul()`.
 
-### 计算公式
-假设输入张量为 $A$（维度为 $batch \times m \times k$）和 $B$（维度为 $batch \times k \times n$），则输出张量 $C$（维度为 $batch \times m \times n$）的计算公式如下：
+The task specification is intended for kernel-generation research: candidate implementations should preserve reference-level mathematical behavior while optimizing the device-side execution path for the Ascend C runtime.
 
-对于每一个批次索引 $b$（从 $1$ 到 $batch$），其对应的输出矩阵 $C_b$ 的计算方式为：
+### Mathematical Definition
+The operator follows the tensor relation below, with shape, dtype, broadcasting, and attribute constraints inherited from the benchmark task configuration when applicable.
 
 $$(C_b)_{ij} = \sum_{p=1}^{k} (A_b)_{ip} (B_b)_{pj}$$
 
-其中，$i$ 的范围是从 $1$ 到 $m$，$j$ 的范围是从 $1$ 到 $n$。$(C_b)_{ij}$ 表示输出张量 $C$ 中第 $b$ 个批次内，第 $i$ 行第 $j$ 列的元素值。
+## Interface Definition
 
-### 计算过程与类型转换
-为了在执行大规模累加操作时保持较高的数值精度，并有效防止数据溢出，该算子在内部计算过程中采用了高精度累加的策略。具体流程如下：
+### Python Interface
+The C++/Ascend implementation is bound to Python through PyBind11 and invoked from the benchmark harness as follows:
 
-1.  算子接收两个数据类型为 `float16` 的输入张量 `a` 和 `b`。
-2.  在执行乘加计算时，内部的累加器（Accumulator）会使用 `float32` 类型。也就是说，`float16` 的乘积结果会先转换为 `float32`，然后再进行累加。
-3.  所有累加计算完成后，得到 `float32` 类型的结果。
-4.  最后，将 `float32` 的结果张量转换回 `float16` 类型，作为最终的输出。
+```python
+def batched_matmul(*args, **kwargs):
+    """Execute `aclnnBatchedMatmul` on Ascend NPU tensors."""
 
-## 接口定义
+```
 
-### 算子原型定义接口
-#### Input
-- a：Device侧的aclTensor，公式中的A，数据类型支持float16，维度支持3维，数据格式支持ND。
-- b：Device侧的aclTensor，公式中的B，数据类型支持float16，维度支持3维，数据格式支持ND。
-#### Output
-- c：Device侧的aclTensor，公式中的C，数据类型支持float16，维度支持3维，数据格式支持ND。
-#### Attr
-- 无
+### Inputs
+- Operator arguments are supplied by the benchmark input generator and follow the reference validation signature.
 
-## 约束与限制
-  * 输入张量 `a` 和 `b` 的数据类型当前仅支持 `float16`。
-  * 输入张量 `a` 和 `b` 必须为三维张量。
-  * `a` 和 `b` 的第一个维度（batch size）必须相等。
-  * `a` 的第三个维度（矩阵列数）必须与 `b` 的第二个维度（矩阵行数）相等。
-  * 输入张量的数据格式只支持ND。
+### Outputs
+- Returns the tensor, tensor list, or in-place updated tensor specified by the reference implementation. Output shape, dtype, layout, and aliasing behavior must be consistent with the validation path.
+
+## Usage Example
+
+```python
+import kernel_gen_ops
+
+result = kernel_gen_ops.batched_matmul(...)
+```
+
+## Constraints and Notes
+
+- The implementation must match the PyTorch/reference semantics used in `validation/module.py`.
+- Unless otherwise specified by the task configuration, tensors use the `ND` layout and the dtype set declared in the benchmark metadata.
+- Candidate kernels should avoid changing public signatures, generated build files, or validation-side calling conventions.

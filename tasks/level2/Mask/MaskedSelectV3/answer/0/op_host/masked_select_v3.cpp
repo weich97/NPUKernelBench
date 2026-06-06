@@ -49,7 +49,7 @@ namespace
     constexpr static uint32_t BLOCK_SIZE = 256;
     constexpr static uint32_t DOUBLE_BUFFER = 2;
     constexpr static float UB_USAGE = 0.65f;
-    constexpr uint32_t INT64_LENGTH_IN_INT32 = 2; // INT64 相当于 2个int32长
+    constexpr uint32_t INT64_LENGTH_IN_INT32 = 2; // Implementation note.
 }
 
 namespace optiling
@@ -67,10 +67,10 @@ namespace optiling
         MaskedSelectV3TilingData tiling;
 
         gert::TilingContext *tilingContext = nullptr;
-        // 总元素个数
+        // Implementation note.
         uint64_t totalLength = tilingContext->GetInputShape(0)->GetStorageShape().GetShapeSize();
         
-        // ub对齐后长度
+        // Implementation note.
         uint64_t totalLengthAlignedWithBlock = 0;
 
         uint64_t tilingKey = 1;
@@ -88,7 +88,7 @@ namespace optiling
 
         uint64_t blockDim = 0;
         
-        // 求单个元素大小
+        // Implementation note.
         uint64_t sizeOfDataType = 1;
         uint64_t dataType = tilingContext->GetInputDesc(0)->GetDataType();
     };
@@ -96,8 +96,8 @@ namespace optiling
     {
         OP_LOGD(tilingContext->GetNodeName(), "Tiling init start.");
         auto ascendcPlatform = platform_ascendc::PlatformAscendC(tilingContext->GetPlatformInfo());
-        uint64_t aivNum = ascendcPlatform.GetCoreNumAiv(); // Vector核数量
-        uint64_t ubSize; // ubSize大小
+        uint64_t aivNum = ascendcPlatform.GetCoreNumAiv(); // Implementation note.
+        uint64_t ubSize; // Implementation note.
         ascendcPlatform.GetCoreMemSize(platform_ascendc::CoreMemType::UB, ubSize);
         switch (dataType)
         {
@@ -124,10 +124,10 @@ namespace optiling
                 break;
         }
 
-        // 一个block存放的元素
+        // Implementation note.
         uint32_t ALIGN_NUM = BLOCK_SIZE / sizeOfDataType;       // 256/<8>=32
 
-        // ub对齐后长度
+        // Implementation note.
         totalLengthAlignedWithBlock = ((totalLength + ALIGN_NUM - 1) / ALIGN_NUM) * ALIGN_NUM;
 
         float total_fact = sizeof(uint8_t) + sizeOfDataType * 3;
@@ -140,9 +140,9 @@ namespace optiling
             total_fact += sizeof(int32_t);
         }
         
-        // 核内拆分，策略是尽可能的填满ub_size,最后一包单独处理，
+        // Implementation note.
         float tmp = (sizeOfDataType) * 1.0 / total_fact;
-        // ub_block在ascend C中不能全部被用来作为输入输出，给了13/20系数。计算出x 一次最多能处理多少block数量
+        // Implementation note.
         uint32_t ubBlockNum = static_cast<uint32_t>((ubSize * UB_USAGE * tmp) / BLOCK_SIZE); 
         OP_LOGD(tilingContext->GetNodeName(), "ubBlockNum: %u.", ubBlockNum);
         if (ubBlockNum % DOUBLE_BUFFER != 0)
@@ -151,19 +151,19 @@ namespace optiling
         }
 
         OP_LOGD(tilingContext->GetNodeName(), "totalLength: %lu.", totalLength);
-        // ub能放的元素个数
+        // Implementation note.
         uint32_t ubLength = ubBlockNum * ALIGN_NUM;
-        // block数量
+        // Implementation note.
         uint32_t ubNum = (totalLengthAlignedWithBlock + ubLength - 1) / ubLength;
 
-        // 运行核数
+        // Implementation note.
         blockDim = (ubNum > aivNum) ? aivNum : ubNum;
         tilingContext->SetBlockDim(blockDim);
 
         tilingKey = sizeOfDataType;
         tilingContext->SetTilingKey(tilingKey);
 
-        // 切分流程
+        // Implementation note.
         formerNum = totalLength % blockDim;
         if (formerNum == 0){
             formerNum = blockDim;
@@ -179,7 +179,7 @@ namespace optiling
         }
 
         if (tailNum > 0) {
-            tailLength = (totalLength -formerLength * formerNum) / tailNum; // 一定可能整出
+            tailLength = (totalLength -formerLength * formerNum) / tailNum; // Implementation note.
             tailTileNum = (tailLength + ubLength - 1) / ubLength;
             tailTileLength = ubLength;
             tailLastTileLength = tailLength % ubLength;
@@ -226,10 +226,10 @@ namespace optiling
 
         auto ascendcPlatform = platform_ascendc::PlatformAscendC(tilingContext->GetPlatformInfo());
         uint32_t sysWorkspaceSize = ascendcPlatform.GetLibApiWorkSpaceSize();
-        size_t *currentWorkspace = tilingContext->GetWorkspaceSizes(1); // 通过框架获取workspace的指针，GetWorkspaces入参所需workspace的块数。当前限制使用一块。
+        size_t *currentWorkspace = tilingContext->GetWorkspaceSizes(1); // Implementation note.
         size_t usrSize = totalLengthAlignedWithBlock * sizeOfDataType + blockDim * 64;
         OP_LOGD(tilingContext->GetNodeName(), "usrWorkspaceSize: %lu.", usrSize);
-        currentWorkspace[0] = usrSize + sysWorkspaceSize; // 设置总的workspace的数值大小，总的workspace空间框架来申请并管理。
+        currentWorkspace[0] = usrSize + sysWorkspaceSize; // Implementation note.
         TilingDataPrint();
         OP_LOGD(tilingContext->GetNodeName(), "Tiling end.");
         return ge::GRAPH_SUCCESS;

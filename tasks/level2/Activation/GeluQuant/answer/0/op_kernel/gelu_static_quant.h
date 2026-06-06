@@ -22,7 +22,7 @@
 
 namespace GeluQuantALL {
 using namespace AscendC;
-// static quant function template   单行处理或者大尾轴UB内for循环
+// Implementation note.
 
 template <typename T1, typename T2> class GeluQuant : public GeluQuantBase {
 public:

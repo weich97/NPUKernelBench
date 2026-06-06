@@ -1,36 +1,52 @@
-# Start vLLM Server
+# Start the vLLM Service
 
-本文档介绍如何启动 vLLM Server 并使用其进行代码生成任务。
+This guide describes how to launch a vLLM-compatible service for LLM-based kernel generation in NPUKernelBench.
 
-## 1. 参数配置
+## 1. Configure the Model Path
 
-### 1.1 修改配置文件
+Set the model checkpoint path in `base_config.yaml`:
 
-1. **修改 `base_config.yaml` 文件**：
-   - `chat: model_path`：设置为代码生成模型的文件路径
+```yaml
+chat:
+  model_path: "/path/to/model/checkpoint"
+```
 
-2. **修改 `start_vllm_server.sh` 文件**中的关键参数：
+The same value is consumed by `start_vllm_server.sh` through the framework configuration.
 
-   - `--model $model_name`：模型名称或路径（在 base_config.yaml 中配置）
-   - `--port 5600`：服务端口，建议保持默认值，如需修改请同步更新 llm_api.py 中 call_api_vllm 函数的 base_url 参数
-   - `--gpu-memory-utilization 0.7`：NPU 内存使用率，避免过小或过大
-   - `--tensor-parallel-size 8`：在 8 个 NPU 上并行处理
-   - `--max-num-batched-tokens 32768`：每个 batch 的最大 token 数
-   - `--max-num-seqs 16`：每批次最大序列数
-   - `--max-model-len 32768`：单序列最大 token 长度
-   - `--enable-chunked-prefill`：启用分块预填充，提高效率
-   - `--enable-prefix-caching`：启用前缀缓存，加速推理
-   - `--enable-reasoning`：启用推理功能
-   - `--reasoning-parser deepseek_r1`：指定推理解析器
+## 2. Review Server Parameters
 
-## 2. 启动 vLLM 服务
+The launch script exposes the main serving parameters:
 
-在后台启动 vLLM 服务：
+- `--model`: model name or checkpoint path;
+- `--port 5600`: serving port used by `kernel_generator/llm_api.py`;
+- `--gpu-memory-utilization 0.7`: target device-memory utilization;
+- `--tensor-parallel-size 8`: tensor parallelism across eight Ascend devices;
+- `--max-num-batched-tokens 32768`: maximum batched tokens;
+- `--max-num-seqs 16`: maximum number of concurrent sequences;
+- `--max-model-len 32768`: maximum sequence length;
+- `--enable-chunked-prefill`: enable chunked prefill for improved throughput;
+- `--enable-prefix-caching`: enable prefix caching;
+- `--enable-reasoning`: enable reasoning output support;
+- `--reasoning-parser deepseek_r1`: parse reasoning traces with the DeepSeek-R1 parser.
+
+If the port is changed, update the corresponding `base_url` in the vLLM API call path.
+
+## 3. Launch the Service
+
+Start the service in the background:
 
 ```bash
 nohup bash start_vllm_server.sh > vllm_server.log 2>&1 &
 ```
 
-## 3. 执行代码生成
+Monitor `vllm_server.log` to confirm that the service has loaded the model and is accepting requests.
 
-完成配置和服务启动后，即可开始代码生成任务。
+## 4. Run Code Generation
+
+After the service is available, run a generation stage:
+
+```bash
+python run_multi_test.py -chat -task_name Sqrt -stages code_gen
+```
+
+Generated code and logs are written under the configured `run_dir`.

@@ -140,7 +140,7 @@ __aicore__ inline void CrossEntropyLossGradBase<T>::Init(GM_ADDR grad_loss, GM_A
   } else {
     logOffset = frontCoreNum * colVal * frontRowNum + (coreIndex - frontCoreNum) * colVal * tailRowNum;
     targetOffset = frontCoreNum * frontRowNum + (coreIndex - frontCoreNum) * tailRowNum;
-    nLoopNum = tailRowNum;   // 确定该核需要处理多少行，target一次处理多少个数
+    nLoopNum = tailRowNum; // Implementation note.
   }
 
   gradLossGm.SetGlobalBuffer((__gm__ T*)grad_loss);

@@ -14,7 +14,7 @@ std::vector<at::Tensor> apply_adam_wv2(at::Tensor &var_ref, at::Tensor &m_ref, a
                     lr, beta1, beta2, weight_decay, eps, amsgrad, maximize);
 
     std::vector<at::Tensor> result;
-    // 根据输入准备输出张量
+    // Implementation note.
     if (amsgrad) {
         result = {var_ref, m_ref, v_ref, max_grad_norm_ref};
     } else {

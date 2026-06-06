@@ -217,7 +217,7 @@ namespace ForeachLerpScalar {
 
     template <typename T>
     __aicore__ inline void ForeachLerpScalarND<T>::Process() {
-        /*将中间量预留出来*/
+        // Implementation note.
         LocalTensor<float> float32Tensor;
         #if __CCE_AICORE__ == 220
         if (std::is_same<T, bfloat16_t>::value) {

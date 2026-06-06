@@ -141,7 +141,7 @@ __aicore__ inline void GroupNormSwishLargeB16<T1, T2>::ComputeSum(const int64_t 
 #endif
     pipe_barrier(PIPE_V);
     this->inQueueX.template FreeTensor(xUb);
-    // 第一次计算均值
+    // Implementation note.
     this->ReduceSumCustom(this->meanUb[index * 2], this->x1Ub32, this->x2Ub32, num);
     event_t eventIdVToS = static_cast<event_t>(GetTPipePtr()->FetchEventID(HardEvent::V_S));
     SetFlag<HardEvent::V_S>(eventIdVToS);
@@ -150,14 +150,14 @@ __aicore__ inline void GroupNormSwishLargeB16<T1, T2>::ComputeSum(const int64_t 
     mean = mean / num;
     Adds(this->x2Ub32, this->x1Ub32, -mean, num);
     pipe_barrier(PIPE_V);
-    // 对均值进行修正
+    // Implementation note.
     this->ReduceSumCustom(this->meanUb[index * 2], this->x2Ub32, this->x2Ub32, num);
     SetFlag<HardEvent::V_S>(eventIdVToS);
     WaitFlag<HardEvent::V_S>(eventIdVToS);
     float mean1 = this->meanUb(index * 2) + this->meanUb(index * 2 + 1);
     mean1 = mean1 / num + mean;
     this->meanUb(index * 2) = mean1;
-    // two-pass计算方差
+    // Implementation note.
     Adds(this->x2Ub32, this->x1Ub32, -mean1, num);
     pipe_barrier(PIPE_V);
     Mul(this->x2Ub32, this->x2Ub32, this->x2Ub32, num);

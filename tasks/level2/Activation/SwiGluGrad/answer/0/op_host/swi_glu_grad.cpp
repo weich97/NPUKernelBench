@@ -32,13 +32,13 @@ const uint32_t L2_CACHE_LINE_SIZE = 512; // pack unit in cache 512B
 const uint32_t UB_MIN_BLOCK_SIZE = 32; // align unit in cache 32B
 const uint32_t BLOCK_SIZE_OF_64B = 64; // align unit in cache 64B
 const uint32_t DEFAULT_BUFFER_NUM = 2;
-const uint32_t MAX_BLOCK_COUNT = 4095; // datacopy指令包含的连续传输数据块的最大个数
-const uint32_t MAX_BLOCK_LEN = 65535 * 32; // datacopy指令每个连续传输数据块的最长长度为65535，单位为32bytes
+const uint32_t MAX_BLOCK_COUNT = 4095; // Implementation note.
+const uint32_t MAX_BLOCK_LEN = 65535 * 32; // Implementation note.
 const uint32_t MAX_UINT32 = 4294967295;
 const uint32_t MAX_CORE_NUMBER = 64;
-const uint16_t DISCONTINE_COPY_MAX_BLOCKCNT = 4095; // 非连续拷贝，blockCount最大值,AscendC接口限制
-const uint16_t DISCONTINE_COPY_MAX_BLOCKLEN = 65535; // 非连续拷贝，blockLen最大值,AscendC接口限制
-const uint16_t DISCONTINE_COPY_MAX_STRIDE = 65535; // 非连续拷贝，srcStride/dstStride最大值,AscendC接口限制
+const uint16_t DISCONTINE_COPY_MAX_BLOCKCNT = 4095; // Implementation note.
+const uint16_t DISCONTINE_COPY_MAX_BLOCKLEN = 65535; // Implementation note.
+const uint16_t DISCONTINE_COPY_MAX_STRIDE = 65535; // Implementation note.
 
 const uint32_t XXGLU_TQUE_NUM = 3;
 const uint32_t SWIGLU_TBUF_NUM_HALF = 2;
@@ -71,18 +71,18 @@ enum GLU_FLAG {
     SWIGLU_GRAD_SINGLE
 };
 
-// Tiling优选参数
+// Implementation note.
 struct GluSingleTilingOptParam {
     // Maximum amount of data that can be transferred by an operator UB at a time. Unit:element
     uint32_t maxTileLen = 0;
-    uint32_t optBaseRowLen = 0; // 最优的BaseRowLen
-    uint32_t optBaseColLen = 0; // 最优的BaseColLen
-    uint64_t optTotalTileNum = 0; // 最优的分割后的数据块数量
-    uint64_t optBaseSize = 0; // 最优的分割后的base shape数据块的大小， optBaseRowLen*optBaseColLen, Unit:element
-    uint64_t optBaseTileNum = 0; // 最优的分割后的base shape数据块数量，不包含尾块
+    uint32_t optBaseRowLen = 0; // Implementation note.
+    uint32_t optBaseColLen = 0; // Implementation note.
+    uint64_t optTotalTileNum = 0; // Implementation note.
+    uint64_t optBaseSize = 0; // Implementation note.
+    uint64_t optBaseTileNum = 0; // Implementation note.
 
-    uint32_t totalUsedCoreNum = 0; // 最终实际使用的核数
-    uint64_t tileNumPerCore = 0; // 每个核需要处理的TileNum，如果不均匀，按照多的计算
+    uint32_t totalUsedCoreNum = 0; // Implementation note.
+    uint64_t tileNumPerCore = 0; // Implementation note.
 };
 
 struct GluSingleTilingCalculator {
@@ -99,7 +99,7 @@ public:
     inline bool isSupportSocV(uint32_t dtype, platform_ascendc::SocVersion socVersion_);
     SwiGluTilingData *tilingData;
 
-    uint32_t totalUsedCoreNum = 0; // 最终实际使用的核数
+    uint32_t totalUsedCoreNum = 0; // Implementation note.
 private:
     template<GLU_FLAG Glu_Flag, uint16_t bufferNum>
     bool CalcOptTiling(uint64_t ubSize, int32_t dtype, GluSingleTilingOptParam &optTiling);
@@ -181,14 +181,14 @@ inline bool GetLengthByType(int32_t dtype, uint32_t& dsize) {
         for (int64_t j = splitDim; j < dimNum; j++) {
             shapeAfter *= inShape.GetDim(j);
         }
-        // 如果shape不是2的倍数,返回
+        // Implementation note.
         if (shapeAfter % 2 != 0) {
             OP_LOGE((Glu_Flag == SWIGLU_SINGLE ? "SwiGlu" : "SwiGluGrad"), "SetTotalShape Unsupported inDim %d, shapeAfter %ld %% 2 != 0", inDim, shapeAfter);
             return false;
         }
 
         tilingData->set_rowLen(shapeBefore);
-        // colLen为原shape除以2
+        // Implementation note.
         tilingData->set_colLen(shapeAfter / 2);
         return true;
     }
@@ -270,7 +270,7 @@ inline uint32_t GluSingleTilingCalculator::getBaseColLenUpBound(GluSingleTilingO
     }
 
     if (upBound < tilingData->get_colLen() && upBound > cacheLineLen) {
-        // 该种场景，每一个colLen至少被切割成2块，需要保证baseColLen为512B整数倍才高效
+        // Implementation note.
         return AlignDown<uint32_t>(upBound, cacheLineLen);
     } else {
         return upBound;
@@ -283,24 +283,24 @@ inline uint32_t GluSingleTilingCalculator::getBaseRowLenUpBound()
 }
 
 /**
- * colLen 32B对齐时：若(colLen * 2 – baseCloLen) > 65535* ubMinBlockLen，则baseRowLen=1
- * colLen非32B对齐时：若(colLen * 2 – baseCloLen) * sizeof(Dtype) > 65535，则baseRowLen=1
+ * Implementation note.
+ * Implementation note.
  */
 inline bool GluSingleTilingCalculator::MustBeSingleBaseRowLen(uint32_t baseColLen_)
 {
     if (tilingData->get_is32BAligned() == 1) {
-        // colLen 32B对齐时：若(colLen * 2 – baseCloLen) > 65535* ubMinBlockLen，则baseRowLen=1
+        // Implementation note.
         return ((tilingData->get_colLen() * 2 - baseColLen_) > (DISCONTINE_COPY_MAX_STRIDE * ubMinBlockLen));
     } else {
-        // colLen非32B对齐时：若(colLen * 2 – baseCloLen) * sizeof(Dtype) > 65535，则baseRowLen=1
+        // Implementation note.
         return (((tilingData->get_colLen() * 2 - baseColLen_) * inputDTypeLen) > DISCONTINE_COPY_MAX_STRIDE);
     }
 }
 
 /**
- * 若则baseRowLen大于1，且约束判决baseRowLen必须等于1时，则是不合法的
- * colLen 32B对齐时：若(colLen * 2 – baseCloLen) > 65535* ubMinBlockLen，则baseRowLen=1
- * colLen非32B对齐时：若(colLen * 2 – baseCloLen) * sizeof(Dtype) > 65535，则baseRowLen=1
+ * Implementation note.
+ * Implementation note.
+ * Implementation note.
  */
 inline bool GluSingleTilingCalculator::isInvalidBaseShape(uint32_t baseRowlen_, uint32_t baseColLen_)
 {
@@ -324,21 +324,21 @@ inline bool GluSingleTilingCalculator::CalcOptBaseShape(GluSingleTilingOptParam&
     }
 
     while(true) {
-        // colLen非32B对齐时，数据copy到ub时，每一行的尾部会补齐32B
+        // Implementation note.
         uint32_t baseRowlen_ = std::min(optTiling.maxTileLen / AlignUp<uint32_t>(baseColLen_, ubMinBlockLen), getBaseRowLenUpBound());
         if (isInvalidBaseShape(baseRowlen_, baseColLen_)) {
             return (optTiling.optTotalTileNum > 0);
         }
-        // 保存较优的base shape
+        // Implementation note.
         SaveOptBaseShape(baseRowlen_, baseColLen_, optTiling);
 
-        // baseColLen已经到达下限 或者 baseRowlen已经达到上限，无法继续调整，结束
+        // Implementation note.
         if (baseColLen_ <= alignPackLen || (baseRowlen_ >= getBaseRowLenUpBound())) {
-            return true; // baseColLen无法继续调整了，结束
+            return true; // Implementation note.
         }
-        // 继续调整baseColLen
-        // baseColLen为若alignPackLen的整数倍，则baseColLen减少1个alignPackLen的长度
-        // 否则baseColLen减少到alignPackLen的整数倍（最接近的）
+        // Implementation note.
+        // Implementation note.
+        // Implementation note.
         if (baseColLen_ % alignPackLen == 0) {
             baseColLen_ -= alignPackLen;
         } else {
@@ -347,15 +347,15 @@ inline bool GluSingleTilingCalculator::CalcOptBaseShape(GluSingleTilingOptParam&
     }
 }
 
-// 如果开启double buffer，则bufferNum为2，否则为1
+// Implementation note.
 template <GLU_FLAG Glu_Flag, uint16_t bufferNum>
 bool GluSingleTilingCalculator::CalcOptTiling(uint64_t ubSize, int32_t dtype, GluSingleTilingOptParam& optTiling)
 {
-    // 计算maxTilingLen
+    // Implementation note.
     if (!CalcUbMaxTileLen<Glu_Flag, bufferNum>(ubSize, dtype, optTiling)) {
         return false;
     }
-    // 计算最优的base块形状
+    // Implementation note.
     if (!CalcOptBaseShape<Glu_Flag>(optTiling)) {
         return false;
     }
@@ -371,7 +371,7 @@ bool GluSingleTilingCalculator::CalcTiling(uint32_t totalCore, uint64_t ubSize, 
     }
     ubMinBlockLen = UB_MIN_BLOCK_SIZE / inputDTypeLen; // min block size
     cacheLineLen = L2_CACHE_LINE_SIZE / inputDTypeLen; // bandwidth max efficiency
-    alignPackLen = cacheLineLen; // 默认512对齐，策略可调整
+    alignPackLen = cacheLineLen; // Implementation note.
     // Is 32-byte aligned for split colLen?
     tilingData->set_is32BAligned(tilingData->get_colLen() % ubMinBlockLen == 0);
     // 310p not support Non-64B
@@ -380,17 +380,17 @@ bool GluSingleTilingCalculator::CalcTiling(uint32_t totalCore, uint64_t ubSize, 
         OP_LOGE((Glu_Flag == SWIGLU_SINGLE ? "SwiGlu" : "SwiGluGrad"), "input shape is not support Non-64B aligned");
         return false;
     }
-    // 先计算开启double buffer的tiling参数
+    // Implementation note.
     tilingData->set_isDoubleBuffer(1);
     GluSingleTilingOptParam optTilingDb;
-    // 判断buffer = 2时是否计算成功
+    // Implementation note.
     if (!CalcOptTiling<Glu_Flag, 2>(ubSize, dtype, optTilingDb)) {
         return false;
     }
     GluSingleTilingOptParam *optTiling = &optTilingDb;
-    // 如果double buffer开启的tiling参数中，每个核需要处理的tileNum等于2，尝试关闭double buffer;
-    // 若关闭double buffer后只需要搬运1次数据，且使用的核没有减少, 则使用关闭double buffer的tiling
-    // 判断tileNumPerCoer是否为2
+    // Implementation note.
+    // Implementation note.
+    // Implementation note.
     if (optTilingDb.tileNumPerCore == 2) {
         GluSingleTilingOptParam optTilingNoDb;
         if (CalcOptTiling<Glu_Flag, 1>(ubSize, dtype, optTilingNoDb) &&
@@ -399,7 +399,7 @@ bool GluSingleTilingCalculator::CalcTiling(uint32_t totalCore, uint64_t ubSize, 
             tilingData->set_isDoubleBuffer(0);
         }
     }
-    // 记录最优的结果
+    // Implementation note.
     tilingData->set_baseRowLen(optTiling->optBaseRowLen);
     tilingData->set_baseColLen(optTiling->optBaseColLen);
     totalUsedCoreNum = optTiling->totalUsedCoreNum;

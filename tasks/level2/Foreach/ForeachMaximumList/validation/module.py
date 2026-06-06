@@ -9,25 +9,25 @@ import kernel_gen_ops
 
 class Model(nn.Module):
     """
-    实现ForeachMaximumList算子功能的模型。
+    Reference implementation detail.
     """
 
     def __init__(self):
         """
-        初始化模型。
+        Reference implementation detail.
         """
         super(Model, self).__init__()
 
     def forward(self, inputs1: List[torch.Tensor], inputs2: List[torch.Tensor]) -> List[torch.Tensor]:
         """
-        实现ForeachMaximumList算子功能。
+        Reference implementation detail.
 
         Args:
-            input1: 第一个输入张量列表
-            input2: 第二个输入张量列表
+            Reference implementation detail.
+            Reference implementation detail.
 
         Returns:
-            两个输入张量列表逐元素比较后的最大值张量列表
+            Reference implementation detail.
         """
         return [torch.maximum(x, y) for x, y in zip(inputs1, inputs2)]
 
